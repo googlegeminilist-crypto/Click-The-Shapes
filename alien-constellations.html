@@ -25,6 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            cursor: none;
         }
 
         .header {
@@ -316,6 +317,51 @@
             constellationShapes.push(new ConstellationShape());
         }
 
+        // Particle system for cursor trail
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.size = Math.random() * 3 + 1;
+                this.life = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
+                this.color = ['#00ff88', '#ff00ff', '#00ffff', '#ffff00', '#ff0088'][Math.floor(Math.random() * 5)];
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.life <= 0;
+            }
+        }
+
+        const particles = [];
+        let mouseX = 0;
+        let mouseY = 0;
+        let particleSpawnCounter = 0;
+
         function showPointsPopup(x, y, points) {
             const popup = document.createElement('div');
             popup.className = 'points-popup';
@@ -348,26 +394,73 @@
                 shape.draw();
             });
 
+            // Update and draw particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+
+                if (particles[i].isDead()) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Draw custom cursor
+            if (mouseX > 0 || mouseY > 0) {
+                ctx.save();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#00ffff';
+                ctx.fill();
+                ctx.restore();
+            }
+
             requestAnimationFrame(animate);
         }
 
         animate();
 
+        // Track mouse movement for particle trail
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+
+            // Spawn particles every few frames
+            particleSpawnCounter++;
+            if (particleSpawnCounter % 2 === 0) {
+                for (let i = 0; i < 3; i++) {
+                    particles.push(new Particle(mouseX, mouseY));
+                }
+            }
+        });
+
         // Click handler for constellations
         canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
 
             for (let i = constellationShapes.length - 1; i >= 0; i--) {
                 const shape = constellationShapes[i];
-                if (shape.isClicked(mouseX, mouseY)) {
+                if (shape.isClicked(clickX, clickY)) {
                     // Award points
                     updateScore(10);
                     showPointsPopup(e.clientX, e.clientY, 10);
 
                     // Play sparkle sound
                     playSparkleSound();
+
+                    // Create explosion of particles
+                    for (let j = 0; j < 20; j++) {
+                        particles.push(new Particle(clickX, clickY));
+                    }
 
                     // Reset the constellation to a new position and shape
                     shape.reset();
