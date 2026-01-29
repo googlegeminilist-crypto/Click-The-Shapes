@@ -212,6 +212,21 @@
                 this.color = ['#00ff88', '#ff00ff', '#00ffff', '#ffff00', '#ff0088'][Math.floor(Math.random() * 5)];
                 this.shape = ['star', 'circle', 'triangle', 'square', 'pentagon'][Math.floor(Math.random() * 5)];
                 this.pulsePhase = Math.random() * Math.PI * 2;
+
+                // Create orbiting stars
+                this.orbitingStars = [];
+                const numStars = 8;
+                for (let i = 0; i < numStars; i++) {
+                    this.orbitingStars.push({
+                        angle: (Math.PI * 2 * i) / numStars,
+                        distance: this.size + 30 + Math.random() * 20,
+                        speed: (Math.random() - 0.5) * 0.03,
+                        size: Math.random() * 2 + 1,
+                        color: i % 2 === 0 ? '#ff0000' : '#0000ff',
+                        twinklePhase: Math.random() * Math.PI * 2,
+                        twinkleSpeed: Math.random() * 0.1 + 0.05
+                    });
+                }
             }
 
             update() {
@@ -222,6 +237,12 @@
                 if (this.y < 150 || this.y > canvas.height - 150) this.vy *= -1;
 
                 this.pulsePhase += 0.05;
+
+                // Update orbiting stars
+                this.orbitingStars.forEach(star => {
+                    star.angle += star.speed;
+                    star.twinklePhase += star.twinkleSpeed;
+                });
             }
 
             draw() {
@@ -230,6 +251,25 @@
 
                 ctx.save();
                 ctx.translate(this.x, this.y);
+
+                // Draw orbiting stars
+                this.orbitingStars.forEach(star => {
+                    const x = Math.cos(star.angle) * star.distance;
+                    const y = Math.sin(star.angle) * star.distance;
+                    const brightness = (Math.sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2;
+
+                    ctx.save();
+                    ctx.globalAlpha = brightness;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = star.color;
+                    ctx.fillStyle = star.color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // Draw main shape
                 ctx.strokeStyle = this.color;
                 ctx.fillStyle = this.color;
                 ctx.lineWidth = 3;
