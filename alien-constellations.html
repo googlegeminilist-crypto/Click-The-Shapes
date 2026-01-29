@@ -130,6 +130,36 @@
         let score = 0;
         const constellationShapes = [];
 
+        // Audio context for sound effects
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSparkleSound() {
+            const now = audioContext.currentTime;
+
+            // Create multiple oscillators for a sparkling chime effect
+            const frequencies = [800, 1200, 1600, 2000];
+
+            frequencies.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // Use sine wave for a bell-like tone
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, now);
+
+                // Create envelope for sparkle effect
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.15, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + (index * 0.05));
+
+                oscillator.start(now + (index * 0.02));
+                oscillator.stop(now + 0.5);
+            });
+        }
+
         class Star {
             constructor() {
                 this.x = Math.random() * canvas.width;
@@ -335,6 +365,9 @@
                     // Award points
                     updateScore(10);
                     showPointsPopup(e.clientX, e.clientY, 10);
+
+                    // Play sparkle sound
+                    playSparkleSound();
 
                     // Reset the constellation to a new position and shape
                     shape.reset();
