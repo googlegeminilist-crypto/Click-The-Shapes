@@ -333,9 +333,11 @@ class Snake {
 // MARK: - Sound Manager
 class SoundManager {
     static let shared = SoundManager()
+    private var backgroundMusicPlayer: AVAudioPlayer?
 
     init() {
         setupAudioSession()
+        setupBackgroundMusic()
     }
 
     private func setupAudioSession() {
@@ -345,6 +347,30 @@ class SoundManager {
         } catch {
             print("Audio session error: \(error)")
         }
+    }
+
+    private func setupBackgroundMusic() {
+        guard let url = Bundle.main.url(forResource: "Untitled", withExtension: "wav") else {
+            print("Background music file not found")
+            return
+        }
+
+        do {
+            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+            backgroundMusicPlayer?.numberOfLoops = -1 // Loop forever
+            backgroundMusicPlayer?.volume = 0.7
+            backgroundMusicPlayer?.prepareToPlay()
+        } catch {
+            print("Error loading background music: \(error)")
+        }
+    }
+
+    func playBackgroundMusic() {
+        backgroundMusicPlayer?.play()
+    }
+
+    func stopBackgroundMusic() {
+        backgroundMusicPlayer?.stop()
     }
 
     func playSparkle() {
@@ -405,6 +431,7 @@ class GameViewModel: ObservableObject {
 
     func startGame() {
         showIntro = false
+        SoundManager.shared.playBackgroundMusic()
     }
 
     func startGameLoop() {
@@ -589,6 +616,7 @@ class GameViewModel: ObservableObject {
         }
 
         stopGameLoop()
+        SoundManager.shared.stopBackgroundMusic()
     }
 
     func restartGame() {
@@ -606,6 +634,7 @@ class GameViewModel: ObservableObject {
 
         snake = Snake(bounds: bounds)
         startGameLoop()
+        SoundManager.shared.playBackgroundMusic()
     }
 }
 
