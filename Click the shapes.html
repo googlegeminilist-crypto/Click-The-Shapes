@@ -137,6 +137,95 @@
             color: #ff00ff;
         }
 
+        .intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .intro-content {
+            background: linear-gradient(135deg, #1a0033 0%, #000033 100%);
+            padding: 50px;
+            border-radius: 20px;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .intro-title {
+            font-size: 3em;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            margin-bottom: 30px;
+        }
+
+        .intro-rules {
+            text-align: left;
+            margin: 30px 0;
+            font-size: 1.2em;
+            line-height: 1.8;
+        }
+
+        .intro-rule {
+            margin: 15px 0;
+            color: #ffffff;
+        }
+
+        .intro-rule-icon {
+            color: #ffff00;
+            margin-right: 10px;
+        }
+
+        .intro-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .intro-button {
+            padding: 20px 40px;
+            font-size: 1.5em;
+            font-family: 'Courier New', monospace;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        .start-button {
+            background: linear-gradient(135deg, #00ff88, #00ffff);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .start-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.8);
+        }
+
+        .skip-button {
+            background: transparent;
+            color: #888;
+            border: 2px solid #888;
+        }
+
+        .skip-button:hover {
+            color: #fff;
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+
         .points-popup {
             position: absolute;
             font-size: 2em;
@@ -239,6 +328,34 @@
         </div>
     </div>
 
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-content">
+            <div class="intro-title">✨ CLICK THE SHAPES ✨</div>
+            <div class="intro-rules">
+                <div class="intro-rule">
+                    <span class="intro-rule-icon">🎯</span>
+                    Click the glowing constellation shapes to earn 10 points each
+                </div>
+                <div class="intro-rule">
+                    <span class="intro-rule-icon">🔥</span>
+                    Click the falling fireballs (2X) to explode nearby shapes for double points (20 each)
+                </div>
+                <div class="intro-rule">
+                    <span class="intro-rule-icon">🐍</span>
+                    Snake starts hunting when you click your first shape!
+                </div>
+                <div class="intro-rule">
+                    <span class="intro-rule-icon">🏆</span>
+                    First to 500 points wins!
+                </div>
+            </div>
+            <div class="intro-buttons">
+                <button type="button" class="intro-button start-button" onclick="startGame()">Start Game</button>
+                <button type="button" class="intro-button skip-button" onclick="startGame()">Skip</button>
+            </div>
+        </div>
+    </div>
+
     <canvas id="canvas"></canvas>
 
     <script>
@@ -251,6 +368,7 @@
         let score = 0;
         let snakeScore = 0;
         let gameOver = false;
+        let gameStarted = false;
         const WINNING_SCORE = 500;
         const constellationShapes = [];
 
@@ -261,6 +379,12 @@
         // Display current win counts
         document.getElementById('userWins').textContent = userWins;
         document.getElementById('snakeWins').textContent = snakeWins;
+
+        // Start game function - hide intro overlay
+        function startGame() {
+            document.getElementById('introOverlay').style.display = 'none';
+            playBackgroundMusic();
+        }
 
         // Audio context for sound effects
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1064,8 +1188,10 @@
                 shape.draw();
             });
 
-            // Update and draw AI snake
-            snake.update();
+            // Update and draw AI snake (only if game has started)
+            if (gameStarted) {
+                snake.update();
+            }
             snake.draw();
 
             // Update and draw power-up
@@ -1152,6 +1278,11 @@
             for (let i = constellationShapes.length - 1; i >= 0; i--) {
                 const shape = constellationShapes[i];
                 if (shape.isClicked(clickX, clickY)) {
+                    // Start the game (snake starts moving)
+                    if (!gameStarted) {
+                        gameStarted = true;
+                    }
+
                     // Award points
                     updateScore(10);
                     showPointsPopup(e.clientX, e.clientY, 10);
