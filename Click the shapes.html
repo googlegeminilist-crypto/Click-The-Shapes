@@ -673,15 +673,15 @@
                 ctx.strokeText('click me for points', 0, -60);
                 ctx.fillText('click me for points', 0, -60);
 
-                // Draw "3X" text in the center
+                // Draw "2X" text in the center
                 ctx.shadowBlur = 20;
                 ctx.shadowColor = '#ffff00';
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 24px Arial';
                 ctx.strokeStyle = '#ff0000';
                 ctx.lineWidth = 3;
-                ctx.strokeText('3X', 0, 0);
-                ctx.fillText('3X', 0, 0);
+                ctx.strokeText('2X', 0, 0);
+                ctx.fillText('2X', 0, 0);
 
                 ctx.restore();
             }
@@ -912,8 +912,8 @@
                         fireballs.push(new Fireball(shape.x, shape.y));
                     }
 
-                    // Award TRIPLE points for destroyed shape (3x = 30 points)
-                    updateScore(30);
+                    // Award DOUBLE points for destroyed shape (2x = 20 points)
+                    updateScore(20);
                     destroyedCount++;
 
                     // Reset shape to new location
@@ -921,9 +921,9 @@
                 }
             }
 
-            // Show total points earned (triple points)
+            // Show total points earned (double points) - only if shapes were destroyed
             if (destroyedCount > 0) {
-                showPointsPopup(x, y, destroyedCount * 30);
+                showPointsPopup(x, y, destroyedCount * 20);
             }
 
             // Play explosion sound
