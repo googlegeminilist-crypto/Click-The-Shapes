@@ -180,6 +180,22 @@
         // Audio context for sound effects
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
+        // Background music
+        const backgroundMusic = new Audio('../Untitled.wav');
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.9;
+
+        function playBackgroundMusic() {
+            backgroundMusic.play().catch(err => {
+                console.log('Audio autoplay blocked:', err);
+            });
+        }
+
+        // Auto-play music when page loads
+        window.addEventListener('load', () => {
+            playBackgroundMusic();
+        });
+
         function playSparkleSound() {
             const now = audioContext.currentTime;
 
@@ -992,6 +1008,11 @@
         }
 
         animate();
+
+        // Start background music on first user interaction (browsers require this)
+        canvas.addEventListener('click', () => {
+            playBackgroundMusic();
+        }, { once: true });
 
         // Track mouse movement for particle trail
         canvas.addEventListener('mousemove', (e) => {
