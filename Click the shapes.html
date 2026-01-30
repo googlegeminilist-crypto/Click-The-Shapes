@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Click the Shapes</title>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NGXEV2S9Q3"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-NGXEV2S9Q3');
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -1070,15 +1081,33 @@
         function endGame(message, color) {
             gameOver = true;
 
-            // Update win counts
+            // Update win counts and track analytics
             if (message === 'YOU WIN!') {
                 userWins++;
                 localStorage.setItem('userWins', userWins.toString());
                 document.getElementById('userWins').textContent = userWins;
+
+                // Track user win
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'game_win', {
+                        'event_category': 'gameplay',
+                        'event_label': 'user_victory',
+                        'value': score
+                    });
+                }
             } else if (message === 'SNAKE WINS!') {
                 snakeWins++;
                 localStorage.setItem('snakeWins', snakeWins.toString());
                 document.getElementById('snakeWins').textContent = snakeWins;
+
+                // Track snake win
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'game_loss', {
+                        'event_category': 'gameplay',
+                        'event_label': 'snake_victory',
+                        'value': snakeScore
+                    });
+                }
             }
 
             const overlay = document.getElementById('winOverlay');
@@ -1089,6 +1118,14 @@
         }
 
         function explodePowerUp(x, y) {
+            // Track power-up usage
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'powerup_used', {
+                    'event_category': 'gameplay',
+                    'event_label': 'fireball_explosion'
+                });
+            }
+
             // Create massive fireball explosion effect
             for (let i = 0; i < 80; i++) {
                 fireballs.push(new Fireball(x, y));
@@ -1281,6 +1318,13 @@
                     // Start the game (snake starts moving)
                     if (!gameStarted) {
                         gameStarted = true;
+                        // Track game start
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'game_start', {
+                                'event_category': 'gameplay',
+                                'event_label': 'first_click'
+                            });
+                        }
                     }
 
                     // Award points
