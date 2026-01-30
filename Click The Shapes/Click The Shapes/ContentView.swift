@@ -331,18 +331,19 @@ class Snake {
 }
 
 // MARK: - Sound Manager
-class SoundManager {
+class SoundManager: NSObject, AVAudioPlayerDelegate {
     static let shared = SoundManager()
     private var backgroundMusicPlayer: AVAudioPlayer?
+    private var isSetup = false
 
-    init() {
+    override init() {
+        super.init()
         setupAudioSession()
-        setupBackgroundMusic()
     }
 
     private func setupAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Audio session error: \(error)")
@@ -350,23 +351,46 @@ class SoundManager {
     }
 
     private func setupBackgroundMusic() {
-        guard let url = Bundle.main.url(forResource: "Untitled", withExtension: "wav") else {
-            print("Background music file not found")
+        guard !isSetup else { return }
+
+        // Try to find the audio file
+        var url: URL?
+
+        // Try bundle first
+        if let bundleURL = Bundle.main.url(forResource: "Untitled", withExtension: "wav") {
+            url = bundleURL
+            print("Found audio in bundle: \(bundleURL)")
+        }
+
+        guard let audioURL = url else {
+            print("Background music file 'Untitled.wav' not found in bundle")
+            print("Bundle path: \(Bundle.main.bundlePath)")
+            if let resources = Bundle.main.urls(forResourcesWithExtension: "wav", subdirectory: nil) {
+                print("WAV files in bundle: \(resources)")
+            }
             return
         }
 
         do {
-            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
-            backgroundMusicPlayer?.numberOfLoops = -1 // Loop forever
-            backgroundMusicPlayer?.volume = 0.7
+            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: audioURL)
+            backgroundMusicPlayer?.delegate = self
+            backgroundMusicPlayer?.numberOfLoops = -1
+            backgroundMusicPlayer?.volume = 0.8
             backgroundMusicPlayer?.prepareToPlay()
+            isSetup = true
+            print("Background music loaded successfully")
         } catch {
             print("Error loading background music: \(error)")
         }
     }
 
     func playBackgroundMusic() {
-        backgroundMusicPlayer?.play()
+        setupBackgroundMusic()
+        if backgroundMusicPlayer?.play() == true {
+            print("Music started playing")
+        } else {
+            print("Music failed to play")
+        }
     }
 
     func stopBackgroundMusic() {
@@ -383,6 +407,14 @@ class SoundManager {
 
     func playExplosion() {
         AudioServicesPlaySystemSound(1053)
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        print("Audio finished: \(flag)")
+    }
+
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        print("Audio decode error: \(error?.localizedDescription ?? "unknown")")
     }
 }
 

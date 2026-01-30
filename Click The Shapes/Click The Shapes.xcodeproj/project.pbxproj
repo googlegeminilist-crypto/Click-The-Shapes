@@ -29,9 +29,30 @@
 		E227DCA92F2CF7AB009BAEEF /* Click The ShapesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Click The ShapesUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E227DCC22F2CFC38009BAEEF /* Exceptions for "Click The Shapes" folder in "Click The ShapesTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Untitled 2.wav",
+			);
+			target = E227DC9E2F2CF7AB009BAEEF /* Click The ShapesTests */;
+		};
+		E227DCC32F2CFC38009BAEEF /* Exceptions for "Click The Shapes" folder in "Click The ShapesUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Untitled 2.wav",
+			);
+			target = E227DCA82F2CF7AB009BAEEF /* Click The ShapesUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E227DC922F2CF7AA009BAEEF /* Click The Shapes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E227DCC22F2CFC38009BAEEF /* Exceptions for "Click The Shapes" folder in "Click The ShapesTests" target */,
+				E227DCC32F2CFC38009BAEEF /* Exceptions for "Click The Shapes" folder in "Click The ShapesUITests" target */,
+			);
 			path = "Click The Shapes";
 			sourceTree = "<group>";
 		};
