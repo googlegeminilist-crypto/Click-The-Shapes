@@ -1,0 +1,583 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		E227DCA02F2CF7AB009BAEEF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E227DC882F2CF7AA009BAEEF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E227DC8F2F2CF7AA009BAEEF;
+			remoteInfo = "Click The Shapes";
+		};
+		E227DCAA2F2CF7AB009BAEEF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E227DC882F2CF7AA009BAEEF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E227DC8F2F2CF7AA009BAEEF;
+			remoteInfo = "Click The Shapes";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		E227DC902F2CF7AA009BAEEF /* Click The Shapes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Click The Shapes.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E227DC9F2F2CF7AB009BAEEF /* Click The ShapesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Click The ShapesTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E227DCA92F2CF7AB009BAEEF /* Click The ShapesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Click The ShapesUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		E227DC922F2CF7AA009BAEEF /* Click The Shapes */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Click The Shapes";
+			sourceTree = "<group>";
+		};
+		E227DCA22F2CF7AB009BAEEF /* Click The ShapesTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Click The ShapesTests";
+			sourceTree = "<group>";
+		};
+		E227DCAC2F2CF7AB009BAEEF /* Click The ShapesUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Click The ShapesUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E227DC8D2F2CF7AA009BAEEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DC9C2F2CF7AB009BAEEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DCA62F2CF7AB009BAEEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E227DC872F2CF7AA009BAEEF = {
+			isa = PBXGroup;
+			children = (
+				E227DC922F2CF7AA009BAEEF /* Click The Shapes */,
+				E227DCA22F2CF7AB009BAEEF /* Click The ShapesTests */,
+				E227DCAC2F2CF7AB009BAEEF /* Click The ShapesUITests */,
+				E227DC912F2CF7AA009BAEEF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E227DC912F2CF7AA009BAEEF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E227DC902F2CF7AA009BAEEF /* Click The Shapes.app */,
+				E227DC9F2F2CF7AB009BAEEF /* Click The ShapesTests.xctest */,
+				E227DCA92F2CF7AB009BAEEF /* Click The ShapesUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E227DC8F2F2CF7AA009BAEEF /* Click The Shapes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E227DCB32F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The Shapes" */;
+			buildPhases = (
+				E227DC8C2F2CF7AA009BAEEF /* Sources */,
+				E227DC8D2F2CF7AA009BAEEF /* Frameworks */,
+				E227DC8E2F2CF7AA009BAEEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E227DC922F2CF7AA009BAEEF /* Click The Shapes */,
+			);
+			name = "Click The Shapes";
+			packageProductDependencies = (
+			);
+			productName = "Click The Shapes";
+			productReference = E227DC902F2CF7AA009BAEEF /* Click The Shapes.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E227DC9E2F2CF7AB009BAEEF /* Click The ShapesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E227DCB62F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The ShapesTests" */;
+			buildPhases = (
+				E227DC9B2F2CF7AB009BAEEF /* Sources */,
+				E227DC9C2F2CF7AB009BAEEF /* Frameworks */,
+				E227DC9D2F2CF7AB009BAEEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E227DCA12F2CF7AB009BAEEF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E227DCA22F2CF7AB009BAEEF /* Click The ShapesTests */,
+			);
+			name = "Click The ShapesTests";
+			packageProductDependencies = (
+			);
+			productName = "Click The ShapesTests";
+			productReference = E227DC9F2F2CF7AB009BAEEF /* Click The ShapesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E227DCA82F2CF7AB009BAEEF /* Click The ShapesUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E227DCB92F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The ShapesUITests" */;
+			buildPhases = (
+				E227DCA52F2CF7AB009BAEEF /* Sources */,
+				E227DCA62F2CF7AB009BAEEF /* Frameworks */,
+				E227DCA72F2CF7AB009BAEEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E227DCAB2F2CF7AB009BAEEF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E227DCAC2F2CF7AB009BAEEF /* Click The ShapesUITests */,
+			);
+			name = "Click The ShapesUITests";
+			packageProductDependencies = (
+			);
+			productName = "Click The ShapesUITests";
+			productReference = E227DCA92F2CF7AB009BAEEF /* Click The ShapesUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E227DC882F2CF7AA009BAEEF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					E227DC8F2F2CF7AA009BAEEF = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					E227DC9E2F2CF7AB009BAEEF = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = E227DC8F2F2CF7AA009BAEEF;
+					};
+					E227DCA82F2CF7AB009BAEEF = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = E227DC8F2F2CF7AA009BAEEF;
+					};
+				};
+			};
+			buildConfigurationList = E227DC8B2F2CF7AA009BAEEF /* Build configuration list for PBXProject "Click The Shapes" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E227DC872F2CF7AA009BAEEF;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E227DC912F2CF7AA009BAEEF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E227DC8F2F2CF7AA009BAEEF /* Click The Shapes */,
+				E227DC9E2F2CF7AB009BAEEF /* Click The ShapesTests */,
+				E227DCA82F2CF7AB009BAEEF /* Click The ShapesUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E227DC8E2F2CF7AA009BAEEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DC9D2F2CF7AB009BAEEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DCA72F2CF7AB009BAEEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E227DC8C2F2CF7AA009BAEEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DC9B2F2CF7AB009BAEEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E227DCA52F2CF7AB009BAEEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E227DCA12F2CF7AB009BAEEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E227DC8F2F2CF7AA009BAEEF /* Click The Shapes */;
+			targetProxy = E227DCA02F2CF7AB009BAEEF /* PBXContainerItemProxy */;
+		};
+		E227DCAB2F2CF7AB009BAEEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E227DC8F2F2CF7AA009BAEEF /* Click The Shapes */;
+			targetProxy = E227DCAA2F2CF7AB009BAEEF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		E227DCB12F2CF7AB009BAEEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E227DCB22F2CF7AB009BAEEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E227DCB42F2CF7AB009BAEEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-Shapes";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E227DCB52F2CF7AB009BAEEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-Shapes";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E227DCB72F2CF7AB009BAEEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-ShapesTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Click The Shapes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Click The Shapes";
+			};
+			name = Debug;
+		};
+		E227DCB82F2CF7AB009BAEEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-ShapesTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Click The Shapes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Click The Shapes";
+			};
+			name = Release;
+		};
+		E227DCBA2F2CF7AB009BAEEF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-ShapesUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Click The Shapes";
+			};
+			name = Debug;
+		};
+		E227DCBB2F2CF7AB009BAEEF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J4TPUS33G9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "krakastan3-icloud.com.Click-The-ShapesUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Click The Shapes";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E227DC8B2F2CF7AA009BAEEF /* Build configuration list for PBXProject "Click The Shapes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E227DCB12F2CF7AB009BAEEF /* Debug */,
+				E227DCB22F2CF7AB009BAEEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E227DCB32F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The Shapes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E227DCB42F2CF7AB009BAEEF /* Debug */,
+				E227DCB52F2CF7AB009BAEEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E227DCB62F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The ShapesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E227DCB72F2CF7AB009BAEEF /* Debug */,
+				E227DCB82F2CF7AB009BAEEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E227DCB92F2CF7AB009BAEEF /* Build configuration list for PBXNativeTarget "Click The ShapesUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E227DCBA2F2CF7AB009BAEEF /* Debug */,
+				E227DCBB2F2CF7AB009BAEEF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E227DC882F2CF7AA009BAEEF /* Project object */;
+}
