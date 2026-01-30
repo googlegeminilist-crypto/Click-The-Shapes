@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alien Constellations</title>
+    <title>Click the Shapes</title>
     <style>
         * {
             margin: 0;
@@ -106,8 +106,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>👽 ALIEN CONSTELLATIONS 👽</h1>
-        <div class="subtitle">From Distant Galaxies Unknown</div>
+        <h1>✨ CLICK THE SHAPES ✨</h1>
+        <div class="subtitle">Catch the glowing constellation shapes!</div>
     </div>
 
     <div class="score">
@@ -116,10 +116,6 @@
 
     <canvas id="canvas"></canvas>
 
-    <div class="info">
-        <div class="constellation-name">Click on constellations to earn points!</div>
-        <div>Find the glowing shapes in the stars</div>
-    </div>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -402,6 +398,134 @@
         let mouseY = 0;
         let particleSpawnCounter = 0;
 
+        // AI Snake that hunts constellation shapes
+        class Snake {
+            constructor() {
+                this.segments = [];
+                this.segmentSize = 8;
+                this.speed = 2;
+                this.targetShape = null;
+
+                // Initialize snake with 5 segments
+                const startX = canvas.width / 2;
+                const startY = canvas.height / 2;
+                for (let i = 0; i < 5; i++) {
+                    this.segments.push({
+                        x: startX - i * this.segmentSize * 2,
+                        y: startY
+                    });
+                }
+            }
+
+            update() {
+                // Find nearest constellation shape
+                let nearestShape = null;
+                let nearestDist = Infinity;
+
+                constellationShapes.forEach(shape => {
+                    const dist = Math.hypot(shape.x - this.segments[0].x, shape.y - this.segments[0].y);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestShape = shape;
+                    }
+                });
+
+                if (nearestShape) {
+                    // Move head towards target
+                    const angle = Math.atan2(nearestShape.y - this.segments[0].y, nearestShape.x - this.segments[0].x);
+                    const newX = this.segments[0].x + Math.cos(angle) * this.speed;
+                    const newY = this.segments[0].y + Math.sin(angle) * this.speed;
+
+                    // Check if snake eats the shape
+                    const distToShape = Math.hypot(nearestShape.x - newX, nearestShape.y - newY);
+                    if (distToShape < this.segmentSize + nearestShape.size / 2) {
+                        // Snake eats the shape
+                        this.grow();
+                        updateScore(10);
+                        showPointsPopup(nearestShape.x, nearestShape.y, 10);
+                        playSparkleSound();
+
+                        // Create particles
+                        for (let j = 0; j < 30; j++) {
+                            particles.push(new Particle(nearestShape.x, nearestShape.y));
+                        }
+
+                        // Reset the shape
+                        nearestShape.reset();
+                    }
+
+                    // Add new head position
+                    this.segments.unshift({ x: newX, y: newY });
+
+                    // Remove tail segment (unless growing)
+                    this.segments.pop();
+                }
+
+                // Wrap around screen edges
+                if (this.segments[0].x < 0) this.segments[0].x = canvas.width;
+                if (this.segments[0].x > canvas.width) this.segments[0].x = 0;
+                if (this.segments[0].y < 0) this.segments[0].y = canvas.height;
+                if (this.segments[0].y > canvas.height) this.segments[0].y = 0;
+            }
+
+            grow() {
+                // Add 3 new segments to the tail
+                for (let i = 0; i < 3; i++) {
+                    const tail = this.segments[this.segments.length - 1];
+                    this.segments.push({ x: tail.x, y: tail.y });
+                }
+            }
+
+            draw() {
+                // Draw snake body
+                ctx.save();
+
+                // Draw segments
+                for (let i = 0; i < this.segments.length; i++) {
+                    const segment = this.segments[i];
+                    const hue = (i * 10) % 360;
+                    const brightness = 1 - (i / this.segments.length) * 0.5;
+
+                    ctx.globalAlpha = brightness;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+
+                    ctx.beginPath();
+                    ctx.arc(segment.x, segment.y, this.segmentSize, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw connecting line to next segment
+                    if (i < this.segments.length - 1) {
+                        const nextSegment = this.segments[i + 1];
+                        ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+                        ctx.lineWidth = this.segmentSize * 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(segment.x, segment.y);
+                        ctx.lineTo(nextSegment.x, nextSegment.y);
+                        ctx.stroke();
+                    }
+                }
+
+                // Draw snake head with eyes
+                const head = this.segments[0];
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 0;
+
+                // Eyes
+                const eyeOffset = 3;
+                ctx.beginPath();
+                ctx.arc(head.x - eyeOffset, head.y - eyeOffset, 2, 0, Math.PI * 2);
+                ctx.arc(head.x + eyeOffset, head.y - eyeOffset, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        const snake = new Snake();
+
         function showPointsPopup(x, y, points) {
             const popup = document.createElement('div');
             popup.className = 'points-popup';
@@ -433,6 +557,10 @@
                 shape.update();
                 shape.draw();
             });
+
+            // Update and draw AI snake
+            snake.update();
+            snake.draw();
 
             // Update and draw particles
             for (let i = particles.length - 1; i >= 0; i--) {
