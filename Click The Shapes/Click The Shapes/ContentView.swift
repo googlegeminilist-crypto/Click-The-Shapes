@@ -264,33 +264,54 @@ class Snake {
         }
     }
 
-    func update(shapes: [ConstellationShape], bounds: CGSize, onEatShape: (ConstellationShape) -> Void) {
+    func update(shapes: [ConstellationShape], bounds: CGSize, powerUp: PowerUp?, onEatShape: (ConstellationShape) -> Void, onEatPowerUp: (PowerUp) -> Void) {
         guard !segments.isEmpty else { return }
 
         // Find nearest shape
         var nearestShape: ConstellationShape?
-        var nearestDist = CGFloat.infinity
+        var nearestShapeDist = CGFloat.infinity
 
         for shape in shapes {
             let dist = hypot(shape.x - segments[0].x, shape.y - segments[0].y)
-            if dist < nearestDist {
-                nearestDist = dist
+            if dist < nearestShapeDist {
+                nearestShapeDist = dist
                 nearestShape = shape
             }
         }
 
-        guard let target = nearestShape else { return }
+        // Check if power-up is closer (prioritize power-ups!)
+        var targetX: CGFloat = nearestShape?.x ?? segments[0].x
+        var targetY: CGFloat = nearestShape?.y ?? segments[0].y
+
+        if let pu = powerUp, pu.isActive {
+            let powerUpDist = hypot(pu.x - segments[0].x, pu.y - segments[0].y)
+            // Prioritize power-up if it exists
+            if powerUpDist < nearestShapeDist + 100 {
+                targetX = pu.x
+                targetY = pu.y
+            }
+        }
 
         // Move head towards target
-        let angle = atan2(target.y - segments[0].y, target.x - segments[0].x)
+        let angle = atan2(targetY - segments[0].y, targetX - segments[0].x)
         let newX = segments[0].x + cos(angle) * speed
         let newY = segments[0].y + sin(angle) * speed
 
+        // Check if snake eats the power-up
+        if let pu = powerUp, pu.isActive {
+            let distToPowerUp = hypot(pu.x - newX, pu.y - newY)
+            if distToPowerUp < segmentSize + pu.size / 2 {
+                onEatPowerUp(pu)
+            }
+        }
+
         // Check if snake eats the shape
-        let distToShape = hypot(target.x - newX, target.y - newY)
-        if distToShape < segmentSize + target.size / 2 {
-            grow()
-            onEatShape(target)
+        if let target = nearestShape {
+            let distToShape = hypot(target.x - newX, target.y - newY)
+            if distToShape < segmentSize + target.size / 2 {
+                grow()
+                onEatShape(target)
+            }
         }
 
         // Add new head position
@@ -499,9 +520,11 @@ class GameViewModel: ObservableObject {
 
         // Update snake (only if game started)
         if gameStarted {
-            snake?.update(shapes: shapes, bounds: bounds) { [weak self] shape in
+            snake?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
                 self?.snakeAteShape(shape)
-            }
+            }, onEatPowerUp: { [weak self] pu in
+                self?.snakeAtePowerUp(pu)
+            })
         }
 
         // Update power-up
@@ -545,13 +568,7 @@ class GameViewModel: ObservableObject {
     func handleTap(at point: CGPoint) {
         guard !gameOver, !showIntro else { return }
 
-        // Check power-up first
-        if let pu = powerUp, pu.isClicked(at: point) {
-            explodePowerUp(at: point)
-            return
-        }
-
-        // Check shapes
+        // Check shapes (user can no longer click power-ups - snake gets them)
         for shape in shapes {
             if shape.isClicked(at: point) {
                 if !gameStarted {
@@ -584,6 +601,49 @@ class GameViewModel: ObservableObject {
         }
 
         shape.reset(bounds: bounds)
+
+        if snakeScore >= GameConstants.winningScore {
+            endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
+        }
+    }
+
+    func snakeAtePowerUp(_ pu: PowerUp) {
+        let point = CGPoint(x: pu.x, y: pu.y)
+        pu.isActive = false
+        powerUp = nil
+
+        SoundManager.shared.playExplosion()
+
+        // Create explosion fireballs
+        for _ in 0..<30 {
+            fireballs.append(FireballParticle(x: point.x, y: point.y))
+        }
+
+        // Destroy nearby shapes - SNAKE gets double points!
+        let explosionRadius: CGFloat = 250
+        var destroyedCount = 0
+
+        for shape in shapes {
+            let dist = hypot(shape.x - point.x, shape.y - point.y)
+            if dist < explosionRadius {
+                // Create fireballs at shape location
+                for _ in 0..<10 {
+                    fireballs.append(FireballParticle(x: shape.x, y: shape.y))
+                }
+
+                snakeScore += 20 // Double points for snake!
+                destroyedCount += 1
+                shape.reset(bounds: bounds)
+            }
+        }
+
+        if destroyedCount > 0 {
+            showPoints(at: point, points: destroyedCount * 20)
+        }
+
+        // Snake grows extra from power-up
+        snake?.grow()
+        snake?.grow()
 
         if snakeScore >= GameConstants.winningScore {
             endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
