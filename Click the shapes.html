@@ -37,6 +37,7 @@
             width: 100%;
             height: 100%;
             cursor: none;
+            will-change: contents;
         }
 
         .header {
@@ -370,11 +371,26 @@
     <canvas id="canvas"></canvas>
 
     <script>
+        // Cross-browser requestAnimationFrame
+        const requestAnimFrame = window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            function(callback) { return window.setTimeout(callback, 1000 / 60); };
+
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Performance: disable alpha
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        // Cache DOM references for performance
+        const scoreValueEl = document.getElementById('scoreValue');
+        const snakeScoreValueEl = document.getElementById('snakeScoreValue');
+        const userWinsEl = document.getElementById('userWins');
+        const snakeWinsEl = document.getElementById('snakeWins');
+        const introOverlayEl = document.getElementById('introOverlay');
+        const winOverlayEl = document.getElementById('winOverlay');
+        const winMessageEl = document.getElementById('winMessage');
 
         let score = 0;
         let snakeScore = 0;
@@ -383,17 +399,21 @@
         const WINNING_SCORE = 500;
         const constellationShapes = [];
 
+        // Performance limits
+        const MAX_PARTICLES = 150;
+        const MAX_FIREBALLS = 100;
+
         // Win tracking with localStorage
         let userWins = parseInt(localStorage.getItem('userWins') || '0');
         let snakeWins = parseInt(localStorage.getItem('snakeWins') || '0');
 
         // Display current win counts
-        document.getElementById('userWins').textContent = userWins;
-        document.getElementById('snakeWins').textContent = snakeWins;
+        userWinsEl.textContent = userWins;
+        snakeWinsEl.textContent = snakeWins;
 
         // Start game function - hide intro overlay
         function startGame() {
-            document.getElementById('introOverlay').style.display = 'none';
+            introOverlayEl.style.display = 'none';
             playBackgroundMusic();
         }
 
@@ -518,7 +538,7 @@
         }
 
         const stars = [];
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) { // Reduced star count for performance
             stars.push(new Star());
         }
 
@@ -537,9 +557,9 @@
                 this.shape = ['star', 'circle', 'triangle', 'square', 'pentagon'][Math.floor(Math.random() * 5)];
                 this.pulsePhase = Math.random() * Math.PI * 2;
 
-                // Create orbiting stars
+                // Create orbiting stars (reduced count for performance)
                 this.orbitingStars = [];
-                const numStars = 8;
+                const numStars = 4;
                 for (let i = 0; i < numStars; i++) {
                     this.orbitingStars.push({
                         angle: (Math.PI * 2 * i) / numStars,
@@ -576,28 +596,25 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                // Draw orbiting stars
+                // Draw orbiting stars (reduced shadow for performance)
                 this.orbitingStars.forEach(star => {
                     const x = Math.cos(star.angle) * star.distance;
                     const y = Math.sin(star.angle) * star.distance;
                     const brightness = (Math.sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2;
 
-                    ctx.save();
                     ctx.globalAlpha = brightness;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = star.color;
                     ctx.fillStyle = star.color;
                     ctx.beginPath();
                     ctx.arc(x, y, star.size, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.restore();
                 });
 
-                // Draw main shape
+                // Draw main shape (reduced shadow for performance)
+                ctx.globalAlpha = 1;
                 ctx.strokeStyle = this.color;
                 ctx.fillStyle = this.color;
                 ctx.lineWidth = 3;
-                ctx.shadowBlur = 20;
+                ctx.shadowBlur = 8;
                 ctx.shadowColor = this.color;
 
                 if (this.shape === 'star') {
@@ -705,15 +722,11 @@
             }
 
             draw() {
-                ctx.save();
                 ctx.globalAlpha = this.life;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.color;
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.restore();
             }
 
             isDead() {
@@ -725,7 +738,6 @@
         const fireballs = [];
         let mouseX = 0;
         let mouseY = 0;
-        let particleSpawnCounter = 0;
 
         // Fireball particle for explosions
         class Fireball {
@@ -757,35 +769,19 @@
                 const pulse = Math.sin(this.pulsePhase) * 0.3 + 1;
                 const currentSize = this.size * pulse;
 
-                ctx.save();
                 ctx.globalAlpha = this.life;
 
-                // Outer glow
-                const outerGradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, currentSize * 1.8);
-                outerGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
-                outerGradient.addColorStop(0.5, 'rgba(255, 50, 0, 0.4)');
-                outerGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-
-                ctx.fillStyle = outerGradient;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, currentSize * 1.8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Main fireball
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, currentSize);
-                gradient.addColorStop(0, '#ffff00');
-                gradient.addColorStop(0.3, '#ff9900');
-                gradient.addColorStop(0.6, '#ff3300');
-                gradient.addColorStop(1, '#cc0000');
-
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#ff6600';
-                ctx.fillStyle = gradient;
+                // Simplified fireball (no gradients for performance)
+                ctx.fillStyle = '#ff6600';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.restore();
+                // Inner core
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentSize * 0.5, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             isDead() {
@@ -833,40 +829,25 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                // Draw each fireball in the cluster
+                // Draw each fireball in the cluster (simplified for performance)
                 this.fireballs.forEach(fb => {
                     const pulse = Math.sin(this.pulsePhase + fb.pulseOffset) * 0.3 + 1;
                     const currentSize = fb.size * pulse;
 
-                    // Outer glow (orange)
-                    const outerGradient = ctx.createRadialGradient(fb.offsetX, fb.offsetY, 0, fb.offsetX, fb.offsetY, currentSize * 1.5);
-                    outerGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
-                    outerGradient.addColorStop(0.5, 'rgba(255, 50, 0, 0.4)');
-                    outerGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-
-                    ctx.fillStyle = outerGradient;
-                    ctx.beginPath();
-                    ctx.arc(fb.offsetX, fb.offsetY, currentSize * 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Main fireball (red to yellow)
-                    const gradient = ctx.createRadialGradient(fb.offsetX, fb.offsetY, 0, fb.offsetX, fb.offsetY, currentSize);
-                    gradient.addColorStop(0, '#ffff00');
-                    gradient.addColorStop(0.3, '#ff9900');
-                    gradient.addColorStop(0.6, '#ff3300');
-                    gradient.addColorStop(1, '#cc0000');
-
-                    ctx.shadowBlur = 30;
-                    ctx.shadowColor = '#ff6600';
-                    ctx.fillStyle = gradient;
+                    // Outer glow
+                    ctx.fillStyle = '#ff6600';
                     ctx.beginPath();
                     ctx.arc(fb.offsetX, fb.offsetY, currentSize, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Inner core
+                    ctx.fillStyle = '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(fb.offsetX, fb.offsetY, currentSize * 0.5, 0, Math.PI * 2);
                     ctx.fill();
                 });
 
                 // Draw "click me for points" text above fireballs
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#ffff00';
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
@@ -877,8 +858,6 @@
                 ctx.fillText('click me for points', 0, -60);
 
                 // Draw "2X" text in the center
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#ffff00';
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 24px Arial';
                 ctx.strokeStyle = '#ff0000';
@@ -948,8 +927,8 @@
                         showPointsPopup(nearestShape.x, nearestShape.y, 10);
                         playSnakeEatSound();
 
-                        // Create particles
-                        for (let j = 0; j < 30; j++) {
+                        // Create particles (reduced for performance)
+                        for (let j = 0; j < 15; j++) {
                             particles.push(new Particle(nearestShape.x, nearestShape.y));
                         }
 
@@ -996,36 +975,27 @@
             }
 
             draw() {
-                // Draw snake body (optimized for performance)
+                // Draw snake body (optimized for performance - no shadows)
                 ctx.save();
 
                 // Limit visible segments for performance
-                const maxVisibleSegments = Math.min(80, this.segments.length);
+                const maxVisibleSegments = Math.min(60, this.segments.length);
 
-                // Draw segments with reduced effects on tail
+                // Draw segments without expensive shadow effects
                 for (let i = 0; i < maxVisibleSegments; i++) {
                     const segment = this.segments[i];
                     const hue = (i * 10) % 360;
                     const brightness = 1 - (i / maxVisibleSegments) * 0.5;
 
                     ctx.globalAlpha = brightness;
-
-                    // Only use shadow effects for front segments
-                    if (i < 40) {
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
-                    } else {
-                        ctx.shadowBlur = 0;
-                    }
-
                     ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
 
                     ctx.beginPath();
                     ctx.arc(segment.x, segment.y, this.segmentSize, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Draw connecting line to next segment (only for front segments)
-                    if (i < maxVisibleSegments - 1 && i < 60) {
+                    // Draw connecting line to next segment (reduced range)
+                    if (i < maxVisibleSegments - 1 && i < 40) {
                         const nextSegment = this.segments[i + 1];
                         ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
                         ctx.lineWidth = this.segmentSize * 1.5;
@@ -1040,7 +1010,6 @@
                 const head = this.segments[0];
                 ctx.globalAlpha = 1;
                 ctx.fillStyle = '#ffffff';
-                ctx.shadowBlur = 0;
 
                 // Eyes
                 const eyeOffset = 3;
@@ -1071,7 +1040,7 @@
         function updateScore(points) {
             if (gameOver) return;
             score += points;
-            document.getElementById('scoreValue').textContent = score;
+            scoreValueEl.textContent = score;
             if (score >= WINNING_SCORE) {
                 endGame('YOU WIN!', '#00ff88');
             }
@@ -1080,7 +1049,7 @@
         function updateSnakeScore(points) {
             if (gameOver) return;
             snakeScore += points;
-            document.getElementById('snakeScoreValue').textContent = snakeScore;
+            snakeScoreValueEl.textContent = snakeScore;
             if (snakeScore >= WINNING_SCORE) {
                 endGame('SNAKE WINS!', '#ff00ff');
             }
@@ -1093,7 +1062,7 @@
             if (message === 'YOU WIN!') {
                 userWins++;
                 localStorage.setItem('userWins', userWins.toString());
-                document.getElementById('userWins').textContent = userWins;
+                userWinsEl.textContent = userWins;
 
                 // Track user win
                 if (typeof gtag !== 'undefined') {
@@ -1106,7 +1075,7 @@
             } else if (message === 'SNAKE WINS!') {
                 snakeWins++;
                 localStorage.setItem('snakeWins', snakeWins.toString());
-                document.getElementById('snakeWins').textContent = snakeWins;
+                snakeWinsEl.textContent = snakeWins;
 
                 // Track snake win
                 if (typeof gtag !== 'undefined') {
@@ -1118,11 +1087,9 @@
                 }
             }
 
-            const overlay = document.getElementById('winOverlay');
-            const messageEl = document.getElementById('winMessage');
-            messageEl.textContent = message;
-            messageEl.style.color = color;
-            overlay.style.display = 'flex';
+            winMessageEl.textContent = message;
+            winMessageEl.style.color = color;
+            winOverlayEl.style.display = 'flex';
         }
 
         function explodePowerUp(x, y) {
@@ -1134,8 +1101,8 @@
                 });
             }
 
-            // Create massive fireball explosion effect
-            for (let i = 0; i < 80; i++) {
+            // Create fireball explosion effect (reduced for performance)
+            for (let i = 0; i < 40; i++) {
                 fireballs.push(new Fireball(x, y));
             }
 
@@ -1145,11 +1112,13 @@
 
             for (let i = constellationShapes.length - 1; i >= 0; i--) {
                 const shape = constellationShapes[i];
-                const dist = Math.hypot(shape.x - x, shape.y - y);
+                const dx = shape.x - x;
+                const dy = shape.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy); // Faster than hypot in some browsers
 
                 if (dist < explosionRadius) {
-                    // Create fireball explosion at shape location
-                    for (let j = 0; j < 30; j++) {
+                    // Create fireball explosion at shape location (reduced)
+                    for (let j = 0; j < 15; j++) {
                         fireballs.push(new Fireball(shape.x, shape.y));
                     }
 
@@ -1220,7 +1189,9 @@
                 powerUp = new PowerUp();
                 powerUpSpawnTimer = 0;
             }
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+
+            // Clear with dark background (better performance than rgba)
+            ctx.fillStyle = '#0a0015';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             stars.forEach(star => {
@@ -1245,7 +1216,8 @@
                 powerUp.draw();
             }
 
-            // Update and draw particles
+            // Update and draw particles (with limit enforcement)
+            ctx.globalAlpha = 1;
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
                 particles[i].draw();
@@ -1254,8 +1226,12 @@
                     particles.splice(i, 1);
                 }
             }
+            // Enforce particle limit
+            while (particles.length > MAX_PARTICLES) {
+                particles.shift();
+            }
 
-            // Update and draw fireballs
+            // Update and draw fireballs (with limit enforcement)
             for (let i = fireballs.length - 1; i >= 0; i--) {
                 fireballs[i].update();
                 fireballs[i].draw();
@@ -1264,25 +1240,26 @@
                     fireballs.splice(i, 1);
                 }
             }
+            // Enforce fireball limit
+            while (fireballs.length > MAX_FIREBALLS) {
+                fireballs.shift();
+            }
 
-            // Draw custom cursor
+            // Draw custom cursor (simplified)
             if (mouseX > 0 || mouseY > 0) {
-                ctx.save();
+                ctx.globalAlpha = 1;
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#00ffff';
                 ctx.beginPath();
                 ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
                 ctx.stroke();
+                ctx.fillStyle = '#00ffff';
                 ctx.beginPath();
                 ctx.arc(mouseX, mouseY, 3, 0, Math.PI * 2);
-                ctx.fillStyle = '#00ffff';
                 ctx.fill();
-                ctx.restore();
             }
 
-            requestAnimationFrame(animate);
+            requestAnimFrame(animate);
         }
 
         animate();
@@ -1292,18 +1269,18 @@
             playBackgroundMusic();
         }, { once: true });
 
-        // Track mouse movement for particle trail
+        // Track mouse movement for particle trail (throttled for performance)
+        let lastMouseTime = 0;
         canvas.addEventListener('mousemove', (e) => {
+            const now = Date.now();
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
 
-            // Spawn particles every few frames
-            particleSpawnCounter++;
-            if (particleSpawnCounter % 2 === 0) {
-                for (let i = 0; i < 3; i++) {
-                    particles.push(new Particle(mouseX, mouseY));
-                }
+            // Throttle particle spawning (max every 50ms)
+            if (now - lastMouseTime > 50 && particles.length < MAX_PARTICLES) {
+                lastMouseTime = now;
+                particles.push(new Particle(mouseX, mouseY));
             }
         });
 
@@ -1342,8 +1319,8 @@
                     // Play sparkle sound
                     playSparkleSound();
 
-                    // Create explosion of particles
-                    for (let j = 0; j < 20; j++) {
+                    // Create explosion of particles (reduced for performance)
+                    for (let j = 0; j < 10; j++) {
                         particles.push(new Particle(clickX, clickY));
                     }
 
@@ -1359,6 +1336,53 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         });
+
+        // Touch support for mobile browsers
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            // Check for power-up click first
+            if (powerUp && powerUp.active && powerUp.isClicked(touchX, touchY)) {
+                powerUp.active = false;
+                explodePowerUp(touchX, touchY);
+                return;
+            }
+
+            for (let i = constellationShapes.length - 1; i >= 0; i--) {
+                const shape = constellationShapes[i];
+                if (shape.isClicked(touchX, touchY)) {
+                    if (!gameStarted) {
+                        gameStarted = true;
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'game_start', {
+                                'event_category': 'gameplay',
+                                'event_label': 'first_touch'
+                            });
+                        }
+                    }
+                    updateScore(10);
+                    showPointsPopup(touch.clientX, touch.clientY, 10);
+                    playSparkleSound();
+                    for (let j = 0; j < 10; j++) {
+                        particles.push(new Particle(touchX, touchY));
+                    }
+                    shape.reset();
+                    break;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            mouseX = touch.clientX - rect.left;
+            mouseY = touch.clientY - rect.top;
+        }, { passive: false });
     </script>
 </body>
 </html>
