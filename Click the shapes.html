@@ -411,10 +411,18 @@
             });
         }
 
-        // Auto-play music when page loads
-        window.addEventListener('load', () => {
+        // Play music on any user interaction (browsers require this)
+        function enableMusic() {
             playBackgroundMusic();
-        });
+            // Remove listeners once music starts
+            document.removeEventListener('click', enableMusic);
+            document.removeEventListener('keydown', enableMusic);
+            document.removeEventListener('touchstart', enableMusic);
+        }
+
+        document.addEventListener('click', enableMusic);
+        document.addEventListener('keydown', enableMusic);
+        document.addEventListener('touchstart', enableMusic);
 
         function playSparkleSound() {
             const now = audioContext.currentTime;
