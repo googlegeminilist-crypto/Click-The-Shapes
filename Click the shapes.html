@@ -487,8 +487,9 @@
             constructor() {
                 this.segments = [];
                 this.segmentSize = 8;
-                this.speed = 2;
+                this.speed = 3.5; // Increased speed for better performance
                 this.targetShape = null;
+                this.targetLength = 5;
 
                 // Initialize snake with 5 segments
                 const startX = canvas.width / 2;
@@ -541,8 +542,27 @@
                     // Add new head position
                     this.segments.unshift({ x: newX, y: newY });
 
-                    // Remove tail segment (unless growing)
-                    this.segments.pop();
+                    // Remove tail segment to maintain length
+                    if (this.segments.length > this.targetLength || !this.targetLength) {
+                        this.segments.pop();
+                    }
+
+                    // Maintain segment spacing only for front segments (optimization)
+                    const maxSegmentsToUpdate = Math.min(30, this.segments.length);
+                    for (let i = 1; i < maxSegmentsToUpdate; i++) {
+                        const prev = this.segments[i - 1];
+                        const current = this.segments[i];
+                        const dx = prev.x - current.x;
+                        const dy = prev.y - current.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist > this.segmentSize * 2) {
+                            // Move segment closer to maintain spacing
+                            const ratio = (this.segmentSize * 2) / dist;
+                            current.x = prev.x - dx * ratio;
+                            current.y = prev.y - dy * ratio;
+                        }
+                    }
                 }
 
                 // Wrap around screen edges
@@ -553,34 +573,41 @@
             }
 
             grow() {
-                // Add 3 new segments to the tail
-                for (let i = 0; i < 3; i++) {
-                    const tail = this.segments[this.segments.length - 1];
-                    this.segments.push({ x: tail.x, y: tail.y });
-                }
+                // Increase target length - segments will grow naturally
+                this.targetLength += 3;
             }
 
             draw() {
-                // Draw snake body
+                // Draw snake body (optimized for performance)
                 ctx.save();
 
-                // Draw segments
-                for (let i = 0; i < this.segments.length; i++) {
+                // Limit visible segments for performance
+                const maxVisibleSegments = Math.min(80, this.segments.length);
+
+                // Draw segments with reduced effects on tail
+                for (let i = 0; i < maxVisibleSegments; i++) {
                     const segment = this.segments[i];
                     const hue = (i * 10) % 360;
-                    const brightness = 1 - (i / this.segments.length) * 0.5;
+                    const brightness = 1 - (i / maxVisibleSegments) * 0.5;
 
                     ctx.globalAlpha = brightness;
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+
+                    // Only use shadow effects for front segments
+                    if (i < 40) {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    } else {
+                        ctx.shadowBlur = 0;
+                    }
+
                     ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
 
                     ctx.beginPath();
                     ctx.arc(segment.x, segment.y, this.segmentSize, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Draw connecting line to next segment
-                    if (i < this.segments.length - 1) {
+                    // Draw connecting line to next segment (only for front segments)
+                    if (i < maxVisibleSegments - 1 && i < 60) {
                         const nextSegment = this.segments[i + 1];
                         ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
                         ctx.lineWidth = this.segmentSize * 1.5;
