@@ -96,6 +96,47 @@
             color: #ff00ff;
         }
 
+        .win-record {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px #00ff88;
+            display: flex;
+            gap: 40px;
+        }
+
+        .win-record-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .win-record-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .win-record-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .user-wins {
+            color: #00ff88;
+        }
+
+        .snake-wins {
+            color: #ff00ff;
+        }
+
         .points-popup {
             position: absolute;
             font-size: 2em;
@@ -187,6 +228,17 @@
         </div>
     </div>
 
+    <div class="win-record">
+        <div class="win-record-item">
+            <div class="win-record-label">YOUR WINS</div>
+            <div class="win-record-value user-wins" id="userWins">0</div>
+        </div>
+        <div class="win-record-item">
+            <div class="win-record-label">SNAKE WINS</div>
+            <div class="win-record-value snake-wins" id="snakeWins">0</div>
+        </div>
+    </div>
+
     <canvas id="canvas"></canvas>
 
     <script>
@@ -201,6 +253,14 @@
         let gameOver = false;
         const WINNING_SCORE = 500;
         const constellationShapes = [];
+
+        // Win tracking with localStorage
+        let userWins = parseInt(localStorage.getItem('userWins') || '0');
+        let snakeWins = parseInt(localStorage.getItem('snakeWins') || '0');
+
+        // Display current win counts
+        document.getElementById('userWins').textContent = userWins;
+        document.getElementById('snakeWins').textContent = snakeWins;
 
         // Audio context for sound effects
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -885,6 +945,18 @@
 
         function endGame(message, color) {
             gameOver = true;
+
+            // Update win counts
+            if (message === 'YOU WIN!') {
+                userWins++;
+                localStorage.setItem('userWins', userWins.toString());
+                document.getElementById('userWins').textContent = userWins;
+            } else if (message === 'SNAKE WINS!') {
+                snakeWins++;
+                localStorage.setItem('snakeWins', snakeWins.toString());
+                document.getElementById('snakeWins').textContent = snakeWins;
+            }
+
             const overlay = document.getElementById('winOverlay');
             const messageEl = document.getElementById('winMessage');
             messageEl.textContent = message;
