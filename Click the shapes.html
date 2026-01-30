@@ -176,6 +176,40 @@
             });
         }
 
+        function playSnakeEatSound() {
+            const now = audioContext.currentTime;
+
+            // Create a chomping/eating sound with lower frequencies
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Use sawtooth and square waves for a more aggressive sound
+            oscillator1.type = 'sawtooth';
+            oscillator2.type = 'square';
+
+            // Lower frequencies for snake eating sound
+            oscillator1.frequency.setValueAtTime(120, now);
+            oscillator1.frequency.linearRampToValueAtTime(80, now + 0.1);
+
+            oscillator2.frequency.setValueAtTime(240, now);
+            oscillator2.frequency.linearRampToValueAtTime(160, now + 0.1);
+
+            // Quick attack and decay for chomp effect
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.2, now + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+            oscillator1.start(now);
+            oscillator1.stop(now + 0.15);
+            oscillator2.start(now);
+            oscillator2.stop(now + 0.15);
+        }
+
         class Star {
             constructor() {
                 this.x = Math.random() * canvas.width;
@@ -462,7 +496,7 @@
                         this.grow();
                         updateSnakeScore(10);
                         showPointsPopup(nearestShape.x, nearestShape.y, 10);
-                        playSparkleSound();
+                        playSnakeEatSound();
 
                         // Create particles
                         for (let j = 0; j < 30; j++) {
