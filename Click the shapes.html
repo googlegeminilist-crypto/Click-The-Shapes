@@ -116,6 +116,32 @@
                 transform: translateY(-100px);
             }
         }
+
+        .win-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .win-message {
+            text-align: center;
+            font-size: 4em;
+            font-weight: bold;
+            text-shadow: 0 0 30px currentColor;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
     </style>
 </head>
 <body>
@@ -132,8 +158,11 @@
         Snake: <span id="snakeScoreValue">0</span>
     </div>
 
-    <canvas id="canvas"></canvas>
+    <div class="win-overlay" id="winOverlay">
+        <div class="win-message" id="winMessage"></div>
+    </div>
 
+    <canvas id="canvas"></canvas>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -144,6 +173,8 @@
 
         let score = 0;
         let snakeScore = 0;
+        let gameOver = false;
+        const WINNING_SCORE = 500;
         const constellationShapes = [];
 
         // Audio context for sound effects
@@ -593,16 +624,34 @@
         }
 
         function updateScore(points) {
+            if (gameOver) return;
             score += points;
             document.getElementById('scoreValue').textContent = score;
+            if (score >= WINNING_SCORE) {
+                endGame('YOU WIN!', '#00ff88');
+            }
         }
 
         function updateSnakeScore(points) {
+            if (gameOver) return;
             snakeScore += points;
             document.getElementById('snakeScoreValue').textContent = snakeScore;
+            if (snakeScore >= WINNING_SCORE) {
+                endGame('SNAKE WINS!', '#ff00ff');
+            }
+        }
+
+        function endGame(message, color) {
+            gameOver = true;
+            const overlay = document.getElementById('winOverlay');
+            const messageEl = document.getElementById('winMessage');
+            messageEl.textContent = message;
+            messageEl.style.color = color;
+            overlay.style.display = 'flex';
         }
 
         function animate() {
+            if (gameOver) return;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
