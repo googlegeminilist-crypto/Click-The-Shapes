@@ -661,13 +661,23 @@
                     ctx.fill();
                 });
 
+                // Draw "click me for points" text above fireballs
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ffff00';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                ctx.strokeText('click me for points', 0, -60);
+                ctx.fillText('click me for points', 0, -60);
+
                 // Draw "3X" text in the center
                 ctx.shadowBlur = 20;
                 ctx.shadowColor = '#ffff00';
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 24px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
                 ctx.strokeStyle = '#ff0000';
                 ctx.lineWidth = 3;
                 ctx.strokeText('3X', 0, 0);
