@@ -966,7 +966,7 @@ struct IntroOverlay: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                     RuleRow(icon: "target", text: "Tap shapes to earn 10 points", color: .yellow)
-                    RuleRow(icon: "flame.fill", text: "Tap fireballs (2X) for double points", color: .orange)
+                    RuleRow(icon: "flame.fill", text: "Snake gets fireballs for 2X points!", color: .orange)
                     RuleRow(icon: "tortoise.fill", text: "Snake starts hunting on first tap!", color: GameColors.neonPink)
                     RuleRow(icon: "trophy.fill", text: "First to 500 points wins!", color: GameColors.neonGreen)
                 }
