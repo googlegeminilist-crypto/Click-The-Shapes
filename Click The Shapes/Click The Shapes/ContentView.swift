@@ -650,40 +650,6 @@ class GameViewModel: ObservableObject {
         }
     }
 
-    func explodePowerUp(at point: CGPoint) {
-        powerUp?.isActive = false
-        powerUp = nil
-
-        SoundManager.shared.playExplosion()
-
-        // Create explosion fireballs
-        for _ in 0..<30 {
-            fireballs.append(FireballParticle(x: point.x, y: point.y))
-        }
-
-        // Destroy nearby shapes
-        let explosionRadius: CGFloat = 250
-        var destroyedCount = 0
-
-        for shape in shapes {
-            let dist = hypot(shape.x - point.x, shape.y - point.y)
-            if dist < explosionRadius {
-                // Create fireballs at shape location
-                for _ in 0..<10 {
-                    fireballs.append(FireballParticle(x: shape.x, y: shape.y))
-                }
-
-                addScore(20) // Double points!
-                destroyedCount += 1
-                shape.reset(bounds: bounds)
-            }
-        }
-
-        if destroyedCount > 0 {
-            showPoints(at: point, points: destroyedCount * 20)
-        }
-    }
-
     func addScore(_ points: Int) {
         score += points
         if score >= GameConstants.winningScore {
