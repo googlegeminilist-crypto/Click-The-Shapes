@@ -297,10 +297,10 @@ class Snake {
         let newX = segments[0].x + cos(angle) * speed
         let newY = segments[0].y + sin(angle) * speed
 
-        // Check if snake eats the power-up
+        // Check if snake eats the power-up (larger detection radius)
         if let pu = powerUp, pu.isActive {
             let distToPowerUp = hypot(pu.x - newX, pu.y - newY)
-            if distToPowerUp < segmentSize + pu.size / 2 {
+            if distToPowerUp < pu.size {
                 onEatPowerUp(pu)
             }
         }
@@ -904,8 +904,8 @@ struct PowerUpView: View {
                     .offset(x: offsetX, y: offsetY)
             }
 
-            // 2X label
-            Text("2X")
+            // Bonus label
+            Text("BONUS")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.white)
                 .shadow(color: .red, radius: 3)
