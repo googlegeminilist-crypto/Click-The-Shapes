@@ -636,11 +636,9 @@ class GameViewModel: ObservableObject {
             }
         }
 
-        // Snake gets exactly 20 points total for power-up (double points)
-        if destroyedCount > 0 {
-            snakeScore += 20
-            showPoints(at: point, points: 20)
-        }
+        // Snake ALWAYS gets exactly 20 points for power-up (double points)
+        snakeScore += 20
+        showPoints(at: point, points: 20)
 
         // Snake grows extra from power-up
         snake?.grow()
