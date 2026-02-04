@@ -619,7 +619,7 @@ class GameViewModel: ObservableObject {
             fireballs.append(FireballParticle(x: point.x, y: point.y))
         }
 
-        // Destroy nearby shapes - SNAKE gets double points!
+        // Destroy nearby shapes - SNAKE gets exactly 20 points (double) for power-up
         let explosionRadius: CGFloat = 250
         var destroyedCount = 0
 
@@ -631,14 +631,15 @@ class GameViewModel: ObservableObject {
                     fireballs.append(FireballParticle(x: shape.x, y: shape.y))
                 }
 
-                snakeScore += 20 // Double points for snake!
                 destroyedCount += 1
                 shape.reset(bounds: bounds)
             }
         }
 
+        // Snake gets exactly 20 points total for power-up (double points)
         if destroyedCount > 0 {
-            showPoints(at: point, points: destroyedCount * 20)
+            snakeScore += 20
+            showPoints(at: point, points: 20)
         }
 
         // Snake grows extra from power-up
