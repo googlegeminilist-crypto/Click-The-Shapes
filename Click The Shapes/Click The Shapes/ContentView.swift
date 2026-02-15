@@ -355,6 +355,8 @@ class Snake {
 class SoundManager: NSObject, AVAudioPlayerDelegate {
     static let shared = SoundManager()
     private var backgroundMusicPlayer: AVAudioPlayer?
+    private var shapeTapURL: URL?
+    private var shapeTapPlayers: [AVAudioPlayer] = []
     private var isSetup = false
 
     override init() {
@@ -396,7 +398,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             backgroundMusicPlayer = try AVAudioPlayer(contentsOf: audioURL)
             backgroundMusicPlayer?.delegate = self
             backgroundMusicPlayer?.numberOfLoops = -1
-            backgroundMusicPlayer?.volume = 0.8
+            backgroundMusicPlayer?.volume = 0.5
             backgroundMusicPlayer?.prepareToPlay()
             isSetup = true
             print("Background music loaded successfully")
@@ -428,6 +430,36 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 
     func playExplosion() {
         AudioServicesPlaySystemSound(1053)
+    }
+
+    func playShapeTap() {
+        // Find URL once
+        if shapeTapURL == nil {
+            shapeTapURL = Bundle.main.url(forResource: "alex_jauk-strange-echoing-noises-230895", withExtension: "mp3")
+            if shapeTapURL == nil {
+                print("Shape tap sound NOT found in bundle")
+                if let mp3s = Bundle.main.urls(forResourcesWithExtension: "mp3", subdirectory: nil) {
+                    print("MP3 files in bundle: \(mp3s)")
+                }
+                return
+            }
+        }
+
+        guard let url = shapeTapURL else { return }
+
+        // Clean up finished players
+        shapeTapPlayers.removeAll { !$0.isPlaying }
+
+        // Create a fresh player each tap so sounds overlap for fast tapping
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.volume = 1.0
+            player.prepareToPlay()
+            player.play()
+            shapeTapPlayers.append(player)
+        } catch {
+            print("Error playing shape tap sound: \(error)")
+        }
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
@@ -577,7 +609,7 @@ class GameViewModel: ObservableObject {
 
                 addScore(10)
                 showPoints(at: point, points: 10)
-                SoundManager.shared.playSparkle()
+                SoundManager.shared.playShapeTap()
 
                 // Create particles
                 for _ in 0..<8 {
