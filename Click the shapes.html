@@ -283,6 +283,72 @@
             transform: scale(1.05);
         }
 
+        .hardcore-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 25px;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .hardcore-toggle-label {
+            font-size: 1.3em;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .hardcore-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #333;
+            border-radius: 13px;
+            border: 2px solid #ff0000;
+            transition: all 0.3s ease;
+        }
+
+        .hardcore-switch.active {
+            background: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+        }
+
+        .hardcore-switch-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .hardcore-switch.active .hardcore-switch-knob {
+            left: 26px;
+        }
+
+        .hardcore-indicator {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            z-index: 10;
+            background: rgba(80, 0, 0, 0.9);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid #ff0000;
+            font-size: 1em;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+            animation: dangerPulse 1s ease-in-out infinite;
+            display: none;
+        }
+
         .points-popup {
             position: absolute;
             font-size: 2em;
@@ -425,6 +491,7 @@
     </div>
 
     <div class="level-indicator" id="levelIndicator">LEVEL 1</div>
+    <div class="hardcore-indicator" id="hardcoreIndicator">HARDCORE</div>
 
     <div class="phase-indicator" id="phaseIndicator">SHAPES!</div>
 
@@ -442,7 +509,7 @@
             <div class="level-up-message" id="levelUpMessage"></div>
             <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px;">
                 <button type="button" class="restart-button" id="restartLevelBtn" onclick="restartCurrentLevel()">Restart Level</button>
-                <button type="button" class="restart-button" onclick="location.reload()">Start Over</button>
+                <button type="button" class="restart-button" id="startOverBtn" onclick="location.reload()">Start Over</button>
             </div>
         </div>
     </div>
@@ -517,6 +584,12 @@
                     First to 500 points wins Level 1 — then Level 2 begins!
                 </div>
             </div>
+            <div class="hardcore-toggle" id="hardcoreToggle" onclick="toggleHardcore()">
+                <span class="hardcore-toggle-label">HARDCORE MODE</span>
+                <div class="hardcore-switch" id="hardcoreSwitch">
+                    <div class="hardcore-switch-knob"></div>
+                </div>
+            </div>
             <div class="intro-buttons">
                 <button type="button" class="intro-button start-button" onclick="startGame()">Start Game</button>
                 <button type="button" class="intro-button skip-button" onclick="startGame()">Skip</button>
@@ -573,6 +646,7 @@
         const MAX_TRAP_BOXES = 15;
         let level2Active = false;
         let level3Active = false;
+        let hardcoreMode = false;
 
         // Performance limits
         const MAX_PARTICLES = 150;
@@ -606,6 +680,9 @@
         // Start game function
         function startGame() {
             introOverlayEl.style.display = 'none';
+            if (hardcoreMode) {
+                document.getElementById('hardcoreIndicator').style.display = 'block';
+            }
             playBackgroundMusic();
         }
 
@@ -619,6 +696,77 @@
             introOverlayEl.style.display = 'none';
             playBackgroundMusic();
             levelTransition3El.style.display = 'flex';
+        }
+
+        function toggleHardcore() {
+            hardcoreMode = !hardcoreMode;
+            const switchEl = document.getElementById('hardcoreSwitch');
+            if (hardcoreMode) {
+                switchEl.classList.add('active');
+            } else {
+                switchEl.classList.remove('active');
+            }
+        }
+
+        function hardcoreResetToLevel1() {
+            // Full reset back to level 1
+            winOverlayEl.style.display = 'none';
+            gameOver = false;
+            gameStarted = false;
+
+            currentLevel = 1;
+            level2Active = false;
+            level3Active = false;
+
+            score = 0;
+            snakeScore = 0;
+            scoreValueEl.textContent = '0';
+            snakeScoreValueEl.textContent = '0';
+            WINNING_SCORE = 500;
+
+            // Clear everything
+            trapBoxes.length = 0;
+            particles.length = 0;
+            fireballs.length = 0;
+            powerUp = null;
+            powerUpSpawnTimer = 0;
+            lightning = null;
+            lightningSpawnTimer = 0;
+            lightningFlashAlpha = 0;
+
+            // Reset shapes back to level 1 size
+            constellationShapes.forEach(shape => shape.reset());
+
+            // Reset phase
+            shapesVisible = true;
+            phaseTimer = 0;
+            phaseIndicatorEl.style.display = 'none';
+
+            // Reset snake
+            snake.segments.length = 0;
+            snake.speed = 3.5;
+            const startX = canvas.width / 2;
+            const startY = canvas.height / 2;
+            for (let i = 0; i < 5; i++) {
+                snake.segments.push({
+                    x: startX - i * snake.segmentSize * 2,
+                    y: startY
+                });
+            }
+            snake.targetLength = 5;
+
+            // Reset UI to level 1
+            levelIndicatorEl.textContent = 'LEVEL 1';
+            levelIndicatorEl.style.borderColor = '#ffff00';
+            levelIndicatorEl.style.color = '#ffff00';
+
+            // Switch back to level 1 music
+            level2Music.pause();
+            level3Music.pause();
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play().catch(() => {});
+
+            animate();
         }
 
         // Audio context for sound effects
@@ -1604,8 +1752,33 @@
 
             winMessageEl.textContent = message;
             winMessageEl.style.color = color;
-            levelUpMessageEl.textContent = `Level ${currentLevel}`;
-            restartLevelBtn.textContent = `Restart Level ${currentLevel}`;
+
+            if (hardcoreMode) {
+                // In hardcore mode: no restart level button
+                restartLevelBtn.style.display = 'none';
+
+                if (message === 'SNAKE WINS!') {
+                    // Lost in hardcore = back to level 1
+                    levelUpMessageEl.textContent = `HARDCORE: Back to Level 1!`;
+                    levelUpMessageEl.style.color = '#ff0000';
+                    // Replace Start Over with "Back to Level 1"
+                    document.getElementById('startOverBtn').textContent = 'BACK TO LEVEL 1';
+                    document.getElementById('startOverBtn').onclick = hardcoreResetToLevel1;
+                } else {
+                    levelUpMessageEl.textContent = `Level ${currentLevel} Complete!`;
+                    levelUpMessageEl.style.color = '#ffff00';
+                    document.getElementById('startOverBtn').textContent = 'Start Over';
+                    document.getElementById('startOverBtn').onclick = function() { location.reload(); };
+                }
+            } else {
+                restartLevelBtn.style.display = 'inline-block';
+                levelUpMessageEl.textContent = `Level ${currentLevel}`;
+                levelUpMessageEl.style.color = '#ffff00';
+                restartLevelBtn.textContent = `Restart Level ${currentLevel}`;
+                document.getElementById('startOverBtn').textContent = 'Start Over';
+                document.getElementById('startOverBtn').onclick = function() { location.reload(); };
+            }
+
             winOverlayEl.style.display = 'flex';
         }
 
