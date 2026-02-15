@@ -73,6 +73,12 @@ class BackgroundStar: Identifiable {
     var starColorB: CGFloat
     var level2Size: CGFloat  // Bigger size for Level 2
 
+    // Level 3 depth/parallax properties
+    var depth: CGFloat       // 0.0 = far away, 1.0 = close (affects size, speed, brightness)
+    var driftX: CGFloat      // Parallax drift speed X
+    var driftY: CGFloat      // Parallax drift speed Y
+    var streakLength: CGFloat // Longer = faster feel
+
     init(bounds: CGSize) {
         x = CGFloat.random(in: 0...bounds.width)
         y = CGFloat.random(in: 0...bounds.height)
@@ -86,6 +92,51 @@ class BackgroundStar: Identifiable {
         starColorR = c.r
         starColorG = c.g
         starColorB = c.b
+
+        // Depth layer: 0 = far background, 1 = near foreground
+        depth = CGFloat.random(in: 0...1)
+        driftX = 0
+        driftY = 0
+        streakLength = 0
+    }
+
+    func setupForLevel3(bounds: CGSize) {
+        // Drift from center outward for warp-speed feel
+        let centerX = bounds.width / 2
+        let centerY = bounds.height / 2
+        let dx = x - centerX
+        let dy = y - centerY
+        let dist = max(hypot(dx, dy), 1)
+        let speed = (depth * 0.8 + 0.2) // Near stars move faster
+        driftX = (dx / dist) * speed
+        driftY = (dy / dist) * speed
+        streakLength = depth * 6 + 1  // Near stars have longer streaks
+    }
+
+    func updateLevel3(bounds: CGSize) {
+        x += driftX
+        y += driftY
+
+        // Wrap around when off screen
+        if x < -10 || x > bounds.width + 10 || y < -10 || y > bounds.height + 10 {
+            // Respawn near center with random offset
+            let centerX = bounds.width / 2
+            let centerY = bounds.height / 2
+            x = centerX + CGFloat.random(in: -80...80)
+            y = centerY + CGFloat.random(in: -80...80)
+            let dx = x - centerX
+            let dy = y - centerY
+            let dist = max(hypot(dx, dy), 1)
+            let speed = (depth * 0.8 + 0.2)
+            driftX = (dx / dist) * speed
+            driftY = (dy / dist) * speed
+        }
+
+        // Still twinkle
+        brightness += twinkleSpeed
+        if brightness > 1 || brightness < 0.3 {
+            twinkleSpeed *= -1
+        }
     }
 
     func update() {
@@ -759,7 +810,11 @@ class GameViewModel: ObservableObject {
 
         // Update stars
         for star in stars {
-            star.update()
+            if currentLevel >= 3 {
+                star.updateLevel3(bounds: bounds)
+            } else {
+                star.update()
+            }
         }
 
         // Update shapes
@@ -973,6 +1028,13 @@ class GameViewModel: ObservableObject {
         currentLevel = 3
         showLevelTransition = true
         gameStarted = false  // Snake waits until user taps a shape
+
+        // Add even more stars for depth effect and set up parallax
+        let extraStars = (0..<50).map { _ in BackgroundStar(bounds: bounds) }
+        stars.append(contentsOf: extraStars)
+        for star in stars {
+            star.setupForLevel3(bounds: bounds)
+        }
 
         // Reset snake score
         snakeScore = 0
@@ -1509,10 +1571,60 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background gradient - deeper space in Level 2
+                // Background gradient - evolves per level
                 Group {
-                    if game.currentLevel >= 2 {
-                        // Deep space with nebula-like colours
+                    if game.currentLevel >= 3 {
+                        // Level 3: deep 3D warp space with galaxy center
+                        ZStack {
+                            Color.black
+
+                            // Central warp/galaxy glow
+                            RadialGradient(
+                                colors: [
+                                    Color(red: 0.15, green: 0.05, blue: 0.3).opacity(0.6),
+                                    Color(red: 0.08, green: 0.0, blue: 0.2).opacity(0.4),
+                                    Color(red: 0.03, green: 0.0, blue: 0.1).opacity(0.2),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: geometry.size.width * 0.5
+                            )
+
+                            // Warm nebula arm (top-right)
+                            RadialGradient(
+                                colors: [Color(red: 0.3, green: 0.1, blue: 0.0).opacity(0.25), .clear],
+                                center: UnitPoint(x: 0.8, y: 0.15),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.5
+                            )
+
+                            // Cool nebula arm (bottom-left)
+                            RadialGradient(
+                                colors: [Color(red: 0.0, green: 0.1, blue: 0.3).opacity(0.25), .clear],
+                                center: UnitPoint(x: 0.15, y: 0.85),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.5
+                            )
+
+                            // Pink nebula wisp (center-left)
+                            RadialGradient(
+                                colors: [Color(red: 0.25, green: 0.0, blue: 0.15).opacity(0.2), .clear],
+                                center: UnitPoint(x: 0.2, y: 0.4),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.35
+                            )
+
+                            // Teal highlight (center-right)
+                            RadialGradient(
+                                colors: [Color(red: 0.0, green: 0.15, blue: 0.2).opacity(0.15), .clear],
+                                center: UnitPoint(x: 0.75, y: 0.55),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.3
+                            )
+                        }
+                    } else if game.currentLevel >= 2 {
+                        // Level 2: Deep space with nebula-like colours
                         ZStack {
                             LinearGradient(
                                 colors: [
@@ -1523,7 +1635,6 @@ struct ContentView: View {
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
-                            // Subtle nebula glow patches
                             RadialGradient(
                                 colors: [Color(red: 0.15, green: 0.0, blue: 0.25).opacity(0.4), .clear],
                                 center: .topTrailing,
@@ -1544,6 +1655,7 @@ struct ContentView: View {
                             )
                         }
                     } else {
+                        // Level 1: Simple purple space
                         RadialGradient(
                             colors: [Color(red: 0.1, green: 0, blue: 0.2), .black],
                             center: .center,
@@ -1760,18 +1872,63 @@ struct GameCanvasView: View {
     var body: some View {
         Canvas { context, size in
             let isLevel2 = game.currentLevel >= 2
+            let isLevel3 = game.currentLevel >= 3
 
             // Draw stars
             for star in game.stars {
-                let drawSize = isLevel2 ? star.level2Size : star.size
+                let starColor = Color(
+                    red: star.starColorR,
+                    green: star.starColorG,
+                    blue: star.starColorB
+                )
 
-                if isLevel2 {
-                    // Coloured shining stars for Level 2
-                    let starColor = Color(
-                        red: star.starColorR,
-                        green: star.starColorG,
-                        blue: star.starColorB
-                    ).opacity(star.brightness)
+                if isLevel3 {
+                    // Level 3: 3D depth stars with motion streaks
+                    let depthSize = (star.depth * 3.0 + 1.0)  // Near stars are bigger
+                    let depthBrightness = star.brightness * (star.depth * 0.6 + 0.4) // Near = brighter
+
+                    // Motion streak trail (shows direction/speed)
+                    if star.streakLength > 2 {
+                        let streakEndX = star.x - star.driftX * star.streakLength
+                        let streakEndY = star.y - star.driftY * star.streakLength
+                        var path = Path()
+                        path.move(to: CGPoint(x: star.x, y: star.y))
+                        path.addLine(to: CGPoint(x: streakEndX, y: streakEndY))
+                        context.stroke(
+                            path,
+                            with: .color(starColor.opacity(depthBrightness * 0.3)),
+                            lineWidth: depthSize * 0.5
+                        )
+                    }
+
+                    // Outer glow for near stars
+                    if star.depth > 0.6 {
+                        let glowSize = depthSize * 4
+                        context.fill(
+                            Circle().path(in: CGRect(
+                                x: star.x - glowSize / 2,
+                                y: star.y - glowSize / 2,
+                                width: glowSize,
+                                height: glowSize
+                            )),
+                            with: .color(starColor.opacity(depthBrightness * 0.12))
+                        )
+                    }
+
+                    // Star core
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: star.x - depthSize / 2,
+                            y: star.y - depthSize / 2,
+                            width: depthSize,
+                            height: depthSize
+                        )),
+                        with: .color(starColor.opacity(depthBrightness))
+                    )
+
+                } else if isLevel2 {
+                    // Level 2: Coloured shining stars
+                    let drawSize = star.level2Size
 
                     // Outer glow for bigger stars
                     if drawSize > 2.5 {
@@ -1783,11 +1940,7 @@ struct GameCanvasView: View {
                                 width: glowSize,
                                 height: glowSize
                             )),
-                            with: .color(Color(
-                                red: star.starColorR,
-                                green: star.starColorG,
-                                blue: star.starColorB
-                            ).opacity(star.brightness * 0.15))
+                            with: .color(starColor.opacity(star.brightness * 0.15))
                         )
                     }
 
@@ -1799,16 +1952,16 @@ struct GameCanvasView: View {
                             width: drawSize,
                             height: drawSize
                         )),
-                        with: .color(starColor)
+                        with: .color(starColor.opacity(star.brightness))
                     )
                 } else {
-                    // Simple white stars for Level 1
+                    // Level 1: Simple white stars
                     context.fill(
                         Circle().path(in: CGRect(
-                            x: star.x - drawSize / 2,
-                            y: star.y - drawSize / 2,
-                            width: drawSize,
-                            height: drawSize
+                            x: star.x - star.size / 2,
+                            y: star.y - star.size / 2,
+                            width: star.size,
+                            height: star.size
                         )),
                         with: .color(.white.opacity(star.brightness))
                     )
