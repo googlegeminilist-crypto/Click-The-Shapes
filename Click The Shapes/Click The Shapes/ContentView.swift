@@ -761,7 +761,7 @@ class GameViewModel: ObservableObject {
     }
 
     func handleTap(at point: CGPoint) {
-        guard !gameOver, !showIntro else { return }
+        guard !gameOver, !showIntro, !showLevelTransition else { return }
 
         // Check shapes (user can no longer click power-ups - snake gets them)
         for shape in shapes {
@@ -878,6 +878,7 @@ class GameViewModel: ObservableObject {
     func transitionToLevel2() {
         currentLevel = 2
         showLevelTransition = true
+        gameStarted = false  // Snake waits until user taps a shape
 
         // Reset snake score to give player a fair start in Level 2
         snakeScore = 0
@@ -885,10 +886,10 @@ class GameViewModel: ObservableObject {
         // Reset snake
         snake = Snake(bounds: bounds)
 
-        // Start trap box timer
+        // Start trap box timer (will only activate shapes once transition is done)
         startTrapBoxTimer()
 
-        // Hide transition after 2 seconds
+        // Hide transition after 2 seconds — game resumes on first tap
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.showLevelTransition = false
         }
