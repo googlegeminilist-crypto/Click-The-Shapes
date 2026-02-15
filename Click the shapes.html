@@ -634,6 +634,11 @@
         level2Music.loop = true;
         level2Music.volume = 0.9;
 
+        // Level 3 music
+        const level3Music = new Audio('Click The Shapes/Click The Shapes/Untitled(6).wav');
+        level3Music.loop = true;
+        level3Music.volume = 0.9;
+
         function playBackgroundMusic() {
             backgroundMusic.play().catch(err => {
                 console.log('Audio autoplay blocked:', err);
@@ -1515,6 +1520,11 @@
             snakeScoreValueEl.textContent = '0';
             WINNING_SCORE = 500;
 
+            // Switch to level 3 music
+            backgroundMusic.pause();
+            level2Music.pause();
+            level3Music.play().catch(err => console.log('Level 3 audio blocked:', err));
+
             // Even faster snake
             snake.speed = 5.5;
 
@@ -1562,6 +1572,7 @@
             gameOver = true;
             backgroundMusic.pause();
             level2Music.pause();
+            level3Music.pause();
 
             const lvlKey = 'L' + currentLevel;
 
@@ -1649,12 +1660,16 @@
             }
 
             // Restart music
-            if (currentLevel >= 2) {
-                backgroundMusic.pause();
+            backgroundMusic.pause();
+            level2Music.pause();
+            level3Music.pause();
+            if (currentLevel === 3) {
+                level3Music.currentTime = 0;
+                level3Music.play().catch(() => {});
+            } else if (currentLevel === 2) {
                 level2Music.currentTime = 0;
                 level2Music.play().catch(() => {});
             } else {
-                level2Music.pause();
                 backgroundMusic.currentTime = 0;
                 backgroundMusic.play().catch(() => {});
             }
