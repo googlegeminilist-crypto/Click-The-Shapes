@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import AVFoundation
+import StoreKit
 
 // MARK: - Game Constants (optimized for older phones like iPhone XS Max)
 struct GameConstants {
@@ -478,6 +479,135 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 }
 
+// MARK: - Store Manager (In-App Purchase)
+class StoreManager: ObservableObject {
+    static let shared = StoreManager()
+    static let soundPackProductID = "com.clicktheshapes.soundpack"
+
+    @Published var soundPackPurchased: Bool = false
+    @Published var soundPackProduct: Product?
+    @Published var isPurchasing = false
+
+    private var transactionListener: Task<Void, Error>?
+
+    init() {
+        // Check if already purchased
+        soundPackPurchased = UserDefaults.standard.bool(forKey: "soundPackPurchased")
+
+        // Listen for transactions
+        transactionListener = listenForTransactions()
+
+        // Load products
+        Task {
+            await loadProducts()
+            await checkCurrentEntitlements()
+        }
+    }
+
+    deinit {
+        transactionListener?.cancel()
+    }
+
+    func listenForTransactions() -> Task<Void, Error> {
+        return Task.detached {
+            for await result in StoreKit.Transaction.updates {
+                do {
+                    let transaction = try self.checkVerified(result)
+                    await self.updatePurchaseStatus(transaction)
+                    await transaction.finish()
+                } catch {
+                    print("Transaction verification failed: \(error)")
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func loadProducts() async {
+        do {
+            let products = try await Product.products(for: [StoreManager.soundPackProductID])
+            soundPackProduct = products.first
+            print("Loaded product: \(soundPackProduct?.displayName ?? "none")")
+        } catch {
+            print("Failed to load products: \(error)")
+        }
+    }
+
+    @MainActor
+    func checkCurrentEntitlements() async {
+        for await result in StoreKit.Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(result)
+                if transaction.productID == StoreManager.soundPackProductID {
+                    soundPackPurchased = true
+                    UserDefaults.standard.set(true, forKey: "soundPackPurchased")
+                }
+            } catch {
+                print("Entitlement check failed: \(error)")
+            }
+        }
+    }
+
+    @MainActor
+    func purchaseSoundPack() async {
+        guard let product = soundPackProduct else {
+            print("Product not loaded yet")
+            return
+        }
+
+        isPurchasing = true
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                let transaction = try checkVerified(verification)
+                await updatePurchaseStatus(transaction)
+                await transaction.finish()
+            case .userCancelled:
+                print("User cancelled purchase")
+            case .pending:
+                print("Purchase pending")
+            @unknown default:
+                break
+            }
+        } catch {
+            print("Purchase failed: \(error)")
+        }
+        isPurchasing = false
+    }
+
+    @MainActor
+    func restorePurchases() async {
+        do {
+            try await AppStore.sync()
+            await checkCurrentEntitlements()
+        } catch {
+            print("Restore failed: \(error)")
+        }
+    }
+
+    private func checkVerified<T>(_ result: StoreKit.VerificationResult<T>) throws -> T {
+        switch result {
+        case .unverified:
+            throw StoreError.failedVerification
+        case .verified(let safe):
+            return safe
+        }
+    }
+
+    @MainActor
+    private func updatePurchaseStatus(_ transaction: StoreKit.Transaction) async {
+        if transaction.productID == StoreManager.soundPackProductID {
+            soundPackPurchased = true
+            UserDefaults.standard.set(true, forKey: "soundPackPurchased")
+        }
+    }
+
+    enum StoreError: Error {
+        case failedVerification
+    }
+}
+
 // MARK: - Game View Model
 class GameViewModel: ObservableObject {
     @Published var score = 0
@@ -616,7 +746,11 @@ class GameViewModel: ObservableObject {
 
                 addScore(10)
                 showPoints(at: point, points: 10)
-                SoundManager.shared.playShapeTap()
+                if StoreManager.shared.soundPackPurchased {
+                    SoundManager.shared.playShapeTap()
+                } else {
+                    SoundManager.shared.playSparkle()
+                }
 
                 // Create particles
                 for _ in 0..<8 {
@@ -957,6 +1091,7 @@ struct PowerUpView: View {
 // MARK: - Intro Overlay
 struct IntroOverlay: View {
     let onStart: () -> Void
+    @ObservedObject var store = StoreManager.shared
 
     var body: some View {
         ZStack {
@@ -979,6 +1114,57 @@ struct IntroOverlay: View {
                 .background(Color.black.opacity(0.5))
                 .cornerRadius(15)
 
+                // Sound Pack IAP
+                VStack(spacing: 10) {
+                    if store.soundPackPurchased {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(GameColors.neonGreen)
+                            Text("Sound Pack Unlocked")
+                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .foregroundColor(GameColors.neonGreen)
+                        }
+                    } else {
+                        Button {
+                            Task { await store.purchaseSoundPack() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "speaker.wave.3.fill")
+                                    .foregroundColor(.black)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Sound Pack")
+                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.black)
+                                    Text(store.soundPackProduct?.displayPrice ?? "£0.49")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundColor(.black.opacity(0.7))
+                                }
+                            }
+                            .padding(.horizontal, 25)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [GameColors.neonYellow, GameColors.neonOrange],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(10)
+                            .shadow(color: GameColors.neonYellow, radius: 5)
+                        }
+                        .disabled(store.isPurchasing)
+                        .opacity(store.isPurchasing ? 0.6 : 1)
+
+                        Button {
+                            Task { await store.restorePurchases() }
+                        } label: {
+                            Text("Restore Purchases")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
                 Button(action: onStart) {
                     Text("START GAME")
                         .font(.system(size: 22, weight: .bold, design: .monospaced))
@@ -995,7 +1181,7 @@ struct IntroOverlay: View {
                         .cornerRadius(12)
                         .shadow(color: GameColors.neonGreen, radius: 10)
                 }
-                .padding(.top, 20)
+                .padding(.top, 10)
             }
             .padding(30)
         }
