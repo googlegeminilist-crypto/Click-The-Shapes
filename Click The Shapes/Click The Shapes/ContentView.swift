@@ -12,12 +12,15 @@ import StoreKit
 
 // MARK: - Game Constants (optimized for older phones like iPhone XS Max)
 struct GameConstants {
-    static let winningScore = 500
+    static let level1WinScore = 500
+    static let level2WinScore = 1000
     static let maxStars = 60
     static let maxParticles = 80
     static let maxFireballs = 50
     static let shapeCount = 8
     static let powerUpInterval: TimeInterval = 5.0
+    static let trapBoxDuration: TimeInterval = 1.2  // How long a shape stays as a trap box
+    static let trapBoxInterval: TimeInterval = 2.0  // How often shapes turn into trap boxes
 }
 
 // MARK: - Shape Types
@@ -89,6 +92,8 @@ class ConstellationShape: Identifiable {
     var shapeType: ShapeType
     var pulsePhase: CGFloat = 0
     var orbitingStars: [OrbitingStar] = []
+    var isTrapBox: Bool = false
+    var trapBoxTimer: Date?
 
     init(bounds: CGSize) {
         x = CGFloat.random(in: 80...(bounds.width - 80))
@@ -618,6 +623,8 @@ class GameViewModel: ObservableObject {
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
+    @Published var currentLevel = 1
+    @Published var showLevelTransition = false
 
     var stars: [BackgroundStar] = []
     var shapes: [ConstellationShape] = []
@@ -634,6 +641,11 @@ class GameViewModel: ObservableObject {
     var bounds: CGSize = .zero
     private var displayLink: CADisplayLink?
     private var powerUpTimer: Timer?
+    private var trapBoxTimer: Timer?
+
+    var winningScore: Int {
+        currentLevel == 1 ? GameConstants.level1WinScore : GameConstants.level2WinScore
+    }
 
     func setupGame(bounds: CGSize) {
         self.bounds = bounds
@@ -672,6 +684,8 @@ class GameViewModel: ObservableObject {
         displayLink = nil
         powerUpTimer?.invalidate()
         powerUpTimer = nil
+        trapBoxTimer?.invalidate()
+        trapBoxTimer = nil
     }
 
     @objc func gameLoop() {
@@ -720,6 +734,18 @@ class GameViewModel: ObservableObject {
             fireballs.removeFirst()
         }
 
+        // Revert trap boxes back to shapes after duration
+        if currentLevel >= 2 {
+            let now = Date()
+            for shape in shapes {
+                if shape.isTrapBox, let timer = shape.trapBoxTimer,
+                   now.timeIntervalSince(timer) >= GameConstants.trapBoxDuration {
+                    shape.isTrapBox = false
+                    shape.trapBoxTimer = nil
+                }
+            }
+        }
+
         // Clear points popup after delay
         if let popupTime = pointsPopupTime, Date().timeIntervalSince(popupTime) > 0.8 {
             pointsPopup = nil
@@ -744,20 +770,38 @@ class GameViewModel: ObservableObject {
                     gameStarted = true
                 }
 
-                addScore(10)
-                showPoints(at: point, points: 10)
-                if StoreManager.shared.soundPackPurchased {
-                    SoundManager.shared.playShapeTap()
+                if shape.isTrapBox {
+                    // Clicked a trap box! Minus 10 points
+                    score = max(0, score - 10)
+                    showPoints(at: point, points: -10)
+                    SoundManager.shared.playExplosion()
+
+                    // Red particles for trap box
+                    for _ in 0..<8 {
+                        let p = Particle(x: point.x, y: point.y)
+                        p.color = .red
+                        particles.append(p)
+                    }
+
+                    // Revert to shape after being clicked
+                    shape.isTrapBox = false
+                    shape.trapBoxTimer = nil
                 } else {
-                    SoundManager.shared.playSparkle()
-                }
+                    addScore(10)
+                    showPoints(at: point, points: 10)
+                    if StoreManager.shared.soundPackPurchased {
+                        SoundManager.shared.playShapeTap()
+                    } else {
+                        SoundManager.shared.playSparkle()
+                    }
 
-                // Create particles
-                for _ in 0..<8 {
-                    particles.append(Particle(x: point.x, y: point.y))
-                }
+                    // Create particles
+                    for _ in 0..<8 {
+                        particles.append(Particle(x: point.x, y: point.y))
+                    }
 
-                shape.reset(bounds: bounds)
+                    shape.reset(bounds: bounds)
+                }
                 break
             }
         }
@@ -775,7 +819,7 @@ class GameViewModel: ObservableObject {
 
         shape.reset(bounds: bounds)
 
-        if snakeScore >= GameConstants.winningScore {
+        if snakeScore >= winningScore {
             endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
         }
     }
@@ -817,15 +861,56 @@ class GameViewModel: ObservableObject {
         snake?.grow()
         snake?.grow()
 
-        if snakeScore >= GameConstants.winningScore {
+        if snakeScore >= winningScore {
             endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
         }
     }
 
     func addScore(_ points: Int) {
         score += points
-        if score >= GameConstants.winningScore {
+        if currentLevel == 1 && score >= GameConstants.level1WinScore {
+            transitionToLevel2()
+        } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
             endGame(message: "YOU WIN!", color: GameColors.neonGreen, snakeWon: false)
+        }
+    }
+
+    func transitionToLevel2() {
+        currentLevel = 2
+        showLevelTransition = true
+
+        // Reset snake score to give player a fair start in Level 2
+        snakeScore = 0
+
+        // Reset snake
+        snake = Snake(bounds: bounds)
+
+        // Start trap box timer
+        startTrapBoxTimer()
+
+        // Hide transition after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.showLevelTransition = false
+        }
+    }
+
+    func startTrapBoxTimer() {
+        trapBoxTimer?.invalidate()
+        trapBoxTimer = Timer.scheduledTimer(withTimeInterval: GameConstants.trapBoxInterval, repeats: true) { [weak self] _ in
+            self?.turnRandomShapesToTrapBoxes()
+        }
+    }
+
+    func turnRandomShapesToTrapBoxes() {
+        guard currentLevel >= 2, !gameOver, !showIntro else { return }
+
+        // Turn 1-3 random shapes into trap boxes
+        let availableShapes = shapes.filter { !$0.isTrapBox }
+        let count = min(Int.random(in: 1...3), availableShapes.count)
+
+        for shape in availableShapes.shuffled().prefix(count) {
+            shape.isTrapBox = true
+            shape.trapBoxTimer = Date()
         }
     }
 
@@ -855,12 +940,16 @@ class GameViewModel: ObservableObject {
         snakeScore = 0
         gameOver = false
         gameStarted = false
+        currentLevel = 1
+        showLevelTransition = false
         particles.removeAll()
         fireballs.removeAll()
         powerUp = nil
 
         for shape in shapes {
             shape.reset(bounds: bounds)
+            shape.isTrapBox = false
+            shape.trapBoxTimer = nil
         }
 
         snake = Snake(bounds: bounds)
@@ -911,43 +1000,67 @@ struct ShapeView: View {
         let currentSize = shape.size * pulse
 
         ZStack {
-            // Orbiting stars
-            ForEach(shape.orbitingStars) { star in
-                let x = cos(star.angle) * star.distance
-                let y = sin(star.angle) * star.distance
-                let brightness = (sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2
+            if shape.isTrapBox {
+                // Trap box appearance - red/danger filled box
+                Rectangle()
+                    .fill(Color.red.opacity(0.3))
+                    .frame(width: currentSize * 0.9, height: currentSize * 0.9)
+                    .overlay(
+                        Rectangle()
+                            .stroke(Color.red, lineWidth: 3)
+                    )
+                    .shadow(color: .red.opacity(0.8), radius: 10)
 
-                Circle()
-                    .fill(star.isRed ? Color.red : Color.blue)
-                    .frame(width: star.size, height: star.size)
-                    .opacity(brightness)
-                    .offset(x: x, y: y)
-            }
-
-            // Main shape
-            Group {
-                switch shape.shapeType {
-                case .star:
-                    StarShapeView(size: currentSize * 0.5, color: shape.color)
-                case .circle:
-                    Circle()
-                        .stroke(shape.color, lineWidth: 3)
-                        .frame(width: currentSize, height: currentSize)
-                case .triangle:
-                    TriangleShape()
-                        .stroke(shape.color, lineWidth: 3)
-                        .frame(width: currentSize, height: currentSize)
-                case .square:
+                // Warning X
+                ZStack {
                     Rectangle()
-                        .stroke(shape.color, lineWidth: 3)
-                        .frame(width: currentSize * 0.8, height: currentSize * 0.8)
-                case .pentagon:
-                    PentagonShape()
-                        .stroke(shape.color, lineWidth: 3)
-                        .frame(width: currentSize, height: currentSize)
+                        .fill(Color.red)
+                        .frame(width: currentSize * 0.6, height: 4)
+                        .rotationEffect(.degrees(45))
+                    Rectangle()
+                        .fill(Color.red)
+                        .frame(width: currentSize * 0.6, height: 4)
+                        .rotationEffect(.degrees(-45))
                 }
+            } else {
+                // Orbiting stars
+                ForEach(shape.orbitingStars) { star in
+                    let x = cos(star.angle) * star.distance
+                    let y = sin(star.angle) * star.distance
+                    let brightness = (sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2
+
+                    Circle()
+                        .fill(star.isRed ? Color.red : Color.blue)
+                        .frame(width: star.size, height: star.size)
+                        .opacity(brightness)
+                        .offset(x: x, y: y)
+                }
+
+                // Main shape
+                Group {
+                    switch shape.shapeType {
+                    case .star:
+                        StarShapeView(size: currentSize * 0.5, color: shape.color)
+                    case .circle:
+                        Circle()
+                            .stroke(shape.color, lineWidth: 3)
+                            .frame(width: currentSize, height: currentSize)
+                    case .triangle:
+                        TriangleShape()
+                            .stroke(shape.color, lineWidth: 3)
+                            .frame(width: currentSize, height: currentSize)
+                    case .square:
+                        Rectangle()
+                            .stroke(shape.color, lineWidth: 3)
+                            .frame(width: currentSize * 0.8, height: currentSize * 0.8)
+                    case .pentagon:
+                        PentagonShape()
+                            .stroke(shape.color, lineWidth: 3)
+                            .frame(width: currentSize, height: currentSize)
+                    }
+                }
+                .shadow(color: shape.color.opacity(0.6), radius: 8)
             }
-            .shadow(color: shape.color.opacity(0.6), radius: 8)
         }
     }
 }
@@ -1324,16 +1437,30 @@ struct ContentView: View {
 
                 // Points popup
                 if let popup = game.pointsPopup {
-                    Text("+\(popup.points)")
+                    Text(popup.points >= 0 ? "+\(popup.points)" : "\(popup.points)")
                         .font(.system(size: 28, weight: .bold, design: .monospaced))
-                        .foregroundColor(.yellow)
-                        .shadow(color: .yellow, radius: 10)
+                        .foregroundColor(popup.points >= 0 ? .yellow : .red)
+                        .shadow(color: popup.points >= 0 ? .yellow : .red, radius: 10)
                         .position(x: popup.x, y: popup.y - 30)
                         .id(game.updateTrigger)
                 }
 
                 // Header
                 VStack {
+                    // Level indicator
+                    Text("LEVEL \(game.currentLevel)")
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(game.currentLevel == 1 ? GameColors.neonCyan : .red)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(game.currentLevel == 1 ? GameColors.neonCyan : .red, lineWidth: 1)
+                        )
+                        .padding(.top, 50)
+
                     HStack {
                         // Snake score (left)
                         VStack(alignment: .leading) {
@@ -1350,6 +1477,18 @@ struct ContentView: View {
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(GameColors.neonPink, lineWidth: 2)
                         )
+
+                        Spacer()
+
+                        // Target score
+                        VStack {
+                            Text("Target")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.gray)
+                            Text("\(game.winningScore)")
+                                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                .foregroundColor(GameColors.neonYellow)
+                        }
 
                         Spacer()
 
@@ -1370,7 +1509,7 @@ struct ContentView: View {
                         )
                     }
                     .padding(.horizontal)
-                    .padding(.top, 50)
+                    .padding(.top, 5)
 
                     Spacer()
 
@@ -1414,6 +1553,31 @@ struct ContentView: View {
                     IntroOverlay(onStart: {
                         game.startGame()
                     })
+                }
+
+                // Level transition overlay
+                if game.showLevelTransition {
+                    ZStack {
+                        Color.black.opacity(0.85)
+                            .ignoresSafeArea()
+
+                        VStack(spacing: 20) {
+                            Text("LEVEL 2")
+                                .font(.system(size: 48, weight: .bold, design: .monospaced))
+                                .foregroundColor(.red)
+                                .shadow(color: .red, radius: 15)
+
+                            Text("Watch out for TRAP BOXES!")
+                                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+
+                            Text("Shapes will turn into red boxes\nClick them and lose 10 points!")
+                                .font(.system(size: 14, design: .monospaced))
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .transition(.opacity)
                 }
 
                 // Win overlay
