@@ -1124,6 +1124,52 @@ class GameViewModel: ObservableObject {
         startGameLoop()
         SoundManager.shared.playBackgroundMusic()
     }
+
+    func restartCurrentLevel() {
+        let level = currentLevel
+        gameOver = false
+        gameStarted = false
+        snakeScore = 0
+        particles.removeAll()
+        fireballs.removeAll()
+        powerUp = nil
+
+        // Set score to start of current level
+        switch level {
+        case 1:
+            score = 0
+            stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
+        case 2:
+            score = GameConstants.level1WinScore
+            // Keep Level 2 star count
+            stars = (0..<(GameConstants.maxStars + 40)).map { _ in BackgroundStar(bounds: bounds) }
+            startTrapBoxTimer()
+        case 3:
+            score = GameConstants.level2WinScore
+            // Keep Level 3 star count with depth
+            stars = (0..<(GameConstants.maxStars + 90)).map { _ in BackgroundStar(bounds: bounds) }
+            for star in stars {
+                star.setupForLevel3(bounds: bounds)
+            }
+            startTrapBoxTimer()
+        default:
+            score = 0
+        }
+
+        for shape in shapes {
+            shape.reset(bounds: bounds, level: level)
+            shape.isTrapBox = false
+            shape.trapBoxTimer = nil
+        }
+
+        snake = Snake(bounds: bounds)
+        if level >= 3 {
+            snake?.speed = 4.0
+        }
+
+        startGameLoop()
+        SoundManager.shared.playBackgroundMusic()
+    }
 }
 
 // MARK: - Shape Drawing Views
@@ -1490,42 +1536,64 @@ struct RuleRow: View {
 struct WinOverlay: View {
     let message: String
     let color: Color
+    let levelText: String
     let onRestart: () -> Void
+    let onRestartLevel: () -> Void
 
-    @State private var scale: CGFloat = 1.0
+    @State private var titleScale: CGFloat = 1.0
+    @State private var buttonGlow: CGFloat = 8.0
 
     var body: some View {
         ZStack {
             Color.black.opacity(0.9)
                 .ignoresSafeArea()
 
-            VStack(spacing: 30) {
+            VStack(spacing: 25) {
                 Text(message)
                     .font(.system(size: 40, weight: .bold, design: .monospaced))
                     .foregroundColor(color)
                     .shadow(color: color, radius: 15)
-                    .scaleEffect(scale)
+                    .scaleEffect(titleScale)
                     .onAppear {
                         withAnimation(.easeInOut(duration: 0.5).repeatForever()) {
-                            scale = 1.1
+                            titleScale = 1.1
+                        }
+                        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                            buttonGlow = 20.0
                         }
                     }
 
-                Button(action: onRestart) {
-                    Text("PLAY AGAIN")
+                // Restart Level button - glowing pulsing green
+                Button(action: onRestartLevel) {
+                    Text("RESTART \(levelText)")
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
-                        .padding(.horizontal, 35)
+                        .padding(.horizontal, 30)
                         .padding(.vertical, 15)
                         .background(
-                            LinearGradient(
-                                colors: [GameColors.neonGreen, GameColors.neonCyan],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            GameColors.neonGreen
                         )
                         .cornerRadius(12)
-                        .shadow(color: GameColors.neonGreen, radius: 10)
+                        .shadow(color: GameColors.neonGreen, radius: buttonGlow)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(GameColors.neonGreen.opacity(0.8), lineWidth: 2)
+                        )
+                }
+
+                // Play Again (from Level 1) button
+                Button(action: onRestart) {
+                    Text("PLAY AGAIN")
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 12)
+                        .background(Color.white.opacity(0.15))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
                 }
             }
         }
@@ -1850,8 +1918,12 @@ struct ContentView: View {
                     WinOverlay(
                         message: game.winMessage,
                         color: game.winColor,
+                        levelText: "LEVEL \(game.currentLevel)",
                         onRestart: {
                             game.restartGame()
+                        },
+                        onRestartLevel: {
+                            game.restartCurrentLevel()
                         }
                     )
                 }
