@@ -1050,9 +1050,9 @@
         let level3Active = false;
         let hardcoreMode = false;
 
-        // Performance limits
-        const MAX_PARTICLES = 80;
-        const MAX_FIREBALLS = 50;
+        // Performance limits — lower on mobile
+        const MAX_PARTICLES = isMobile ? 30 : 80;
+        const MAX_FIREBALLS = isMobile ? 20 : 50;
 
         // Per-level win tracking with localStorage
         const winData = {
@@ -1398,7 +1398,8 @@
         }
 
         const stars = [];
-        for (let i = 0; i < 50; i++) {
+        const STAR_COUNT = isMobile ? 20 : 50;
+        for (let i = 0; i < STAR_COUNT; i++) {
             stars.push(new Star());
         }
 
@@ -1489,14 +1490,16 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                for (let si = 0; si < this.orbitingStars.length; si++) {
-                    const star = this.orbitingStars[si];
-                    const x = Math.cos(star.angle) * star.distance;
-                    const y = Math.sin(star.angle) * star.distance;
-                    const brightness = (Math.sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2;
-                    ctx.globalAlpha = brightness;
-                    ctx.fillStyle = star.color;
-                    ctx.fillRect(x - star.size, y - star.size, star.size * 2, star.size * 2);
+                if (!isMobile) {
+                    for (let si = 0; si < this.orbitingStars.length; si++) {
+                        const star = this.orbitingStars[si];
+                        const x = Math.cos(star.angle) * star.distance;
+                        const y = Math.sin(star.angle) * star.distance;
+                        const brightness = (Math.sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2;
+                        ctx.globalAlpha = brightness;
+                        ctx.fillStyle = star.color;
+                        ctx.fillRect(x - star.size, y - star.size, star.size * 2, star.size * 2);
+                    }
                 }
 
                 // Cheap glow: draw larger faded shape behind
@@ -1593,7 +1596,8 @@
         }
 
         // Create initial constellations
-        for (let i = 0; i < 10; i++) {
+        const SHAPE_COUNT = isMobile ? 6 : 10;
+        for (let i = 0; i < SHAPE_COUNT; i++) {
             constellationShapes.push(new ConstellationShape());
         }
 
@@ -1803,15 +1807,22 @@
                     const pulse = Math.sin(this.pulsePhase + fb.pulseOffset) * 0.3 + 1;
                     const currentSize = fb.size * pulse;
 
-                    ctx.fillStyle = '#ff6600';
-                    ctx.beginPath();
-                    ctx.arc(fb.offsetX, fb.offsetY, currentSize, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.fillStyle = '#ffff00';
-                    ctx.beginPath();
-                    ctx.arc(fb.offsetX, fb.offsetY, currentSize * 0.5, 0, Math.PI * 2);
-                    ctx.fill();
+                    if (isMobile) {
+                        ctx.fillStyle = '#ff6600';
+                        ctx.fillRect(fb.offsetX - currentSize, fb.offsetY - currentSize, currentSize * 2, currentSize * 2);
+                        ctx.fillStyle = '#ffff00';
+                        const half = currentSize * 0.5;
+                        ctx.fillRect(fb.offsetX - half, fb.offsetY - half, currentSize, currentSize);
+                    } else {
+                        ctx.fillStyle = '#ff6600';
+                        ctx.beginPath();
+                        ctx.arc(fb.offsetX, fb.offsetY, currentSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffff00';
+                        ctx.beginPath();
+                        ctx.arc(fb.offsetX, fb.offsetY, currentSize * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 });
 
                 ctx.fillStyle = '#ffffff';
@@ -1984,7 +1995,8 @@
                         showPointsPopup(nearestShape.x, nearestShape.y, 10);
                         playSnakeEatSound();
 
-                        for (let j = 0; j < 15; j++) {
+                        const snakeParticles = isMobile ? 5 : 15;
+                        for (let j = 0; j < snakeParticles; j++) {
                             particles.push(new Particle(nearestShape.x, nearestShape.y));
                         }
 
@@ -1997,7 +2009,7 @@
                         this.segments.pop();
                     }
 
-                    const maxSegmentsToUpdate = Math.min(30, this.segments.length);
+                    const maxSegmentsToUpdate = Math.min(isMobile ? 15 : 30, this.segments.length);
                     for (let i = 1; i < maxSegmentsToUpdate; i++) {
                         const prev = this.segments[i - 1];
                         const current = this.segments[i];
@@ -2024,7 +2036,7 @@
             }
 
             draw() {
-                const maxVis = Math.min(30, this.segments.length);
+                const maxVis = Math.min(isMobile ? 15 : 30, this.segments.length);
                 const s2 = this.segmentSize * 2;
 
                 // Pre-compute colors once
@@ -2035,17 +2047,19 @@
                     }
                 }
 
-                // Draw connecting lines as one path per color batch
-                ctx.lineWidth = this.segmentSize * 1.5;
-                for (let i = 0; i < maxVis - 1; i++) {
-                    const seg = this.segments[i];
-                    const next = this.segments[i + 1];
-                    ctx.globalAlpha = 1 - (i / maxVis) * 0.5;
-                    ctx.strokeStyle = this._colors[i];
-                    ctx.beginPath();
-                    ctx.moveTo(seg.x, seg.y);
-                    ctx.lineTo(next.x, next.y);
-                    ctx.stroke();
+                // Draw connecting lines (skip on mobile for performance)
+                if (!isMobile) {
+                    ctx.lineWidth = this.segmentSize * 1.5;
+                    for (let i = 0; i < maxVis - 1; i++) {
+                        const seg = this.segments[i];
+                        const next = this.segments[i + 1];
+                        ctx.globalAlpha = 1 - (i / maxVis) * 0.5;
+                        ctx.strokeStyle = this._colors[i];
+                        ctx.beginPath();
+                        ctx.moveTo(seg.x, seg.y);
+                        ctx.lineTo(next.x, next.y);
+                        ctx.stroke();
+                    }
                 }
 
                 // Draw segments as rects (much faster than arcs)
@@ -2213,8 +2227,9 @@
 
         function spawnTrapBoxes() {
             trapBoxes.length = 0;
-            const numBoxes = 8 + Math.floor(Math.random() * 8);
-            for (let i = 0; i < numBoxes && i < MAX_TRAP_BOXES; i++) {
+            const maxTraps = isMobile ? 6 : MAX_TRAP_BOXES;
+            const numBoxes = (isMobile ? 3 : 8) + Math.floor(Math.random() * (isMobile ? 4 : 8));
+            for (let i = 0; i < numBoxes && i < maxTraps; i++) {
                 trapBoxes.push(new TrapBox());
             }
         }
@@ -2372,7 +2387,8 @@
                 });
             }
 
-            for (let i = 0; i < 40; i++) {
+            const fbCount = isMobile ? 15 : 40;
+            for (let i = 0; i < fbCount; i++) {
                 fireballs.push(new Fireball(x, y));
             }
 
@@ -2386,7 +2402,8 @@
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < explosionRadius) {
-                    for (let j = 0; j < 15; j++) {
+                    const shapeFireballs = isMobile ? 5 : 15;
+                    for (let j = 0; j < shapeFireballs; j++) {
                         fireballs.push(new Fireball(shape.x, shape.y));
                     }
 
@@ -2483,7 +2500,8 @@
             let hitCount = 0;
             constellationShapes.forEach(shape => {
                 // Create lightning particle trail to each shape
-                for (let j = 0; j < 8; j++) {
+                const ltParticles = isMobile ? 3 : 8;
+                for (let j = 0; j < ltParticles; j++) {
                     const p = new Particle(shape.x + (Math.random() - 0.5) * 30, shape.y + (Math.random() - 0.5) * 30);
                     p.color = '#00ccff';
                     particles.push(p);
@@ -2498,7 +2516,8 @@
             }
 
             // Blue particle burst at click point
-            for (let i = 0; i < 20; i++) {
+            const blueCount = isMobile ? 8 : 20;
+            for (let i = 0; i < blueCount; i++) {
                 const p = new Particle(x, y);
                 p.color = Math.random() > 0.5 ? '#00ccff' : '#ffffff';
                 particles.push(p);
@@ -2686,7 +2705,7 @@
                         playTrapSound();
 
                         // Red particle burst
-                        for (let j = 0; j < 10; j++) {
+                        for (let j = 0, bc = isMobile ? 4 : 10; j < bc; j++) {
                             const p = new Particle(clickX, clickY);
                             p.color = '#ff0000';
                             particles.push(p);
@@ -2736,7 +2755,7 @@
 
                         playSparkleSound();
 
-                        for (let j = 0; j < 10; j++) {
+                        for (let j = 0, bc = isMobile ? 4 : 10; j < bc; j++) {
                             particles.push(new Particle(clickX, clickY));
                         }
 
@@ -2769,7 +2788,7 @@
                         showPointsPopup(touch.clientX, touch.clientY, -15, true);
                         playTrapSound();
 
-                        for (let j = 0; j < 10; j++) {
+                        for (let j = 0, bc = isMobile ? 4 : 10; j < bc; j++) {
                             const p = new Particle(touchX, touchY);
                             p.color = '#ff0000';
                             particles.push(p);
@@ -2813,7 +2832,7 @@
                         updateScore(10);
                         showPointsPopup(touch.clientX, touch.clientY, 10);
                         playSparkleSound();
-                        for (let j = 0; j < 10; j++) {
+                        for (let j = 0, bc = isMobile ? 4 : 10; j < bc; j++) {
                             particles.push(new Particle(touchX, touchY));
                         }
                         shape.reset();
