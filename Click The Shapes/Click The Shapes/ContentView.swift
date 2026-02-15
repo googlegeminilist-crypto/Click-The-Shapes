@@ -14,6 +14,7 @@ import StoreKit
 struct GameConstants {
     static let level1WinScore = 500
     static let level2WinScore = 1000
+    static let level3WinScore = 1500
     static let maxStars = 60
     static let maxParticles = 80
     static let maxFireballs = 50
@@ -21,6 +22,11 @@ struct GameConstants {
     static let powerUpInterval: TimeInterval = 5.0
     static let trapBoxDuration: TimeInterval = 1.2  // How long a shape stays as a trap box
     static let trapBoxInterval: TimeInterval = 2.0  // How often shapes turn into trap boxes
+    static let level3ShapeSpeed: CGFloat = 1.8      // Faster movement in Level 3
+    static let level3ShrinkRate: CGFloat = 0.15      // How fast shapes shrink per frame
+    static let level3MinSize: CGFloat = 25           // Smallest a shape can shrink to
+    static let level3MaxSize: CGFloat = 60           // Normal size shapes reset to
+    static let smallShapeThreshold: CGFloat = 35     // Below this = small = 5 points
 }
 
 // MARK: - Shape Types
@@ -120,6 +126,8 @@ class ConstellationShape: Identifiable {
     var orbitingStars: [OrbitingStar] = []
     var isTrapBox: Bool = false
     var trapBoxTimer: Date?
+    var isShrinking: Bool = false
+    var baseSize: CGFloat = 60  // The current actual size (changes in Level 3)
 
     init(bounds: CGSize) {
         x = CGFloat.random(in: 80...(bounds.width - 80))
@@ -142,16 +150,31 @@ class ConstellationShape: Identifiable {
         }
     }
 
-    func reset(bounds: CGSize) {
+    func reset(bounds: CGSize, level: Int = 1) {
         x = CGFloat.random(in: 80...(bounds.width - 80))
         y = CGFloat.random(in: 150...(bounds.height - 150))
-        vx = CGFloat.random(in: -0.4...0.4)
-        vy = CGFloat.random(in: -0.4...0.4)
         color = GameColors.shapeColors.randomElement()!
         shapeType = ShapeType.allCases.randomElement()!
+
+        if level >= 3 {
+            // Level 3: faster movement, reset to full size and start shrinking
+            let speed = GameConstants.level3ShapeSpeed
+            vx = CGFloat.random(in: -speed...speed)
+            vy = CGFloat.random(in: -speed...speed)
+            // Make sure they don't move too slowly
+            if abs(vx) < 0.5 { vx = vx < 0 ? -0.5 : 0.5 }
+            if abs(vy) < 0.5 { vy = vy < 0 ? -0.5 : 0.5 }
+            baseSize = GameConstants.level3MaxSize
+            isShrinking = true
+        } else {
+            vx = CGFloat.random(in: -0.4...0.4)
+            vy = CGFloat.random(in: -0.4...0.4)
+            baseSize = 60
+            isShrinking = false
+        }
     }
 
-    func update(bounds: CGSize) {
+    func update(bounds: CGSize, level: Int = 1) {
         x += vx
         y += vy
 
@@ -160,6 +183,15 @@ class ConstellationShape: Identifiable {
 
         pulsePhase += 0.05
 
+        // Level 3: shapes shrink over time
+        if level >= 3 && isShrinking && !isTrapBox {
+            baseSize -= GameConstants.level3ShrinkRate
+            if baseSize <= GameConstants.level3MinSize {
+                baseSize = GameConstants.level3MinSize
+                isShrinking = false
+            }
+        }
+
         for i in orbitingStars.indices {
             orbitingStars[i].update()
         }
@@ -167,7 +199,11 @@ class ConstellationShape: Identifiable {
 
     func isClicked(at point: CGPoint) -> Bool {
         let distance = hypot(point.x - x, point.y - y)
-        return distance < size
+        return distance < baseSize
+    }
+
+    var isSmall: Bool {
+        baseSize <= GameConstants.smallShapeThreshold
     }
 }
 
@@ -670,7 +706,11 @@ class GameViewModel: ObservableObject {
     private var trapBoxTimer: Timer?
 
     var winningScore: Int {
-        currentLevel == 1 ? GameConstants.level1WinScore : GameConstants.level2WinScore
+        switch currentLevel {
+        case 1: return GameConstants.level1WinScore
+        case 2: return GameConstants.level2WinScore
+        default: return GameConstants.level3WinScore
+        }
     }
 
     func setupGame(bounds: CGSize) {
@@ -724,7 +764,7 @@ class GameViewModel: ObservableObject {
 
         // Update shapes
         for shape in shapes {
-            shape.update(bounds: bounds)
+            shape.update(bounds: bounds, level: currentLevel)
         }
 
         // Update snake (only if game started)
@@ -813,8 +853,10 @@ class GameViewModel: ObservableObject {
                     shape.isTrapBox = false
                     shape.trapBoxTimer = nil
                 } else {
-                    addScore(10)
-                    showPoints(at: point, points: 10)
+                    // Level 3: small shapes give 5 points, normal give 10
+                    let points = (currentLevel >= 3 && shape.isSmall) ? 5 : 10
+                    addScore(points)
+                    showPoints(at: point, points: points)
                     if StoreManager.shared.soundPackPurchased {
                         SoundManager.shared.playShapeTap()
                     } else {
@@ -826,7 +868,7 @@ class GameViewModel: ObservableObject {
                         particles.append(Particle(x: point.x, y: point.y))
                     }
 
-                    shape.reset(bounds: bounds)
+                    shape.reset(bounds: bounds, level: currentLevel)
                 }
                 break
             }
@@ -843,7 +885,7 @@ class GameViewModel: ObservableObject {
             particles.append(Particle(x: shape.x, y: shape.y))
         }
 
-        shape.reset(bounds: bounds)
+        shape.reset(bounds: bounds, level: currentLevel)
 
         if snakeScore >= winningScore {
             endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
@@ -875,7 +917,7 @@ class GameViewModel: ObservableObject {
                 }
 
                 destroyedCount += 1
-                shape.reset(bounds: bounds)
+                shape.reset(bounds: bounds, level: currentLevel)
             }
         }
 
@@ -897,6 +939,8 @@ class GameViewModel: ObservableObject {
         if currentLevel == 1 && score >= GameConstants.level1WinScore {
             transitionToLevel2()
         } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
+            transitionToLevel3()
+        } else if currentLevel == 3 && score >= GameConstants.level3WinScore {
             endGame(message: "YOU WIN!", color: GameColors.neonGreen, snakeWon: false)
         }
     }
@@ -920,6 +964,34 @@ class GameViewModel: ObservableObject {
         startTrapBoxTimer()
 
         // Hide transition after 2 seconds — game resumes on first tap
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.showLevelTransition = false
+        }
+    }
+
+    func transitionToLevel3() {
+        currentLevel = 3
+        showLevelTransition = true
+        gameStarted = false  // Snake waits until user taps a shape
+
+        // Reset snake score
+        snakeScore = 0
+
+        // Reset snake (faster in Level 3)
+        snake = Snake(bounds: bounds)
+        snake?.speed = 4.0
+
+        // Reset all shapes with Level 3 properties (fast + shrinking)
+        for shape in shapes {
+            shape.reset(bounds: bounds, level: 3)
+            shape.isTrapBox = false
+            shape.trapBoxTimer = nil
+        }
+
+        // Keep trap boxes active in Level 3
+        startTrapBoxTimer()
+
+        // Hide transition after 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.showLevelTransition = false
         }
@@ -981,7 +1053,7 @@ class GameViewModel: ObservableObject {
         stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
 
         for shape in shapes {
-            shape.reset(bounds: bounds)
+            shape.reset(bounds: bounds, level: 1)
             shape.isTrapBox = false
             shape.trapBoxTimer = nil
         }
@@ -1031,7 +1103,7 @@ struct ShapeView: View {
 
     var body: some View {
         let pulse = sin(shape.pulsePhase) * 0.2 + 1
-        let currentSize = shape.size * pulse
+        let currentSize = shape.baseSize * pulse
 
         ZStack {
             if shape.isTrapBox {
@@ -1520,14 +1592,14 @@ struct ContentView: View {
                     // Level indicator
                     Text("LEVEL \(game.currentLevel)")
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(game.currentLevel == 1 ? GameColors.neonCyan : .red)
+                        .foregroundColor(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
                         .background(Color.black.opacity(0.7))
                         .cornerRadius(8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(game.currentLevel == 1 ? GameColors.neonCyan : .red, lineWidth: 1)
+                                .stroke(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange, lineWidth: 1)
                         )
                         .padding(.top, 50)
 
@@ -1632,19 +1704,30 @@ struct ContentView: View {
                             .ignoresSafeArea()
 
                         VStack(spacing: 20) {
-                            Text("LEVEL 2")
+                            Text("LEVEL \(game.currentLevel)")
                                 .font(.system(size: 48, weight: .bold, design: .monospaced))
-                                .foregroundColor(.red)
-                                .shadow(color: .red, radius: 15)
+                                .foregroundColor(game.currentLevel == 2 ? .red : GameColors.neonOrange)
+                                .shadow(color: game.currentLevel == 2 ? .red : GameColors.neonOrange, radius: 15)
 
-                            Text("Watch out for TRAP BOXES!")
-                                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white)
+                            if game.currentLevel == 2 {
+                                Text("Watch out for TRAP BOXES!")
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
 
-                            Text("Shapes will turn into red boxes\nClick them and lose 10 points!")
-                                .font(.system(size: 14, design: .monospaced))
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
+                                Text("Shapes will turn into red boxes\nClick them and lose 10 points!")
+                                    .font(.system(size: 14, design: .monospaced))
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            } else if game.currentLevel == 3 {
+                                Text("Shapes are SHRINKING!")
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
+
+                                Text("Shapes move fast and shrink!\nSmall shapes = only 5 points\nTrap boxes are still active!")
+                                    .font(.system(size: 14, design: .monospaced))
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            }
                         }
                     }
                     .transition(.opacity)
