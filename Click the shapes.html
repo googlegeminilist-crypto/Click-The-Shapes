@@ -107,6 +107,52 @@
             color: #ff00ff;
         }
 
+        .level-indicator {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 25px;
+            border-radius: 10px;
+            border: 2px solid #ffff00;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px #ffff00;
+            color: #ffff00;
+        }
+
+        .phase-indicator {
+            position: absolute;
+            top: 155px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px currentColor;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .phase-shapes {
+            border: 2px solid #00ff88;
+            color: #00ff88;
+        }
+
+        .phase-traps {
+            border: 2px solid #ff0000;
+            color: #ff0000;
+            animation: dangerPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes dangerPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         .win-record {
             position: absolute;
             bottom: 20px;
@@ -247,6 +293,11 @@
             z-index: 100;
         }
 
+        .points-popup.negative {
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000;
+        }
+
         @keyframes floatUp {
             from {
                 opacity: 1;
@@ -279,6 +330,14 @@
             animation: pulse 1s ease-in-out infinite;
         }
 
+        .level-up-message {
+            text-align: center;
+            font-size: 2em;
+            color: #ffff00;
+            text-shadow: 0 0 20px #ffff00;
+            margin-top: 20px;
+        }
+
         .restart-button {
             margin-top: 30px;
             padding: 20px 50px;
@@ -304,6 +363,58 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+
+        .level-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1500;
+            flex-direction: column;
+        }
+
+        .level-transition-text {
+            font-size: 5em;
+            color: #ffff00;
+            text-shadow: 0 0 40px #ffff00, 0 0 80px #ff8800;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .level-transition-sub {
+            font-size: 1.5em;
+            color: #ff8800;
+            text-shadow: 0 0 15px #ff8800;
+            margin-top: 20px;
+            max-width: 500px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .level-transition-button {
+            margin-top: 40px;
+            padding: 20px 50px;
+            font-size: 1.5em;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #ffff00, #ff8800);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .level-transition-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 40px rgba(255, 255, 0, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -312,6 +423,10 @@
         <div class="subtitle">Catch the glowing constellation shapes!</div>
         <div class="subtitle" style="color: #ff6600; margin-top: 5px;">🔥 Hit the fireballs for bonus points! 🔥</div>
     </div>
+
+    <div class="level-indicator" id="levelIndicator">LEVEL 1</div>
+
+    <div class="phase-indicator" id="phaseIndicator">SHAPES!</div>
 
     <div class="score">
         You: <span id="scoreValue">0</span>
@@ -324,8 +439,20 @@
     <div class="win-overlay" id="winOverlay">
         <div>
             <div class="win-message" id="winMessage"></div>
+            <div class="level-up-message" id="levelUpMessage"></div>
             <button type="button" class="restart-button" onclick="location.reload()">Play Again</button>
         </div>
+    </div>
+
+    <div class="level-transition" id="levelTransition">
+        <div class="level-transition-text">LEVEL 2!</div>
+        <div class="level-transition-sub">
+            Shapes now appear and disappear!<br>
+            When shapes vanish, TRAP BOXES appear.<br>
+            Don't click the red boxes or you lose points!<br>
+            Snake is faster now!
+        </div>
+        <button type="button" class="level-transition-button" onclick="startLevel2()">LET'S GO!</button>
     </div>
 
     <div class="win-record">
@@ -357,12 +484,15 @@
                 </div>
                 <div class="intro-rule">
                     <span class="intro-rule-icon">🏆</span>
-                    First to 500 points wins!
+                    First to 500 points wins Level 1 — then Level 2 begins!
                 </div>
             </div>
             <div class="intro-buttons">
                 <button type="button" class="intro-button start-button" onclick="startGame()">Start Game</button>
                 <button type="button" class="intro-button skip-button" onclick="startGame()">Skip</button>
+            </div>
+            <div id="debugButtons" style="display:none; margin-top: 20px;">
+                <button type="button" class="intro-button skip-button" style="border-color: #ff8800; color: #ff8800;" onclick="skipToLevel2()">Skip to Level 2 (TEST)</button>
             </div>
         </div>
     </div>
@@ -377,12 +507,12 @@
             function(callback) { return window.setTimeout(callback, 1000 / 60); };
 
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Performance: disable alpha
+        const ctx = canvas.getContext('2d', { alpha: false });
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Cache DOM references for performance
+        // Cache DOM references
         const scoreValueEl = document.getElementById('scoreValue');
         const snakeScoreValueEl = document.getElementById('snakeScoreValue');
         const userWinsEl = document.getElementById('userWins');
@@ -390,13 +520,27 @@
         const introOverlayEl = document.getElementById('introOverlay');
         const winOverlayEl = document.getElementById('winOverlay');
         const winMessageEl = document.getElementById('winMessage');
+        const levelUpMessageEl = document.getElementById('levelUpMessage');
+        const levelIndicatorEl = document.getElementById('levelIndicator');
+        const phaseIndicatorEl = document.getElementById('phaseIndicator');
+        const levelTransitionEl = document.getElementById('levelTransition');
 
         let score = 0;
         let snakeScore = 0;
         let gameOver = false;
         let gameStarted = false;
-        const WINNING_SCORE = 500;
+        let currentLevel = 1;
+        let WINNING_SCORE = 500;
         const constellationShapes = [];
+
+        // Level 2 state
+        let shapesVisible = true;
+        let phaseTimer = 0;
+        const SHAPES_VISIBLE_DURATION = 180; // 3 seconds at 60fps
+        const SHAPES_HIDDEN_DURATION = 120;  // 2 seconds at 60fps
+        const trapBoxes = [];
+        const MAX_TRAP_BOXES = 15;
+        let level2Active = false;
 
         // Performance limits
         const MAX_PARTICLES = 150;
@@ -406,14 +550,26 @@
         let userWins = parseInt(localStorage.getItem('userWins') || '0');
         let snakeWins = parseInt(localStorage.getItem('snakeWins') || '0');
 
-        // Display current win counts
         userWinsEl.textContent = userWins;
         snakeWinsEl.textContent = snakeWins;
 
-        // Start game function - hide intro overlay
+        // Show debug buttons only when running locally
+        if (window.location.protocol === 'file:') {
+            document.getElementById('debugButtons').style.display = 'block';
+        }
+
+        // Start game function
         function startGame() {
             introOverlayEl.style.display = 'none';
             playBackgroundMusic();
+        }
+
+        function skipToLevel2() {
+            introOverlayEl.style.display = 'none';
+            gameStarted = true;
+            playBackgroundMusic();
+            // Go directly into level 2 without needing the transition animation loop
+            levelTransitionEl.style.display = 'flex';
         }
 
         // Audio context for sound effects
@@ -430,10 +586,8 @@
             });
         }
 
-        // Play music on any user interaction (browsers require this)
         function enableMusic() {
             playBackgroundMusic();
-            // Remove listeners once music starts
             document.removeEventListener('click', enableMusic);
             document.removeEventListener('keydown', enableMusic);
             document.removeEventListener('touchstart', enableMusic);
@@ -445,8 +599,6 @@
 
         function playSparkleSound() {
             const now = audioContext.currentTime;
-
-            // Create multiple oscillators for a sparkling chime effect
             const frequencies = [800, 1200, 1600, 2000];
 
             frequencies.forEach((freq, index) => {
@@ -456,11 +608,9 @@
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
 
-                // Use sine wave for a bell-like tone
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(freq, now);
 
-                // Create envelope for sparkle effect
                 gainNode.gain.setValueAtTime(0, now);
                 gainNode.gain.linearRampToValueAtTime(0.15, now + 0.01);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + (index * 0.05));
@@ -473,7 +623,6 @@
         function playSnakeEatSound() {
             const now = audioContext.currentTime;
 
-            // Create a chomping/eating sound with lower frequencies
             const oscillator1 = audioContext.createOscillator();
             const oscillator2 = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -482,18 +631,15 @@
             oscillator2.connect(gainNode);
             gainNode.connect(audioContext.destination);
 
-            // Use sawtooth and square waves for a more aggressive sound
             oscillator1.type = 'sawtooth';
             oscillator2.type = 'square';
 
-            // Lower frequencies for snake eating sound
             oscillator1.frequency.setValueAtTime(120, now);
             oscillator1.frequency.linearRampToValueAtTime(80, now + 0.1);
 
             oscillator2.frequency.setValueAtTime(240, now);
             oscillator2.frequency.linearRampToValueAtTime(160, now + 0.1);
 
-            // Quick attack and decay for chomp effect
             gainNode.gain.setValueAtTime(0, now);
             gainNode.gain.linearRampToValueAtTime(0.2, now + 0.02);
             gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
@@ -502,6 +648,26 @@
             oscillator1.stop(now + 0.15);
             oscillator2.start(now);
             oscillator2.stop(now + 0.15);
+        }
+
+        function playTrapSound() {
+            const now = audioContext.currentTime;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(200, now);
+            oscillator.frequency.linearRampToValueAtTime(50, now + 0.3);
+
+            gainNode.gain.setValueAtTime(0.25, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.3);
         }
 
         class Star {
@@ -537,7 +703,7 @@
         }
 
         const stars = [];
-        for (let i = 0; i < 100; i++) { // Reduced star count for performance
+        for (let i = 0; i < 100; i++) {
             stars.push(new Star());
         }
 
@@ -549,14 +715,13 @@
             reset() {
                 this.x = Math.random() * (canvas.width - 200) + 100;
                 this.y = Math.random() * (canvas.height - 300) + 150;
-                this.size = 80;
+                this.size = level2Active ? 45 : 80;
                 this.vx = (Math.random() - 0.5) * 0.5;
                 this.vy = (Math.random() - 0.5) * 0.5;
                 this.color = ['#00ff88', '#ff00ff', '#00ffff', '#ffff00', '#ff0088'][Math.floor(Math.random() * 5)];
                 this.shape = ['star', 'circle', 'triangle', 'square', 'pentagon'][Math.floor(Math.random() * 5)];
                 this.pulsePhase = Math.random() * Math.PI * 2;
 
-                // Create orbiting stars (reduced count for performance)
                 this.orbitingStars = [];
                 const numStars = 4;
                 for (let i = 0; i < numStars; i++) {
@@ -581,7 +746,6 @@
 
                 this.pulsePhase += 0.05;
 
-                // Update orbiting stars
                 this.orbitingStars.forEach(star => {
                     star.angle += star.speed;
                     star.twinklePhase += star.twinkleSpeed;
@@ -595,7 +759,6 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                // Draw orbiting stars (reduced shadow for performance)
                 this.orbitingStars.forEach(star => {
                     const x = Math.cos(star.angle) * star.distance;
                     const y = Math.sin(star.angle) * star.distance;
@@ -608,7 +771,6 @@
                     ctx.fill();
                 });
 
-                // Draw main shape (reduced shadow for performance)
                 ctx.globalAlpha = 1;
                 ctx.strokeStyle = this.color;
                 ctx.fillStyle = this.color;
@@ -697,7 +859,71 @@
             constellationShapes.push(new ConstellationShape());
         }
 
-        // Particle system for cursor trail
+        // Trap Box class for Level 2
+        class TrapBox {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 200) + 100;
+                this.y = Math.random() * (canvas.height - 300) + 150;
+                this.width = 25 + Math.random() * 15;
+                this.height = 25 + Math.random() * 15;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.flickerPhase = Math.random() * Math.PI * 2;
+                this.active = true;
+            }
+
+            update() {
+                this.pulsePhase += 0.08;
+                this.flickerPhase += 0.15;
+            }
+
+            draw() {
+                if (!this.active) return;
+
+                const pulse = Math.sin(this.pulsePhase) * 0.15 + 1;
+                const flicker = (Math.sin(this.flickerPhase) + 1) / 2 * 0.4 + 0.6;
+                const w = this.width * pulse;
+                const h = this.height * pulse;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.globalAlpha = flicker;
+
+                // Red glow
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#ff0000';
+
+                // Outer box
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+                // Inner fill
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                ctx.fillRect(-w / 2, -h / 2, w, h);
+
+                // X mark inside
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-w / 4, -h / 4);
+                ctx.lineTo(w / 4, h / 4);
+                ctx.moveTo(w / 4, -h / 4);
+                ctx.lineTo(-w / 4, h / 4);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            isClicked(mouseX, mouseY) {
+                if (!this.active) return false;
+                const hw = this.width / 2 + 5;
+                const hh = this.height / 2 + 5;
+                return mouseX > this.x - hw && mouseX < this.x + hw &&
+                       mouseY > this.y - hh && mouseY < this.y + hh;
+            }
+        }
+
+        // Particle system
         class Particle {
             constructor(x, y) {
                 this.x = x;
@@ -757,7 +983,7 @@
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vy += this.gravity; // Add gravity to fireballs
+                this.vy += this.gravity;
                 this.life -= this.decay;
                 this.vx *= 0.98;
                 this.vy *= 0.98;
@@ -770,13 +996,11 @@
 
                 ctx.globalAlpha = this.life;
 
-                // Simplified fireball (no gradients for performance)
                 ctx.fillStyle = '#ff6600';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Inner core
                 ctx.fillStyle = '#ffff00';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, currentSize * 0.5, 0, Math.PI * 2);
@@ -798,7 +1022,6 @@
                 this.active = true;
                 this.pulsePhase = 0;
 
-                // Create multiple fireballs in a cluster
                 this.fireballs = [];
                 for (let i = 0; i < 5; i++) {
                     this.fireballs.push({
@@ -816,7 +1039,6 @@
                 this.y += this.fallSpeed;
                 this.pulsePhase += 0.1;
 
-                // Remove if off screen
                 if (this.y > canvas.height + 100) {
                     this.active = false;
                 }
@@ -828,25 +1050,21 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                // Draw each fireball in the cluster (simplified for performance)
                 this.fireballs.forEach(fb => {
                     const pulse = Math.sin(this.pulsePhase + fb.pulseOffset) * 0.3 + 1;
                     const currentSize = fb.size * pulse;
 
-                    // Outer glow
                     ctx.fillStyle = '#ff6600';
                     ctx.beginPath();
                     ctx.arc(fb.offsetX, fb.offsetY, currentSize, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Inner core
                     ctx.fillStyle = '#ffff00';
                     ctx.beginPath();
                     ctx.arc(fb.offsetX, fb.offsetY, currentSize * 0.5, 0, Math.PI * 2);
                     ctx.fill();
                 });
 
-                // Draw "click me for points" text above fireballs
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
@@ -856,7 +1074,6 @@
                 ctx.strokeText('click me for points', 0, -60);
                 ctx.fillText('click me for points', 0, -60);
 
-                // Draw "2X" text in the center
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 24px Arial';
                 ctx.strokeStyle = '#ff0000';
@@ -876,18 +1093,17 @@
 
         let powerUp = null;
         let powerUpSpawnTimer = 0;
-        const POWERUP_SPAWN_INTERVAL = 300; // frames (~5 seconds at 60fps)
+        const POWERUP_SPAWN_INTERVAL = 300;
 
-        // AI Snake that hunts constellation shapes
+        // AI Snake
         class Snake {
             constructor() {
                 this.segments = [];
                 this.segmentSize = 8;
-                this.speed = 3.5; // Increased speed for better performance
+                this.speed = 3.5;
                 this.targetShape = null;
                 this.targetLength = 5;
 
-                // Initialize snake with 5 segments
                 const startX = canvas.width / 2;
                 const startY = canvas.height / 2;
                 for (let i = 0; i < 5; i++) {
@@ -899,7 +1115,9 @@
             }
 
             update() {
-                // Find nearest constellation shape
+                // In level 2, snake doesn't move during trap phase
+                if (level2Active && !shapesVisible) return;
+
                 let nearestShape = null;
                 let nearestDist = Infinity;
 
@@ -912,38 +1130,30 @@
                 });
 
                 if (nearestShape) {
-                    // Move head towards target
                     const angle = Math.atan2(nearestShape.y - this.segments[0].y, nearestShape.x - this.segments[0].x);
                     const newX = this.segments[0].x + Math.cos(angle) * this.speed;
                     const newY = this.segments[0].y + Math.sin(angle) * this.speed;
 
-                    // Check if snake eats the shape
                     const distToShape = Math.hypot(nearestShape.x - newX, nearestShape.y - newY);
                     if (distToShape < this.segmentSize + nearestShape.size / 2) {
-                        // Snake eats the shape
                         this.grow();
                         updateSnakeScore(10);
                         showPointsPopup(nearestShape.x, nearestShape.y, 10);
                         playSnakeEatSound();
 
-                        // Create particles (reduced for performance)
                         for (let j = 0; j < 15; j++) {
                             particles.push(new Particle(nearestShape.x, nearestShape.y));
                         }
 
-                        // Reset the shape
                         nearestShape.reset();
                     }
 
-                    // Add new head position
                     this.segments.unshift({ x: newX, y: newY });
 
-                    // Remove tail segment to maintain length
                     if (this.segments.length > this.targetLength || !this.targetLength) {
                         this.segments.pop();
                     }
 
-                    // Maintain segment spacing only for front segments (optimization)
                     const maxSegmentsToUpdate = Math.min(30, this.segments.length);
                     for (let i = 1; i < maxSegmentsToUpdate; i++) {
                         const prev = this.segments[i - 1];
@@ -953,7 +1163,6 @@
                         const dist = Math.hypot(dx, dy);
 
                         if (dist > this.segmentSize * 2) {
-                            // Move segment closer to maintain spacing
                             const ratio = (this.segmentSize * 2) / dist;
                             current.x = prev.x - dx * ratio;
                             current.y = prev.y - dy * ratio;
@@ -961,7 +1170,6 @@
                     }
                 }
 
-                // Wrap around screen edges
                 if (this.segments[0].x < 0) this.segments[0].x = canvas.width;
                 if (this.segments[0].x > canvas.width) this.segments[0].x = 0;
                 if (this.segments[0].y < 0) this.segments[0].y = canvas.height;
@@ -969,18 +1177,14 @@
             }
 
             grow() {
-                // Increase target length - segments will grow naturally
                 this.targetLength += 3;
             }
 
             draw() {
-                // Draw snake body (optimized for performance - no shadows)
                 ctx.save();
 
-                // Limit visible segments for performance
                 const maxVisibleSegments = Math.min(60, this.segments.length);
 
-                // Draw segments without expensive shadow effects
                 for (let i = 0; i < maxVisibleSegments; i++) {
                     const segment = this.segments[i];
                     const hue = (i * 10) % 360;
@@ -993,7 +1197,6 @@
                     ctx.arc(segment.x, segment.y, this.segmentSize, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Draw connecting line to next segment (reduced range)
                     if (i < maxVisibleSegments - 1 && i < 40) {
                         const nextSegment = this.segments[i + 1];
                         ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
@@ -1005,12 +1208,10 @@
                     }
                 }
 
-                // Draw snake head with eyes
                 const head = this.segments[0];
                 ctx.globalAlpha = 1;
                 ctx.fillStyle = '#ffffff';
 
-                // Eyes
                 const eyeOffset = 3;
                 ctx.beginPath();
                 ctx.arc(head.x - eyeOffset, head.y - eyeOffset, 2, 0, Math.PI * 2);
@@ -1023,10 +1224,10 @@
 
         const snake = new Snake();
 
-        function showPointsPopup(x, y, points) {
+        function showPointsPopup(x, y, points, negative) {
             const popup = document.createElement('div');
-            popup.className = 'points-popup';
-            popup.textContent = `+${points}`;
+            popup.className = 'points-popup' + (negative ? ' negative' : '');
+            popup.textContent = negative ? `${points}` : `+${points}`;
             popup.style.left = x + 'px';
             popup.style.top = y + 'px';
             document.body.appendChild(popup);
@@ -1039,9 +1240,15 @@
         function updateScore(points) {
             if (gameOver) return;
             score += points;
+            if (score < 0) score = 0;
             scoreValueEl.textContent = score;
             if (score >= WINNING_SCORE) {
-                endGame('YOU WIN!', '#00ff88');
+                if (currentLevel === 1) {
+                    // Level 1 complete - transition to Level 2
+                    showLevelTransition();
+                } else {
+                    endGame('YOU WIN!', '#00ff88');
+                }
             }
         }
 
@@ -1054,20 +1261,84 @@
             }
         }
 
+        function showLevelTransition() {
+            gameOver = true; // Pause game temporarily
+            levelTransitionEl.style.display = 'flex';
+        }
+
+        function startLevel2() {
+            levelTransitionEl.style.display = 'none';
+            currentLevel = 2;
+            level2Active = true;
+            gameOver = false;
+
+            // Reset scores for level 2
+            score = 0;
+            snakeScore = 0;
+            scoreValueEl.textContent = '0';
+            snakeScoreValueEl.textContent = '0';
+            WINNING_SCORE = 500;
+
+            // Speed up the snake
+            snake.speed = 4.5;
+
+            // Make shapes smaller for level 2
+            constellationShapes.forEach(shape => {
+                shape.size = 45;
+                shape.orbitingStars.forEach(star => {
+                    star.distance = 45 + 20 + Math.random() * 15;
+                });
+            });
+
+            // Update UI
+            levelIndicatorEl.textContent = 'LEVEL 2';
+            levelIndicatorEl.style.borderColor = '#ff8800';
+            levelIndicatorEl.style.color = '#ff8800';
+            phaseIndicatorEl.style.display = 'block';
+
+            // Start phase cycling
+            shapesVisible = true;
+            phaseTimer = 0;
+            updatePhaseIndicator();
+
+            // Resume animation
+            animate();
+        }
+
+        function updatePhaseIndicator() {
+            if (shapesVisible) {
+                phaseIndicatorEl.textContent = 'SHAPES!';
+                phaseIndicatorEl.className = 'phase-indicator phase-shapes';
+            } else {
+                phaseIndicatorEl.textContent = 'TRAPS! DON\'T CLICK!';
+                phaseIndicatorEl.className = 'phase-indicator phase-traps';
+            }
+        }
+
+        function spawnTrapBoxes() {
+            trapBoxes.length = 0;
+            const numBoxes = 8 + Math.floor(Math.random() * 8);
+            for (let i = 0; i < numBoxes && i < MAX_TRAP_BOXES; i++) {
+                trapBoxes.push(new TrapBox());
+            }
+        }
+
+        function clearTrapBoxes() {
+            trapBoxes.length = 0;
+        }
+
         function endGame(message, color) {
             gameOver = true;
 
-            // Update win counts and track analytics
             if (message === 'YOU WIN!') {
                 userWins++;
                 localStorage.setItem('userWins', userWins.toString());
                 userWinsEl.textContent = userWins;
 
-                // Track user win
                 if (typeof gtag !== 'undefined') {
                     gtag('event', 'game_win', {
                         'event_category': 'gameplay',
-                        'event_label': 'user_victory',
+                        'event_label': 'user_victory_level' + currentLevel,
                         'value': score
                     });
                 }
@@ -1076,11 +1347,10 @@
                 localStorage.setItem('snakeWins', snakeWins.toString());
                 snakeWinsEl.textContent = snakeWins;
 
-                // Track snake win
                 if (typeof gtag !== 'undefined') {
                     gtag('event', 'game_loss', {
                         'event_category': 'gameplay',
-                        'event_label': 'snake_victory',
+                        'event_label': 'snake_victory_level' + currentLevel,
                         'value': snakeScore
                     });
                 }
@@ -1088,11 +1358,11 @@
 
             winMessageEl.textContent = message;
             winMessageEl.style.color = color;
+            levelUpMessageEl.textContent = currentLevel === 2 ? 'Level 2 Complete!' : '';
             winOverlayEl.style.display = 'flex';
         }
 
         function explodePowerUp(x, y) {
-            // Track power-up usage
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'powerup_used', {
                     'event_category': 'gameplay',
@@ -1100,12 +1370,10 @@
                 });
             }
 
-            // Create fireball explosion effect (reduced for performance)
             for (let i = 0; i < 40; i++) {
                 fireballs.push(new Fireball(x, y));
             }
 
-            // Find and destroy nearby shapes
             let destroyedCount = 0;
             const explosionRadius = 300;
 
@@ -1113,36 +1381,30 @@
                 const shape = constellationShapes[i];
                 const dx = shape.x - x;
                 const dy = shape.y - y;
-                const dist = Math.sqrt(dx * dx + dy * dy); // Faster than hypot in some browsers
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < explosionRadius) {
-                    // Create fireball explosion at shape location (reduced)
                     for (let j = 0; j < 15; j++) {
                         fireballs.push(new Fireball(shape.x, shape.y));
                     }
 
-                    // Award DOUBLE points for destroyed shape (2x = 20 points)
                     updateScore(20);
                     destroyedCount++;
 
-                    // Reset shape to new location
                     shape.reset();
                 }
             }
 
-            // Show total points earned (double points) - only if shapes were destroyed
             if (destroyedCount > 0) {
                 showPointsPopup(x, y, destroyedCount * 20);
             }
 
-            // Play explosion sound
             playExplosionSound();
         }
 
         function playExplosionSound() {
             const now = audioContext.currentTime;
 
-            // Create explosive bass sound
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
 
@@ -1159,7 +1421,6 @@
             oscillator.start(now);
             oscillator.stop(now + 0.5);
 
-            // Add white noise for explosion effect
             const bufferSize = audioContext.sampleRate * 0.5;
             const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
             const data = buffer.getChannelData(0);
@@ -1182,14 +1443,36 @@
         function animate() {
             if (gameOver) return;
 
-            // Spawn power-up occasionally
-            powerUpSpawnTimer++;
-            if (powerUpSpawnTimer >= POWERUP_SPAWN_INTERVAL && (!powerUp || !powerUp.active)) {
-                powerUp = new PowerUp();
-                powerUpSpawnTimer = 0;
+            // Level 2 phase cycling
+            if (level2Active) {
+                phaseTimer++;
+                if (shapesVisible && phaseTimer >= SHAPES_VISIBLE_DURATION) {
+                    // Switch to trap phase
+                    shapesVisible = false;
+                    phaseTimer = 0;
+                    spawnTrapBoxes();
+                    updatePhaseIndicator();
+                } else if (!shapesVisible && phaseTimer >= SHAPES_HIDDEN_DURATION) {
+                    // Switch back to shapes phase
+                    shapesVisible = true;
+                    phaseTimer = 0;
+                    clearTrapBoxes();
+                    // Randomize shape positions when they reappear
+                    constellationShapes.forEach(shape => shape.reset());
+                    updatePhaseIndicator();
+                }
             }
 
-            // Clear with dark background (better performance than rgba)
+            // Spawn power-up occasionally (only during shapes phase)
+            if (!level2Active || shapesVisible) {
+                powerUpSpawnTimer++;
+                if (powerUpSpawnTimer >= POWERUP_SPAWN_INTERVAL && (!powerUp || !powerUp.active)) {
+                    powerUp = new PowerUp();
+                    powerUpSpawnTimer = 0;
+                }
+            }
+
+            // Clear
             ctx.fillStyle = '#0a0015';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1198,24 +1481,35 @@
                 star.draw();
             });
 
-            constellationShapes.forEach(shape => {
-                shape.update();
-                shape.draw();
-            });
+            // Draw shapes only if visible (or if not level 2)
+            if (!level2Active || shapesVisible) {
+                constellationShapes.forEach(shape => {
+                    shape.update();
+                    shape.draw();
+                });
+            }
 
-            // Update and draw AI snake (only if game has started)
+            // Draw trap boxes during hidden phase in level 2
+            if (level2Active && !shapesVisible) {
+                trapBoxes.forEach(box => {
+                    box.update();
+                    box.draw();
+                });
+            }
+
+            // Update and draw AI snake
             if (gameStarted) {
                 snake.update();
             }
             snake.draw();
 
-            // Update and draw power-up
-            if (powerUp && powerUp.active) {
+            // Update and draw power-up (only during shapes phase)
+            if ((!level2Active || shapesVisible) && powerUp && powerUp.active) {
                 powerUp.update();
                 powerUp.draw();
             }
 
-            // Update and draw particles (with limit enforcement)
+            // Particles
             ctx.globalAlpha = 1;
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
@@ -1225,12 +1519,11 @@
                     particles.splice(i, 1);
                 }
             }
-            // Enforce particle limit
             while (particles.length > MAX_PARTICLES) {
                 particles.shift();
             }
 
-            // Update and draw fireballs (with limit enforcement)
+            // Fireballs
             for (let i = fireballs.length - 1; i >= 0; i--) {
                 fireballs[i].update();
                 fireballs[i].draw();
@@ -1239,12 +1532,11 @@
                     fireballs.splice(i, 1);
                 }
             }
-            // Enforce fireball limit
             while (fireballs.length > MAX_FIREBALLS) {
                 fireballs.shift();
             }
 
-            // Draw custom cursor (simplified)
+            // Custom cursor
             if (mouseX > 0 || mouseY > 0) {
                 ctx.globalAlpha = 1;
                 ctx.strokeStyle = '#ffffff';
@@ -1263,12 +1555,12 @@
 
         animate();
 
-        // Start background music on first user interaction (browsers require this)
+        // Start background music on first user interaction
         canvas.addEventListener('click', () => {
             playBackgroundMusic();
         }, { once: true });
 
-        // Track mouse movement for particle trail (throttled for performance)
+        // Mouse movement
         let lastMouseTime = 0;
         canvas.addEventListener('mousemove', (e) => {
             const now = Date.now();
@@ -1276,18 +1568,43 @@
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
 
-            // Throttle particle spawning (max every 50ms)
             if (now - lastMouseTime > 50 && particles.length < MAX_PARTICLES) {
                 lastMouseTime = now;
                 particles.push(new Particle(mouseX, mouseY));
             }
         });
 
-        // Click handler for constellations
+        // Click handler
         canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
+
+            // Check trap boxes first (Level 2, hidden phase)
+            if (level2Active && !shapesVisible) {
+                for (let i = trapBoxes.length - 1; i >= 0; i--) {
+                    if (trapBoxes[i].isClicked(clickX, clickY)) {
+                        // Lose points!
+                        updateScore(-15);
+                        showPointsPopup(e.clientX, e.clientY, -15, true);
+                        playTrapSound();
+
+                        // Red particle burst
+                        for (let j = 0; j < 10; j++) {
+                            const p = new Particle(clickX, clickY);
+                            p.color = '#ff0000';
+                            particles.push(p);
+                        }
+
+                        // Remove the clicked box
+                        trapBoxes[i].active = false;
+                        trapBoxes.splice(i, 1);
+                        return;
+                    }
+                }
+                // During trap phase, clicking empty space does nothing
+                return;
+            }
 
             // Check for power-up click first
             if (powerUp && powerUp.active && powerUp.isClicked(clickX, clickY)) {
@@ -1296,36 +1613,33 @@
                 return;
             }
 
-            for (let i = constellationShapes.length - 1; i >= 0; i--) {
-                const shape = constellationShapes[i];
-                if (shape.isClicked(clickX, clickY)) {
-                    // Start the game (snake starts moving)
-                    if (!gameStarted) {
-                        gameStarted = true;
-                        // Track game start
-                        if (typeof gtag !== 'undefined') {
-                            gtag('event', 'game_start', {
-                                'event_category': 'gameplay',
-                                'event_label': 'first_click'
-                            });
+            // Check shapes (only during shapes phase or level 1)
+            if (!level2Active || shapesVisible) {
+                for (let i = constellationShapes.length - 1; i >= 0; i--) {
+                    const shape = constellationShapes[i];
+                    if (shape.isClicked(clickX, clickY)) {
+                        if (!gameStarted) {
+                            gameStarted = true;
+                            if (typeof gtag !== 'undefined') {
+                                gtag('event', 'game_start', {
+                                    'event_category': 'gameplay',
+                                    'event_label': 'first_click'
+                                });
+                            }
                         }
+
+                        updateScore(10);
+                        showPointsPopup(e.clientX, e.clientY, 10);
+
+                        playSparkleSound();
+
+                        for (let j = 0; j < 10; j++) {
+                            particles.push(new Particle(clickX, clickY));
+                        }
+
+                        shape.reset();
+                        break;
                     }
-
-                    // Award points
-                    updateScore(10);
-                    showPointsPopup(e.clientX, e.clientY, 10);
-
-                    // Play sparkle sound
-                    playSparkleSound();
-
-                    // Create explosion of particles (reduced for performance)
-                    for (let j = 0; j < 10; j++) {
-                        particles.push(new Particle(clickX, clickY));
-                    }
-
-                    // Reset the constellation to a new position and shape
-                    shape.reset();
-                    break;
                 }
             }
         });
@@ -1336,13 +1650,35 @@
             canvas.height = window.innerHeight;
         });
 
-        // Touch support for mobile browsers
+        // Touch support
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
             const touchX = touch.clientX - rect.left;
             const touchY = touch.clientY - rect.top;
+
+            // Check trap boxes first (Level 2, hidden phase)
+            if (level2Active && !shapesVisible) {
+                for (let i = trapBoxes.length - 1; i >= 0; i--) {
+                    if (trapBoxes[i].isClicked(touchX, touchY)) {
+                        updateScore(-15);
+                        showPointsPopup(touch.clientX, touch.clientY, -15, true);
+                        playTrapSound();
+
+                        for (let j = 0; j < 10; j++) {
+                            const p = new Particle(touchX, touchY);
+                            p.color = '#ff0000';
+                            particles.push(p);
+                        }
+
+                        trapBoxes[i].active = false;
+                        trapBoxes.splice(i, 1);
+                        return;
+                    }
+                }
+                return;
+            }
 
             // Check for power-up click first
             if (powerUp && powerUp.active && powerUp.isClicked(touchX, touchY)) {
@@ -1351,26 +1687,28 @@
                 return;
             }
 
-            for (let i = constellationShapes.length - 1; i >= 0; i--) {
-                const shape = constellationShapes[i];
-                if (shape.isClicked(touchX, touchY)) {
-                    if (!gameStarted) {
-                        gameStarted = true;
-                        if (typeof gtag !== 'undefined') {
-                            gtag('event', 'game_start', {
-                                'event_category': 'gameplay',
-                                'event_label': 'first_touch'
-                            });
+            if (!level2Active || shapesVisible) {
+                for (let i = constellationShapes.length - 1; i >= 0; i--) {
+                    const shape = constellationShapes[i];
+                    if (shape.isClicked(touchX, touchY)) {
+                        if (!gameStarted) {
+                            gameStarted = true;
+                            if (typeof gtag !== 'undefined') {
+                                gtag('event', 'game_start', {
+                                    'event_category': 'gameplay',
+                                    'event_label': 'first_touch'
+                                });
+                            }
                         }
+                        updateScore(10);
+                        showPointsPopup(touch.clientX, touch.clientY, 10);
+                        playSparkleSound();
+                        for (let j = 0; j < 10; j++) {
+                            particles.push(new Particle(touchX, touchY));
+                        }
+                        shape.reset();
+                        break;
                     }
-                    updateScore(10);
-                    showPointsPopup(touch.clientX, touch.clientY, 10);
-                    playSparkleSound();
-                    for (let j = 0; j < 10; j++) {
-                        particles.push(new Particle(touchX, touchY));
-                    }
-                    shape.reset();
-                    break;
                 }
             }
         }, { passive: false });
