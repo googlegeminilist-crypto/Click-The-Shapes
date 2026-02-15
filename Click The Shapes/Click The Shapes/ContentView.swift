@@ -420,6 +420,13 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         backgroundMusicPlayer?.stop()
     }
 
+    func stopAllShapeTapSounds() {
+        for player in shapeTapPlayers {
+            player.stop()
+        }
+        shapeTapPlayers.removeAll()
+    }
+
     func playSparkle() {
         AudioServicesPlaySystemSound(1104)
     }
@@ -705,6 +712,7 @@ class GameViewModel: ObservableObject {
         }
 
         stopGameLoop()
+        SoundManager.shared.stopAllShapeTapSounds()
         SoundManager.shared.stopBackgroundMusic()
     }
 
