@@ -838,8 +838,8 @@
         let hardcoreMode = false;
 
         // Performance limits
-        const MAX_PARTICLES = 150;
-        const MAX_FIREBALLS = 100;
+        const MAX_PARTICLES = 80;
+        const MAX_FIREBALLS = 50;
 
         // Per-level win tracking with localStorage
         const winData = {
@@ -1179,15 +1179,13 @@
             }
 
             draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;
-                ctx.fill();
+                ctx.globalAlpha = this.brightness;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
             }
         }
 
         const stars = [];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 50; i++) {
             stars.push(new Star());
         }
 
@@ -1214,7 +1212,7 @@
                 this.pulsePhase = Math.random() * Math.PI * 2;
 
                 this.orbitingStars = [];
-                const numStars = 4;
+                const numStars = 2;
                 for (let i = 0; i < numStars; i++) {
                     this.orbitingStars.push({
                         angle: (Math.PI * 2 * i) / numStars,
@@ -1273,24 +1271,30 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                this.orbitingStars.forEach(star => {
+                for (let si = 0; si < this.orbitingStars.length; si++) {
+                    const star = this.orbitingStars[si];
                     const x = Math.cos(star.angle) * star.distance;
                     const y = Math.sin(star.angle) * star.distance;
                     const brightness = (Math.sin(star.twinklePhase) + 1) / 2 * 0.8 + 0.2;
-
                     ctx.globalAlpha = brightness;
                     ctx.fillStyle = star.color;
-                    ctx.beginPath();
-                    ctx.arc(x, y, star.size, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+                    ctx.fillRect(x - star.size, y - star.size, star.size * 2, star.size * 2);
+                }
+
+                // Cheap glow: draw larger faded shape behind
+                ctx.globalAlpha = 0.25;
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 8;
+                if (this.shape === 'star') { this.drawStar(currentSize + 4); }
+                else if (this.shape === 'circle') { this.drawCircle(currentSize + 4); }
+                else if (this.shape === 'triangle') { this.drawTriangle(currentSize + 4); }
+                else if (this.shape === 'square') { this.drawSquare(currentSize + 4); }
+                else if (this.shape === 'pentagon') { this.drawPentagon(currentSize + 4); }
 
                 ctx.globalAlpha = 1;
                 ctx.strokeStyle = this.color;
                 ctx.fillStyle = this.color;
                 ctx.lineWidth = 3;
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = this.color;
 
                 if (this.shape === 'star') {
                     this.drawStar(currentSize);
@@ -1404,9 +1408,12 @@
                 ctx.translate(this.x, this.y);
                 ctx.globalAlpha = flicker;
 
-                // Red glow
-                ctx.shadowBlur = level3Active ? 20 : 12;
-                ctx.shadowColor = '#ff0000';
+                // Cheap red glow: larger faded box behind
+                ctx.globalAlpha = flicker * 0.3;
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = level3Active ? 6 : 4;
+                ctx.strokeRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6);
+                ctx.globalAlpha = flicker;
 
                 // Outer box
                 ctx.strokeStyle = '#ff0000';
@@ -1431,8 +1438,6 @@
 
                 // Level 3: "click me" text in green to trick the player
                 if (level3Active) {
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = '#00ff88';
                     ctx.fillStyle = '#00ff88';
                     ctx.font = 'bold 9px Courier New';
                     ctx.textAlign = 'center';
@@ -1478,9 +1483,7 @@
             draw() {
                 ctx.globalAlpha = this.life;
                 ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2);
             }
 
             isDead() {
@@ -1520,20 +1523,13 @@
             }
 
             draw() {
-                const pulse = Math.sin(this.pulsePhase) * 0.3 + 1;
-                const currentSize = this.size * pulse;
-
+                const currentSize = this.size;
                 ctx.globalAlpha = this.life;
-
                 ctx.fillStyle = '#ff6600';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
-                ctx.fill();
-
+                ctx.fillRect(this.x - currentSize, this.y - currentSize, currentSize * 2, currentSize * 2);
                 ctx.fillStyle = '#ffff00';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, currentSize * 0.5, 0, Math.PI * 2);
-                ctx.fill();
+                const half = currentSize * 0.5;
+                ctx.fillRect(this.x - half, this.y - half, currentSize, currentSize);
             }
 
             isDead() {
@@ -1657,9 +1653,20 @@
                 ctx.scale(pulse, pulse);
                 ctx.globalAlpha = flicker;
 
-                // Blue glow
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#00aaff';
+                // Cheap blue glow: larger faded bolt behind
+                ctx.globalAlpha = flicker * 0.3;
+                ctx.fillStyle = '#00aaff';
+                ctx.beginPath();
+                ctx.moveTo(0, -22);
+                ctx.lineTo(9, -4);
+                ctx.lineTo(4, -4);
+                ctx.lineTo(9, 16);
+                ctx.lineTo(-4, 0);
+                ctx.lineTo(4, 0);
+                ctx.lineTo(-6, -22);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = flicker;
 
                 // Draw lightning bolt shape
                 ctx.fillStyle = '#00ccff';
@@ -1688,8 +1695,6 @@
                 ctx.fill();
 
                 // Label
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = '#00aaff';
                 ctx.fillStyle = '#00ccff';
                 ctx.font = 'bold 10px Courier New';
                 ctx.textAlign = 'center';
@@ -1795,44 +1800,44 @@
             }
 
             draw() {
-                ctx.save();
+                const maxVis = Math.min(30, this.segments.length);
+                const s2 = this.segmentSize * 2;
 
-                const maxVisibleSegments = Math.min(60, this.segments.length);
-
-                for (let i = 0; i < maxVisibleSegments; i++) {
-                    const segment = this.segments[i];
-                    const hue = (i * 10) % 360;
-                    const brightness = 1 - (i / maxVisibleSegments) * 0.5;
-
-                    ctx.globalAlpha = brightness;
-                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-
-                    ctx.beginPath();
-                    ctx.arc(segment.x, segment.y, this.segmentSize, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    if (i < maxVisibleSegments - 1 && i < 40) {
-                        const nextSegment = this.segments[i + 1];
-                        ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-                        ctx.lineWidth = this.segmentSize * 1.5;
-                        ctx.beginPath();
-                        ctx.moveTo(segment.x, segment.y);
-                        ctx.lineTo(nextSegment.x, nextSegment.y);
-                        ctx.stroke();
+                // Pre-compute colors once
+                if (!this._colors || this._colors.length !== maxVis) {
+                    this._colors = [];
+                    for (let i = 0; i < maxVis; i++) {
+                        this._colors.push(`hsl(${(i * 10) % 360}, 100%, 50%)`);
                     }
                 }
 
+                // Draw connecting lines as one path per color batch
+                ctx.lineWidth = this.segmentSize * 1.5;
+                for (let i = 0; i < maxVis - 1; i++) {
+                    const seg = this.segments[i];
+                    const next = this.segments[i + 1];
+                    ctx.globalAlpha = 1 - (i / maxVis) * 0.5;
+                    ctx.strokeStyle = this._colors[i];
+                    ctx.beginPath();
+                    ctx.moveTo(seg.x, seg.y);
+                    ctx.lineTo(next.x, next.y);
+                    ctx.stroke();
+                }
+
+                // Draw segments as rects (much faster than arcs)
+                for (let i = 0; i < maxVis; i++) {
+                    const seg = this.segments[i];
+                    ctx.globalAlpha = 1 - (i / maxVis) * 0.5;
+                    ctx.fillStyle = this._colors[i];
+                    ctx.fillRect(seg.x - this.segmentSize, seg.y - this.segmentSize, s2, s2);
+                }
+
+                // Eyes
                 const head = this.segments[0];
                 ctx.globalAlpha = 1;
                 ctx.fillStyle = '#ffffff';
-
-                const eyeOffset = 3;
-                ctx.beginPath();
-                ctx.arc(head.x - eyeOffset, head.y - eyeOffset, 2, 0, Math.PI * 2);
-                ctx.arc(head.x + eyeOffset, head.y - eyeOffset, 2, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
+                ctx.fillRect(head.x - 5, head.y - 5, 4, 4);
+                ctx.fillRect(head.x + 1, head.y - 5, 4, 4);
             }
         }
 
@@ -2322,10 +2327,12 @@
             ctx.fillStyle = '#0a0015';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            stars.forEach(star => {
-                star.update();
-                star.draw();
-            });
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < stars.length; i++) {
+                stars[i].update();
+                stars[i].draw();
+            }
+            ctx.globalAlpha = 1;
 
             // Draw shapes only if visible (or if not level 2)
             if (!level2Active || shapesVisible) {
@@ -2370,32 +2377,34 @@
                 if (lightningFlashAlpha < 0) lightningFlashAlpha = 0;
             }
 
-            // Particles
+            // Particles — swap-and-pop to avoid costly splice
             ctx.globalAlpha = 1;
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update();
-                particles[i].draw();
-
-                if (particles[i].isDead()) {
-                    particles.splice(i, 1);
+            let pLen = particles.length;
+            for (let i = pLen - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.isDead()) {
+                    particles[i] = particles[pLen - 1];
+                    pLen--;
                 }
             }
-            while (particles.length > MAX_PARTICLES) {
-                particles.shift();
-            }
+            particles.length = pLen;
+            if (particles.length > MAX_PARTICLES) particles.length = MAX_PARTICLES;
 
-            // Fireballs
-            for (let i = fireballs.length - 1; i >= 0; i--) {
-                fireballs[i].update();
-                fireballs[i].draw();
-
-                if (fireballs[i].isDead()) {
-                    fireballs.splice(i, 1);
+            // Fireballs — swap-and-pop
+            let fLen = fireballs.length;
+            for (let i = fLen - 1; i >= 0; i--) {
+                const fb = fireballs[i];
+                fb.update();
+                fb.draw();
+                if (fb.isDead()) {
+                    fireballs[i] = fireballs[fLen - 1];
+                    fLen--;
                 }
             }
-            while (fireballs.length > MAX_FIREBALLS) {
-                fireballs.shift();
-            }
+            fireballs.length = fLen;
+            if (fireballs.length > MAX_FIREBALLS) fireballs.length = MAX_FIREBALLS;
 
             // Custom cursor
             if (mouseX > 0 || mouseY > 0) {
@@ -2423,11 +2432,12 @@
 
         // Mouse movement
         let lastMouseTime = 0;
+        let cachedRect = canvas.getBoundingClientRect();
+        window.addEventListener('resize', () => { cachedRect = canvas.getBoundingClientRect(); });
         canvas.addEventListener('mousemove', (e) => {
             const now = Date.now();
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
+            mouseX = e.clientX - cachedRect.left;
+            mouseY = e.clientY - cachedRect.top;
 
             if (now - lastMouseTime > 50 && particles.length < MAX_PARTICLES) {
                 lastMouseTime = now;
