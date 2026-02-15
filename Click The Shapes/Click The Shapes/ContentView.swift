@@ -482,7 +482,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 // MARK: - Store Manager (In-App Purchase)
 class StoreManager: ObservableObject {
     static let shared = StoreManager()
-    static let soundPackProductID = "com.clicktheshapes.soundpack"
+    static let soundPackProductID = "krakastan3_icloud.com.Click_The_Shapes.soundpack"
 
     @Published var soundPackPurchased: Bool = false
     @Published var soundPackProduct: Product?
