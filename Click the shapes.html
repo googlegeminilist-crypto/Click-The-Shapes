@@ -160,13 +160,13 @@
             transform: translateX(-50%);
             z-index: 10;
             background: rgba(0, 0, 0, 0.8);
-            padding: 15px 30px;
+            padding: 12px 20px;
             border-radius: 10px;
             border: 2px solid #00ff88;
-            font-size: 1.2em;
+            font-size: 1em;
             text-shadow: 0 0 10px #00ff88;
             display: flex;
-            gap: 40px;
+            gap: 20px;
         }
 
         .win-record-item {
@@ -437,10 +437,13 @@
     </div>
 
     <div class="win-overlay" id="winOverlay">
-        <div>
+        <div style="text-align: center;">
             <div class="win-message" id="winMessage"></div>
             <div class="level-up-message" id="levelUpMessage"></div>
-            <button type="button" class="restart-button" onclick="location.reload()">Play Again</button>
+            <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px;">
+                <button type="button" class="restart-button" id="restartLevelBtn" onclick="restartCurrentLevel()">Restart Level</button>
+                <button type="button" class="restart-button" onclick="location.reload()">Start Over</button>
+            </div>
         </div>
     </div>
 
@@ -455,14 +458,41 @@
         <button type="button" class="level-transition-button" onclick="startLevel2()">LET'S GO!</button>
     </div>
 
+    <div class="level-transition" id="levelTransition3">
+        <div class="level-transition-text" style="color: #ff0044; text-shadow: 0 0 40px #ff0044, 0 0 80px #ff0000;">LEVEL 3!</div>
+        <div class="level-transition-sub" style="color: #ff4466;">
+            Shapes are SHRINKING as they move!<br>
+            Shapes dart around randomly!<br>
+            Trap boxes now say "click me" — DON'T fall for it!<br>
+            Snake is even faster!
+        </div>
+        <button type="button" class="level-transition-button" style="background: linear-gradient(135deg, #ff0044, #ff4400);" onclick="startLevel3()">BRING IT ON!</button>
+    </div>
+
     <div class="win-record">
         <div class="win-record-item">
-            <div class="win-record-label">YOUR WINS</div>
-            <div class="win-record-value user-wins" id="userWins">0</div>
+            <div class="win-record-label">L1 YOU</div>
+            <div class="win-record-value user-wins" id="userWinsL1">0</div>
         </div>
         <div class="win-record-item">
-            <div class="win-record-label">SNAKE WINS</div>
-            <div class="win-record-value snake-wins" id="snakeWins">0</div>
+            <div class="win-record-label">L1 SNAKE</div>
+            <div class="win-record-value snake-wins" id="snakeWinsL1">0</div>
+        </div>
+        <div class="win-record-item">
+            <div class="win-record-label">L2 YOU</div>
+            <div class="win-record-value user-wins" id="userWinsL2">0</div>
+        </div>
+        <div class="win-record-item">
+            <div class="win-record-label">L2 SNAKE</div>
+            <div class="win-record-value snake-wins" id="snakeWinsL2">0</div>
+        </div>
+        <div class="win-record-item">
+            <div class="win-record-label">L3 YOU</div>
+            <div class="win-record-value user-wins" id="userWinsL3">0</div>
+        </div>
+        <div class="win-record-item">
+            <div class="win-record-label">L3 SNAKE</div>
+            <div class="win-record-value snake-wins" id="snakeWinsL3">0</div>
         </div>
     </div>
 
@@ -493,6 +523,7 @@
             </div>
             <div id="debugButtons" style="display:none; margin-top: 20px;">
                 <button type="button" class="intro-button skip-button" style="border-color: #ff8800; color: #ff8800;" onclick="skipToLevel2()">Skip to Level 2 (TEST)</button>
+                <button type="button" class="intro-button skip-button" style="border-color: #ff0044; color: #ff0044; margin-top: 10px;" onclick="skipToLevel3()">Skip to Level 3 (TEST)</button>
             </div>
         </div>
     </div>
@@ -515,8 +546,6 @@
         // Cache DOM references
         const scoreValueEl = document.getElementById('scoreValue');
         const snakeScoreValueEl = document.getElementById('snakeScoreValue');
-        const userWinsEl = document.getElementById('userWins');
-        const snakeWinsEl = document.getElementById('snakeWins');
         const introOverlayEl = document.getElementById('introOverlay');
         const winOverlayEl = document.getElementById('winOverlay');
         const winMessageEl = document.getElementById('winMessage');
@@ -524,6 +553,8 @@
         const levelIndicatorEl = document.getElementById('levelIndicator');
         const phaseIndicatorEl = document.getElementById('phaseIndicator');
         const levelTransitionEl = document.getElementById('levelTransition');
+        const levelTransition3El = document.getElementById('levelTransition3');
+        const restartLevelBtn = document.getElementById('restartLevelBtn');
 
         let score = 0;
         let snakeScore = 0;
@@ -541,17 +572,31 @@
         const trapBoxes = [];
         const MAX_TRAP_BOXES = 15;
         let level2Active = false;
+        let level3Active = false;
 
         // Performance limits
         const MAX_PARTICLES = 150;
         const MAX_FIREBALLS = 100;
 
-        // Win tracking with localStorage
-        let userWins = parseInt(localStorage.getItem('userWins') || '0');
-        let snakeWins = parseInt(localStorage.getItem('snakeWins') || '0');
+        // Per-level win tracking with localStorage
+        const winData = {
+            userL1: parseInt(localStorage.getItem('userWinsL1') || '0'),
+            snakeL1: parseInt(localStorage.getItem('snakeWinsL1') || '0'),
+            userL2: parseInt(localStorage.getItem('userWinsL2') || '0'),
+            snakeL2: parseInt(localStorage.getItem('snakeWinsL2') || '0'),
+            userL3: parseInt(localStorage.getItem('userWinsL3') || '0'),
+            snakeL3: parseInt(localStorage.getItem('snakeWinsL3') || '0'),
+        };
 
-        userWinsEl.textContent = userWins;
-        snakeWinsEl.textContent = snakeWins;
+        function refreshWinDisplay() {
+            document.getElementById('userWinsL1').textContent = winData.userL1;
+            document.getElementById('snakeWinsL1').textContent = winData.snakeL1;
+            document.getElementById('userWinsL2').textContent = winData.userL2;
+            document.getElementById('snakeWinsL2').textContent = winData.snakeL2;
+            document.getElementById('userWinsL3').textContent = winData.userL3;
+            document.getElementById('snakeWinsL3').textContent = winData.snakeL3;
+        }
+        refreshWinDisplay();
 
         // Show debug buttons only when running locally
         if (window.location.protocol === 'file:') {
@@ -566,10 +611,14 @@
 
         function skipToLevel2() {
             introOverlayEl.style.display = 'none';
-            gameStarted = true;
             playBackgroundMusic();
-            // Go directly into level 2 without needing the transition animation loop
             levelTransitionEl.style.display = 'flex';
+        }
+
+        function skipToLevel3() {
+            introOverlayEl.style.display = 'none';
+            playBackgroundMusic();
+            levelTransition3El.style.display = 'flex';
         }
 
         // Audio context for sound effects
@@ -579,6 +628,11 @@
         const backgroundMusic = new Audio('Untitled.wav');
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.9;
+
+        // Level 2 music
+        const level2Music = new Audio('Click The Shapes/Click The Shapes.xcodeproj/xcuserdata/Untitled(3).wav');
+        level2Music.loop = true;
+        level2Music.volume = 0.9;
 
         function playBackgroundMusic() {
             backgroundMusic.play().catch(err => {
@@ -715,9 +769,16 @@
             reset() {
                 this.x = Math.random() * (canvas.width - 200) + 100;
                 this.y = Math.random() * (canvas.height - 300) + 150;
-                this.size = level2Active ? 45 : 80;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = level3Active ? 50 : (level2Active ? 45 : 80);
+                this.baseSize = this.size;
+                this.shrinking = level3Active;
+                this.shrinkRate = level3Active ? 0.15 : 0;
+                this.minSize = 15;
+                const speed = level3Active ? 3 : 0.5;
+                this.vx = (Math.random() - 0.5) * speed;
+                this.vy = (Math.random() - 0.5) * speed;
+                this.dirChangeTimer = 0;
+                this.dirChangeInterval = level3Active ? (30 + Math.floor(Math.random() * 60)) : 9999;
                 this.color = ['#00ff88', '#ff00ff', '#00ffff', '#ffff00', '#ff0088'][Math.floor(Math.random() * 5)];
                 this.shape = ['star', 'circle', 'triangle', 'square', 'pentagon'][Math.floor(Math.random() * 5)];
                 this.pulsePhase = Math.random() * Math.PI * 2;
@@ -745,6 +806,29 @@
                 if (this.y < 150 || this.y > canvas.height - 150) this.vy *= -1;
 
                 this.pulsePhase += 0.05;
+
+                // Level 3: shrink over time
+                if (this.shrinking) {
+                    this.size -= this.shrinkRate;
+                    if (this.size < this.minSize) {
+                        this.size = this.minSize;
+                    }
+                    // Update orbiting star distances to match
+                    this.orbitingStars.forEach(star => {
+                        star.distance = this.size + 15 + Math.random() * 5;
+                    });
+                }
+
+                // Level 3: random direction changes
+                this.dirChangeTimer++;
+                if (this.dirChangeTimer >= this.dirChangeInterval) {
+                    this.dirChangeTimer = 0;
+                    this.dirChangeInterval = 30 + Math.floor(Math.random() * 60);
+                    const speed = 3;
+                    const angle = Math.random() * Math.PI * 2;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                }
 
                 this.orbitingStars.forEach(star => {
                     star.angle += star.speed;
@@ -872,14 +956,16 @@
             }
 
             update() {
-                this.pulsePhase += 0.08;
+                const pulseSpeed = level3Active ? 0.18 : 0.08;
+                this.pulsePhase += pulseSpeed;
                 this.flickerPhase += 0.15;
             }
 
             draw() {
                 if (!this.active) return;
 
-                const pulse = Math.sin(this.pulsePhase) * 0.15 + 1;
+                const pulseAmount = level3Active ? 0.35 : 0.15;
+                const pulse = Math.sin(this.pulsePhase) * pulseAmount + 1;
                 const flicker = (Math.sin(this.flickerPhase) + 1) / 2 * 0.4 + 0.6;
                 const w = this.width * pulse;
                 const h = this.height * pulse;
@@ -889,7 +975,7 @@
                 ctx.globalAlpha = flicker;
 
                 // Red glow
-                ctx.shadowBlur = 12;
+                ctx.shadowBlur = level3Active ? 20 : 12;
                 ctx.shadowColor = '#ff0000';
 
                 // Outer box
@@ -901,15 +987,28 @@
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                 ctx.fillRect(-w / 2, -h / 2, w, h);
 
-                // X mark inside
-                ctx.strokeStyle = '#ff4444';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(-w / 4, -h / 4);
-                ctx.lineTo(w / 4, h / 4);
-                ctx.moveTo(w / 4, -h / 4);
-                ctx.lineTo(-w / 4, h / 4);
-                ctx.stroke();
+                // X mark inside (hidden in level 3, replaced by text)
+                if (!level3Active) {
+                    ctx.strokeStyle = '#ff4444';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-w / 4, -h / 4);
+                    ctx.lineTo(w / 4, h / 4);
+                    ctx.moveTo(w / 4, -h / 4);
+                    ctx.lineTo(-w / 4, h / 4);
+                    ctx.stroke();
+                }
+
+                // Level 3: "click me" text in green to trick the player
+                if (level3Active) {
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#00ff88';
+                    ctx.fillStyle = '#00ff88';
+                    ctx.font = 'bold 9px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('click me', 0, 0);
+                }
 
                 ctx.restore();
             }
@@ -1244,8 +1343,9 @@
             scoreValueEl.textContent = score;
             if (score >= WINNING_SCORE) {
                 if (currentLevel === 1) {
-                    // Level 1 complete - transition to Level 2
                     showLevelTransition();
+                } else if (currentLevel === 2) {
+                    showLevel3Transition();
                 } else {
                     endGame('YOU WIN!', '#00ff88');
                 }
@@ -1271,6 +1371,7 @@
             currentLevel = 2;
             level2Active = true;
             gameOver = false;
+            gameStarted = false;
 
             // Reset scores for level 2
             score = 0;
@@ -1278,6 +1379,10 @@
             scoreValueEl.textContent = '0';
             snakeScoreValueEl.textContent = '0';
             WINNING_SCORE = 500;
+
+            // Switch to level 2 music
+            backgroundMusic.pause();
+            level2Music.play().catch(err => console.log('Level 2 audio blocked:', err));
 
             // Speed up the snake
             snake.speed = 4.5;
@@ -1294,6 +1399,47 @@
             levelIndicatorEl.textContent = 'LEVEL 2';
             levelIndicatorEl.style.borderColor = '#ff8800';
             levelIndicatorEl.style.color = '#ff8800';
+            phaseIndicatorEl.style.display = 'block';
+
+            // Start phase cycling
+            shapesVisible = true;
+            phaseTimer = 0;
+            updatePhaseIndicator();
+
+            // Resume animation
+            animate();
+        }
+
+        function showLevel3Transition() {
+            gameOver = true;
+            levelTransition3El.style.display = 'flex';
+        }
+
+        function startLevel3() {
+            levelTransition3El.style.display = 'none';
+            currentLevel = 3;
+            level3Active = true;
+            level2Active = true; // Keep phase cycling active
+            gameOver = false;
+            gameStarted = false;
+
+            // Reset scores for level 3
+            score = 0;
+            snakeScore = 0;
+            scoreValueEl.textContent = '0';
+            snakeScoreValueEl.textContent = '0';
+            WINNING_SCORE = 500;
+
+            // Even faster snake
+            snake.speed = 5.5;
+
+            // Reset shapes with level 3 properties
+            constellationShapes.forEach(shape => shape.reset());
+
+            // Update UI
+            levelIndicatorEl.textContent = 'LEVEL 3';
+            levelIndicatorEl.style.borderColor = '#ff0044';
+            levelIndicatorEl.style.color = '#ff0044';
             phaseIndicatorEl.style.display = 'block';
 
             // Start phase cycling
@@ -1329,11 +1475,14 @@
 
         function endGame(message, color) {
             gameOver = true;
+            backgroundMusic.pause();
+            level2Music.pause();
+
+            const lvlKey = 'L' + currentLevel;
 
             if (message === 'YOU WIN!') {
-                userWins++;
-                localStorage.setItem('userWins', userWins.toString());
-                userWinsEl.textContent = userWins;
+                winData['user' + lvlKey]++;
+                localStorage.setItem('userWins' + lvlKey, winData['user' + lvlKey].toString());
 
                 if (typeof gtag !== 'undefined') {
                     gtag('event', 'game_win', {
@@ -1343,9 +1492,8 @@
                     });
                 }
             } else if (message === 'SNAKE WINS!') {
-                snakeWins++;
-                localStorage.setItem('snakeWins', snakeWins.toString());
-                snakeWinsEl.textContent = snakeWins;
+                winData['snake' + lvlKey]++;
+                localStorage.setItem('snakeWins' + lvlKey, winData['snake' + lvlKey].toString());
 
                 if (typeof gtag !== 'undefined') {
                     gtag('event', 'game_loss', {
@@ -1356,10 +1504,75 @@
                 }
             }
 
+            refreshWinDisplay();
+
             winMessageEl.textContent = message;
             winMessageEl.style.color = color;
-            levelUpMessageEl.textContent = currentLevel === 2 ? 'Level 2 Complete!' : '';
+            levelUpMessageEl.textContent = `Level ${currentLevel}`;
+            restartLevelBtn.textContent = `Restart Level ${currentLevel}`;
             winOverlayEl.style.display = 'flex';
+        }
+
+        function restartCurrentLevel() {
+            winOverlayEl.style.display = 'none';
+            gameOver = false;
+            gameStarted = false;
+
+            // Reset scores
+            score = 0;
+            snakeScore = 0;
+            scoreValueEl.textContent = '0';
+            snakeScoreValueEl.textContent = '0';
+
+            // Clear trap boxes and particles
+            trapBoxes.length = 0;
+            particles.length = 0;
+            fireballs.length = 0;
+            powerUp = null;
+            powerUpSpawnTimer = 0;
+
+            // Reset shapes
+            constellationShapes.forEach(shape => shape.reset());
+
+            // Reset phase
+            shapesVisible = true;
+            phaseTimer = 0;
+            if (level2Active) updatePhaseIndicator();
+
+            // Reset snake
+            snake.segments.length = 0;
+            const startX = canvas.width / 2;
+            const startY = canvas.height / 2;
+            for (let i = 0; i < 5; i++) {
+                snake.segments.push({
+                    x: startX - i * snake.segmentSize * 2,
+                    y: startY
+                });
+            }
+            snake.targetLength = 5;
+
+            // Set correct snake speed per level
+            if (currentLevel === 1) {
+                snake.speed = 3.5;
+            } else if (currentLevel === 2) {
+                snake.speed = 4.5;
+            } else if (currentLevel === 3) {
+                snake.speed = 5.5;
+            }
+
+            // Restart music
+            if (currentLevel >= 2) {
+                backgroundMusic.pause();
+                level2Music.currentTime = 0;
+                level2Music.play().catch(() => {});
+            } else {
+                level2Music.pause();
+                backgroundMusic.currentTime = 0;
+                backgroundMusic.play().catch(() => {});
+            }
+
+            // Restart animation loop
+            animate();
         }
 
         function explodePowerUp(x, y) {
