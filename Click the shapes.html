@@ -1413,7 +1413,7 @@
                 const marginBot = isMobile ? 60 : 150;
                 this.x = Math.random() * (canvas.width - marginX * 2) + marginX;
                 this.y = Math.random() * (canvas.height - marginTop - marginBot) + marginTop;
-                this.size = level3Active ? (isMobile ? 40 : 50) : (level2Active ? (isMobile ? 38 : 45) : (isMobile ? 55 : 80));
+                this.size = level3Active ? (isMobile ? 25 : 50) : (level2Active ? (isMobile ? 22 : 45) : (isMobile ? 30 : 80));
                 this.baseSize = this.size;
                 this.shrinking = level3Active;
                 this.shrinkRate = level3Active ? 0.15 : 0;
@@ -1432,7 +1432,7 @@
                 for (let i = 0; i < numStars; i++) {
                     this.orbitingStars.push({
                         angle: (Math.PI * 2 * i) / numStars,
-                        distance: this.size + 30 + Math.random() * 20,
+                        distance: this.size + (isMobile ? 12 : 30) + Math.random() * (isMobile ? 8 : 20),
                         speed: (Math.random() - 0.5) * 0.03,
                         size: Math.random() * 2 + 1,
                         color: i % 2 === 0 ? '#ff0000' : '#0000ff',
@@ -1461,7 +1461,7 @@
                     }
                     // Update orbiting star distances to match
                     this.orbitingStars.forEach(star => {
-                        star.distance = this.size + 15 + Math.random() * 5;
+                        star.distance = this.size + (isMobile ? 8 : 15) + Math.random() * 5;
                     });
                 }
 
@@ -2131,10 +2131,11 @@
             snake.speed = 4.5;
 
             // Make shapes smaller for level 2
+            const l2Size = isMobile ? 22 : 45;
             constellationShapes.forEach(shape => {
-                shape.size = 45;
+                shape.size = l2Size;
                 shape.orbitingStars.forEach(star => {
-                    star.distance = 45 + 20 + Math.random() * 15;
+                    star.distance = l2Size + (isMobile ? 10 : 20) + Math.random() * (isMobile ? 6 : 15);
                 });
             });
 
