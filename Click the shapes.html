@@ -349,6 +349,170 @@
             display: none;
         }
 
+        .leaderboard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2500;
+        }
+
+        .leaderboard-content {
+            background: linear-gradient(135deg, #1a0033 0%, #001a00 100%);
+            padding: 40px 50px;
+            border-radius: 20px;
+            border: 3px solid #ffff00;
+            box-shadow: 0 0 50px rgba(255, 255, 0, 0.4);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .leaderboard-title {
+            font-size: 2.5em;
+            color: #ffff00;
+            text-shadow: 0 0 20px #ffff00;
+            margin-bottom: 10px;
+        }
+
+        .leaderboard-subtitle {
+            font-size: 1em;
+            color: #aaa;
+            margin-bottom: 25px;
+        }
+
+        .leaderboard-name-input {
+            width: 80%;
+            padding: 12px 20px;
+            font-size: 1.3em;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            color: #00ff88;
+            text-align: center;
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .leaderboard-name-input::placeholder {
+            color: #006644;
+        }
+
+        .leaderboard-name-input:focus {
+            border-color: #ffff00;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.3);
+        }
+
+        .leaderboard-submit {
+            padding: 12px 35px;
+            font-size: 1.2em;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #ffff00, #ff8800);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 25px;
+        }
+
+        .leaderboard-submit:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 30px rgba(255, 255, 0, 0.7);
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .leaderboard-table th {
+            color: #ffff00;
+            font-size: 0.9em;
+            padding: 8px;
+            border-bottom: 2px solid #ffff00;
+            text-align: left;
+        }
+
+        .leaderboard-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #333;
+            font-size: 1em;
+        }
+
+        .leaderboard-table tr:nth-child(1) td {
+            color: #ffdd00;
+            text-shadow: 0 0 8px #ffdd00;
+            font-weight: bold;
+        }
+
+        .leaderboard-table tr:nth-child(2) td {
+            color: #cccccc;
+            text-shadow: 0 0 5px #cccccc;
+        }
+
+        .leaderboard-table tr:nth-child(3) td {
+            color: #cc8844;
+            text-shadow: 0 0 5px #cc8844;
+        }
+
+        .leaderboard-table tr td:first-child {
+            text-align: center;
+            width: 40px;
+        }
+
+        .leaderboard-table tr td:last-child {
+            text-align: center;
+            width: 60px;
+        }
+
+        .leaderboard-close {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            background: transparent;
+            color: #888;
+            border: 2px solid #888;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-close:hover {
+            color: #fff;
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+
+        .leaderboard-btn-inline {
+            padding: 8px 20px;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+            background: transparent;
+            color: #ffff00;
+            border: 2px solid #ffff00;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .leaderboard-btn-inline:hover {
+            background: rgba(255, 255, 0, 0.1);
+            transform: scale(1.05);
+        }
+
         .points-popup {
             position: absolute;
             font-size: 2em;
@@ -594,10 +758,37 @@
                 <button type="button" class="intro-button start-button" onclick="startGame()">Start Game</button>
                 <button type="button" class="intro-button skip-button" onclick="startGame()">Skip</button>
             </div>
+            <button type="button" class="leaderboard-btn-inline" onclick="showLeaderboard(false)">View Leaderboard</button>
             <div id="debugButtons" style="display:none; margin-top: 20px;">
                 <button type="button" class="intro-button skip-button" style="border-color: #ff8800; color: #ff8800;" onclick="skipToLevel2()">Skip to Level 2 (TEST)</button>
                 <button type="button" class="intro-button skip-button" style="border-color: #ff0044; color: #ff0044; margin-top: 10px;" onclick="skipToLevel3()">Skip to Level 3 (TEST)</button>
             </div>
+        </div>
+    </div>
+
+    <div class="leaderboard-overlay" id="leaderboardOverlay">
+        <div class="leaderboard-content">
+            <div class="leaderboard-title">LEADERBOARD</div>
+            <div class="leaderboard-subtitle">Top 5 — Beat All 3 Levels</div>
+            <div id="leaderboardNameEntry" style="display:none;">
+                <p style="color: #00ff88; margin-bottom: 15px; font-size: 1.2em;">You beat all 3 levels! Enter your name:</p>
+                <input type="text" class="leaderboard-name-input" id="leaderboardNameInput" placeholder="Your name" maxlength="15">
+                <br>
+                <button type="button" class="leaderboard-submit" onclick="submitLeaderboardEntry()">SUBMIT</button>
+            </div>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Player</th>
+                        <th>Wins</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                </tbody>
+            </table>
+            <p id="leaderboardEmpty" style="color: #666; margin: 20px 0;">No entries yet — be the first to beat all 3 levels!</p>
+            <button type="button" class="leaderboard-close" onclick="closeLeaderboard()">CLOSE</button>
         </div>
     </div>
 
@@ -671,6 +862,94 @@
             document.getElementById('snakeWinsL3').textContent = winData.snakeL3;
         }
         refreshWinDisplay();
+
+        // Leaderboard system (localStorage)
+        function getLeaderboard() {
+            try {
+                return JSON.parse(localStorage.getItem('leaderboard') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveLeaderboard(board) {
+            localStorage.setItem('leaderboard', JSON.stringify(board));
+        }
+
+        function renderLeaderboard() {
+            const board = getLeaderboard();
+            const tbody = document.getElementById('leaderboardBody');
+            const emptyMsg = document.getElementById('leaderboardEmpty');
+            tbody.innerHTML = '';
+
+            if (board.length === 0) {
+                emptyMsg.style.display = 'block';
+                return;
+            }
+            emptyMsg.style.display = 'none';
+
+            // Show top 5
+            const top5 = board.slice(0, 5);
+            const medals = ['&#9733;', '&#9734;', '&#9734;', '', ''];
+            top5.forEach((entry, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${i + 1}</td><td>${entry.name}</td><td>${entry.wins}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        let leaderboardPendingWin = false;
+
+        function showLeaderboard(isWin) {
+            leaderboardPendingWin = isWin;
+            const nameEntry = document.getElementById('leaderboardNameEntry');
+            const nameInput = document.getElementById('leaderboardNameInput');
+
+            if (isWin) {
+                nameEntry.style.display = 'block';
+                nameInput.value = '';
+                setTimeout(() => nameInput.focus(), 100);
+            } else {
+                nameEntry.style.display = 'none';
+            }
+
+            renderLeaderboard();
+            document.getElementById('leaderboardOverlay').style.display = 'flex';
+        }
+
+        function submitLeaderboardEntry() {
+            const nameInput = document.getElementById('leaderboardNameInput');
+            let name = nameInput.value.trim();
+            if (!name) name = 'Anonymous';
+
+            const board = getLeaderboard();
+
+            // Check if player already exists
+            const existing = board.find(e => e.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+                existing.wins++;
+            } else {
+                board.push({ name: name, wins: 1 });
+            }
+
+            // Sort by wins descending
+            board.sort((a, b) => b.wins - a.wins);
+
+            saveLeaderboard(board);
+
+            // Hide name entry and re-render
+            document.getElementById('leaderboardNameEntry').style.display = 'none';
+            renderLeaderboard();
+        }
+
+        function closeLeaderboard() {
+            document.getElementById('leaderboardOverlay').style.display = 'none';
+        }
+
+        // Allow Enter key to submit leaderboard name
+        document.getElementById('leaderboardNameInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitLeaderboardEntry();
+        });
 
         // Show debug buttons only when running locally
         if (window.location.protocol === 'file:') {
@@ -1749,6 +2028,12 @@
             }
 
             refreshWinDisplay();
+
+            // If user beat all 3 levels, show leaderboard instead of normal win screen
+            if (message === 'YOU WIN!' && currentLevel === 3) {
+                showLeaderboard(true);
+                return;
+            }
 
             winMessageEl.textContent = message;
             winMessageEl.style.color = color;
