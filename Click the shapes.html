@@ -1194,6 +1194,91 @@
         let powerUpSpawnTimer = 0;
         const POWERUP_SPAWN_INTERVAL = 300;
 
+        // Lightning bolt power-up (Level 2+)
+        class LightningBolt {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 100) + 50;
+                this.y = -30;
+                this.size = 20;
+                this.fallSpeed = 2.5;
+                this.active = true;
+                this.pulsePhase = 0;
+                this.flickerPhase = 0;
+            }
+
+            update() {
+                if (!this.active) return;
+                this.y += this.fallSpeed;
+                this.pulsePhase += 0.15;
+                this.flickerPhase += 0.3;
+                if (this.y > canvas.height + 50) {
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                if (!this.active) return;
+
+                const pulse = Math.sin(this.pulsePhase) * 0.2 + 1;
+                const flicker = (Math.sin(this.flickerPhase) + 1) / 2 * 0.3 + 0.7;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(pulse, pulse);
+                ctx.globalAlpha = flicker;
+
+                // Blue glow
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00aaff';
+
+                // Draw lightning bolt shape
+                ctx.fillStyle = '#00ccff';
+                ctx.beginPath();
+                ctx.moveTo(0, -18);
+                ctx.lineTo(6, -4);
+                ctx.lineTo(2, -4);
+                ctx.lineTo(6, 12);
+                ctx.lineTo(-2, 0);
+                ctx.lineTo(2, 0);
+                ctx.lineTo(-4, -18);
+                ctx.closePath();
+                ctx.fill();
+
+                // Inner bright core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(0, -14);
+                ctx.lineTo(4, -4);
+                ctx.lineTo(1, -4);
+                ctx.lineTo(4, 8);
+                ctx.lineTo(-1, 0);
+                ctx.lineTo(1, 0);
+                ctx.lineTo(-2, -14);
+                ctx.closePath();
+                ctx.fill();
+
+                // Label
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = '#00aaff';
+                ctx.fillStyle = '#00ccff';
+                ctx.font = 'bold 10px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('ZAP!', 0, -26);
+
+                ctx.restore();
+            }
+
+            isClicked(mx, my) {
+                if (!this.active) return false;
+                return Math.hypot(mx - this.x, my - this.y) < this.size + 10;
+            }
+        }
+
+        let lightning = null;
+        let lightningSpawnTimer = 0;
+        const LIGHTNING_SPAWN_INTERVAL = 450; // ~7.5 seconds
+        let lightningFlashAlpha = 0; // For screen flash effect
+
         // AI Snake
         class Snake {
             constructor() {
@@ -1530,6 +1615,9 @@
             fireballs.length = 0;
             powerUp = null;
             powerUpSpawnTimer = 0;
+            lightning = null;
+            lightningSpawnTimer = 0;
+            lightningFlashAlpha = 0;
 
             // Reset shapes
             constellationShapes.forEach(shape => shape.reset());
@@ -1653,6 +1741,69 @@
             noise.start(now);
         }
 
+        function playLightningSound() {
+            const now = audioContext.currentTime;
+
+            // Sharp crack
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(2000, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+
+            // Rumble
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(60, now + 0.1);
+            osc2.frequency.exponentialRampToValueAtTime(30, now + 0.6);
+            gain2.gain.setValueAtTime(0, now);
+            gain2.gain.linearRampToValueAtTime(0.2, now + 0.15);
+            gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+            osc2.start(now + 0.1);
+            osc2.stop(now + 0.6);
+        }
+
+        function triggerLightning(x, y) {
+            // Screen flash
+            lightningFlashAlpha = 1;
+
+            playLightningSound();
+
+            // Strike all visible shapes
+            let hitCount = 0;
+            constellationShapes.forEach(shape => {
+                // Create lightning particle trail to each shape
+                for (let j = 0; j < 8; j++) {
+                    const p = new Particle(shape.x + (Math.random() - 0.5) * 30, shape.y + (Math.random() - 0.5) * 30);
+                    p.color = '#00ccff';
+                    particles.push(p);
+                }
+                hitCount++;
+                shape.reset();
+            });
+
+            if (hitCount > 0) {
+                updateScore(250);
+                showPointsPopup(x, y, 250);
+            }
+
+            // Blue particle burst at click point
+            for (let i = 0; i < 20; i++) {
+                const p = new Particle(x, y);
+                p.color = Math.random() > 0.5 ? '#00ccff' : '#ffffff';
+                particles.push(p);
+            }
+        }
+
         function animate() {
             if (gameOver) return;
 
@@ -1682,6 +1833,17 @@
                 if (powerUpSpawnTimer >= POWERUP_SPAWN_INTERVAL && (!powerUp || !powerUp.active)) {
                     powerUp = new PowerUp();
                     powerUpSpawnTimer = 0;
+                }
+            }
+
+            // Spawn lightning bolt (level 2+ only, 80% chance, during shapes phase)
+            if (level2Active && shapesVisible) {
+                lightningSpawnTimer++;
+                if (lightningSpawnTimer >= LIGHTNING_SPAWN_INTERVAL && (!lightning || !lightning.active)) {
+                    if (Math.random() < 0.8) {
+                        lightning = new LightningBolt();
+                    }
+                    lightningSpawnTimer = 0;
                 }
             }
 
@@ -1720,6 +1882,21 @@
             if ((!level2Active || shapesVisible) && powerUp && powerUp.active) {
                 powerUp.update();
                 powerUp.draw();
+            }
+
+            // Update and draw lightning bolt
+            if (lightning && lightning.active) {
+                lightning.update();
+                lightning.draw();
+            }
+
+            // Lightning flash effect
+            if (lightningFlashAlpha > 0) {
+                ctx.globalAlpha = lightningFlashAlpha;
+                ctx.fillStyle = '#aaddff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                lightningFlashAlpha -= 0.05;
+                if (lightningFlashAlpha < 0) lightningFlashAlpha = 0;
             }
 
             // Particles
@@ -1819,6 +1996,13 @@
                 return;
             }
 
+            // Check lightning bolt
+            if (lightning && lightning.active && lightning.isClicked(clickX, clickY)) {
+                lightning.active = false;
+                triggerLightning(clickX, clickY);
+                return;
+            }
+
             // Check for power-up click first
             if (powerUp && powerUp.active && powerUp.isClicked(clickX, clickY)) {
                 powerUp.active = false;
@@ -1890,6 +2074,13 @@
                         return;
                     }
                 }
+                return;
+            }
+
+            // Check lightning bolt
+            if (lightning && lightning.active && lightning.isClicked(touchX, touchY)) {
+                lightning.active = false;
+                triggerLightning(touchX, touchY);
                 return;
             }
 
