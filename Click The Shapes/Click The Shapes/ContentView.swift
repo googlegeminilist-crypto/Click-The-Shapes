@@ -39,6 +39,21 @@ struct GameColors {
     static let shapeColors: [Color] = [neonGreen, neonPink, neonCyan, neonYellow, Color(red: 1, green: 0, blue: 0.53)]
 }
 
+// MARK: - Star Colors for Level 2
+struct StarColors {
+    static let colors: [(r: CGFloat, g: CGFloat, b: CGFloat)] = [
+        (1.0, 1.0, 1.0),     // White
+        (0.6, 0.8, 1.0),     // Blue-white
+        (1.0, 0.85, 0.6),    // Warm yellow
+        (1.0, 0.5, 0.5),     // Red
+        (0.7, 0.7, 1.0),     // Pale blue
+        (1.0, 0.6, 0.2),     // Orange
+        (0.8, 0.6, 1.0),     // Purple
+        (0.4, 1.0, 0.8),     // Teal
+        (1.0, 0.4, 0.7),     // Pink
+    ]
+}
+
 // MARK: - Star Model
 class BackgroundStar: Identifiable {
     let id = UUID()
@@ -47,13 +62,24 @@ class BackgroundStar: Identifiable {
     var size: CGFloat
     var brightness: CGFloat
     var twinkleSpeed: CGFloat
+    var starColorR: CGFloat
+    var starColorG: CGFloat
+    var starColorB: CGFloat
+    var level2Size: CGFloat  // Bigger size for Level 2
 
     init(bounds: CGSize) {
         x = CGFloat.random(in: 0...bounds.width)
         y = CGFloat.random(in: 0...bounds.height)
         size = CGFloat.random(in: 1...2.5)
+        level2Size = CGFloat.random(in: 1.5...4.0)
         brightness = CGFloat.random(in: 0.3...1.0)
         twinkleSpeed = CGFloat.random(in: 0.02...0.05)
+
+        // Assign a random star colour
+        let c = StarColors.colors.randomElement()!
+        starColorR = c.r
+        starColorG = c.g
+        starColorB = c.b
     }
 
     func update() {
@@ -880,6 +906,10 @@ class GameViewModel: ObservableObject {
         showLevelTransition = true
         gameStarted = false  // Snake waits until user taps a shape
 
+        // Add more stars for the deeper space background
+        let extraStars = (0..<40).map { _ in BackgroundStar(bounds: bounds) }
+        stars.append(contentsOf: extraStars)
+
         // Reset snake score to give player a fair start in Level 2
         snakeScore = 0
 
@@ -946,6 +976,9 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         powerUp = nil
+
+        // Reset stars back to Level 1 count
+        stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
 
         for shape in shapes {
             shape.reset(bounds: bounds)
@@ -1404,13 +1437,49 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background gradient
-                RadialGradient(
-                    colors: [Color(red: 0.1, green: 0, blue: 0.2), .black],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: max(geometry.size.width, geometry.size.height)
-                )
+                // Background gradient - deeper space in Level 2
+                Group {
+                    if game.currentLevel >= 2 {
+                        // Deep space with nebula-like colours
+                        ZStack {
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.02, green: 0.0, blue: 0.08),
+                                    Color(red: 0.0, green: 0.0, blue: 0.0),
+                                    Color(red: 0.05, green: 0.0, blue: 0.1),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            // Subtle nebula glow patches
+                            RadialGradient(
+                                colors: [Color(red: 0.15, green: 0.0, blue: 0.25).opacity(0.4), .clear],
+                                center: .topTrailing,
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.6
+                            )
+                            RadialGradient(
+                                colors: [Color(red: 0.0, green: 0.05, blue: 0.2).opacity(0.3), .clear],
+                                center: .bottomLeading,
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.5
+                            )
+                            RadialGradient(
+                                colors: [Color(red: 0.2, green: 0.0, blue: 0.1).opacity(0.2), .clear],
+                                center: UnitPoint(x: 0.3, y: 0.6),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.4
+                            )
+                        }
+                    } else {
+                        RadialGradient(
+                            colors: [Color(red: 0.1, green: 0, blue: 0.2), .black],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: max(geometry.size.width, geometry.size.height)
+                        )
+                    }
+                }
                 .ignoresSafeArea()
 
                 // Game canvas - redraws on updateTrigger
@@ -1607,17 +1676,60 @@ struct GameCanvasView: View {
 
     var body: some View {
         Canvas { context, size in
+            let isLevel2 = game.currentLevel >= 2
+
             // Draw stars
             for star in game.stars {
-                context.fill(
-                    Circle().path(in: CGRect(
-                        x: star.x - star.size / 2,
-                        y: star.y - star.size / 2,
-                        width: star.size,
-                        height: star.size
-                    )),
-                    with: .color(.white.opacity(star.brightness))
-                )
+                let drawSize = isLevel2 ? star.level2Size : star.size
+
+                if isLevel2 {
+                    // Coloured shining stars for Level 2
+                    let starColor = Color(
+                        red: star.starColorR,
+                        green: star.starColorG,
+                        blue: star.starColorB
+                    ).opacity(star.brightness)
+
+                    // Outer glow for bigger stars
+                    if drawSize > 2.5 {
+                        let glowSize = drawSize * 3
+                        context.fill(
+                            Circle().path(in: CGRect(
+                                x: star.x - glowSize / 2,
+                                y: star.y - glowSize / 2,
+                                width: glowSize,
+                                height: glowSize
+                            )),
+                            with: .color(Color(
+                                red: star.starColorR,
+                                green: star.starColorG,
+                                blue: star.starColorB
+                            ).opacity(star.brightness * 0.15))
+                        )
+                    }
+
+                    // Star core
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: star.x - drawSize / 2,
+                            y: star.y - drawSize / 2,
+                            width: drawSize,
+                            height: drawSize
+                        )),
+                        with: .color(starColor)
+                    )
+                } else {
+                    // Simple white stars for Level 1
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: star.x - drawSize / 2,
+                            y: star.y - drawSize / 2,
+                            width: drawSize,
+                            height: drawSize
+                        )),
+                        with: .color(.white.opacity(star.brightness))
+                    )
+                }
             }
 
             // Draw fireballs
