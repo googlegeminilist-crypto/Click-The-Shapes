@@ -1413,7 +1413,7 @@
                 const marginBot = isMobile ? 60 : 150;
                 this.x = Math.random() * (canvas.width - marginX * 2) + marginX;
                 this.y = Math.random() * (canvas.height - marginTop - marginBot) + marginTop;
-                this.size = level3Active ? (isMobile ? 25 : 50) : (level2Active ? (isMobile ? 22 : 45) : (isMobile ? 30 : 80));
+                this.size = level3Active ? (isMobile ? 14 : 50) : (level2Active ? (isMobile ? 12 : 45) : (isMobile ? 16 : 80));
                 this.baseSize = this.size;
                 this.shrinking = level3Active;
                 this.shrinkRate = level3Active ? 0.15 : 0;
@@ -1432,7 +1432,7 @@
                 for (let i = 0; i < numStars; i++) {
                     this.orbitingStars.push({
                         angle: (Math.PI * 2 * i) / numStars,
-                        distance: this.size + (isMobile ? 12 : 30) + Math.random() * (isMobile ? 8 : 20),
+                        distance: this.size + (isMobile ? 6 : 30) + Math.random() * (isMobile ? 4 : 20),
                         speed: (Math.random() - 0.5) * 0.03,
                         size: Math.random() * 2 + 1,
                         color: i % 2 === 0 ? '#ff0000' : '#0000ff',
@@ -1500,19 +1500,20 @@
                 }
 
                 // Cheap glow: draw larger faded shape behind
+                const glowPad = isMobile ? 2 : 4;
                 ctx.globalAlpha = 0.25;
                 ctx.strokeStyle = this.color;
-                ctx.lineWidth = 8;
-                if (this.shape === 'star') { this.drawStar(currentSize + 4); }
-                else if (this.shape === 'circle') { this.drawCircle(currentSize + 4); }
-                else if (this.shape === 'triangle') { this.drawTriangle(currentSize + 4); }
-                else if (this.shape === 'square') { this.drawSquare(currentSize + 4); }
-                else if (this.shape === 'pentagon') { this.drawPentagon(currentSize + 4); }
+                ctx.lineWidth = isMobile ? 3 : 8;
+                if (this.shape === 'star') { this.drawStar(currentSize + glowPad); }
+                else if (this.shape === 'circle') { this.drawCircle(currentSize + glowPad); }
+                else if (this.shape === 'triangle') { this.drawTriangle(currentSize + glowPad); }
+                else if (this.shape === 'square') { this.drawSquare(currentSize + glowPad); }
+                else if (this.shape === 'pentagon') { this.drawPentagon(currentSize + glowPad); }
 
                 ctx.globalAlpha = 1;
                 ctx.strokeStyle = this.color;
                 ctx.fillStyle = this.color;
-                ctx.lineWidth = 3;
+                ctx.lineWidth = isMobile ? 1.5 : 3;
 
                 if (this.shape === 'star') {
                     this.drawStar(currentSize);
@@ -2131,7 +2132,7 @@
             snake.speed = 4.5;
 
             // Make shapes smaller for level 2
-            const l2Size = isMobile ? 22 : 45;
+            const l2Size = isMobile ? 12 : 45;
             constellationShapes.forEach(shape => {
                 shape.size = l2Size;
                 shape.orbitingStars.forEach(star => {
