@@ -600,17 +600,18 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 // MARK: - Store Manager (In-App Purchase)
 class StoreManager: ObservableObject {
     static let shared = StoreManager()
-    static let soundPackProductID = "krakastan3_icloud.com.Click_The_Shapes.soundpack"
+    static let fullGameProductID = "krakastan3_icloud.com.Click_The_Shapes.fullgame"
 
-    @Published var soundPackPurchased: Bool = false
-    @Published var soundPackProduct: Product?
+    @Published var fullGamePurchased: Bool = false
+    @Published var fullGameProduct: Product?
     @Published var isPurchasing = false
 
     private var transactionListener: Task<Void, Error>?
 
     init() {
-        // Check if already purchased
-        soundPackPurchased = UserDefaults.standard.bool(forKey: "soundPackPurchased")
+        // Check if already purchased (also check old key for backward compat)
+        fullGamePurchased = UserDefaults.standard.bool(forKey: "fullGamePurchased")
+            || UserDefaults.standard.bool(forKey: "soundPackPurchased")
 
         // Listen for transactions
         transactionListener = listenForTransactions()
@@ -643,9 +644,9 @@ class StoreManager: ObservableObject {
     @MainActor
     func loadProducts() async {
         do {
-            let products = try await Product.products(for: [StoreManager.soundPackProductID])
-            soundPackProduct = products.first
-            print("Loaded product: \(soundPackProduct?.displayName ?? "none")")
+            let products = try await Product.products(for: [StoreManager.fullGameProductID])
+            fullGameProduct = products.first
+            print("Loaded product: \(fullGameProduct?.displayName ?? "none")")
         } catch {
             print("Failed to load products: \(error)")
         }
@@ -656,9 +657,9 @@ class StoreManager: ObservableObject {
         for await result in StoreKit.Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
-                if transaction.productID == StoreManager.soundPackProductID {
-                    soundPackPurchased = true
-                    UserDefaults.standard.set(true, forKey: "soundPackPurchased")
+                if transaction.productID == StoreManager.fullGameProductID {
+                    fullGamePurchased = true
+                    UserDefaults.standard.set(true, forKey: "fullGamePurchased")
                 }
             } catch {
                 print("Entitlement check failed: \(error)")
@@ -667,8 +668,8 @@ class StoreManager: ObservableObject {
     }
 
     @MainActor
-    func purchaseSoundPack() async {
-        guard let product = soundPackProduct else {
+    func purchaseFullGame() async {
+        guard let product = fullGameProduct else {
             print("Product not loaded yet")
             return
         }
@@ -715,9 +716,9 @@ class StoreManager: ObservableObject {
 
     @MainActor
     private func updatePurchaseStatus(_ transaction: StoreKit.Transaction) async {
-        if transaction.productID == StoreManager.soundPackProductID {
-            soundPackPurchased = true
-            UserDefaults.standard.set(true, forKey: "soundPackPurchased")
+        if transaction.productID == StoreManager.fullGameProductID {
+            fullGamePurchased = true
+            UserDefaults.standard.set(true, forKey: "fullGamePurchased")
         }
     }
 
@@ -738,6 +739,12 @@ class GameViewModel: ObservableObject {
     @Published var updateTrigger = false
     @Published var currentLevel = 1
     @Published var showLevelTransition = false
+    @Published var showUnlockPrompt = false
+    @Published var tapSoundEnabled: Bool = true {
+        didSet {
+            UserDefaults.standard.set(tapSoundEnabled, forKey: "tapSoundEnabled")
+        }
+    }
 
     var stars: [BackgroundStar] = []
     var shapes: [ConstellationShape] = []
@@ -766,6 +773,11 @@ class GameViewModel: ObservableObject {
 
     func setupGame(bounds: CGSize) {
         self.bounds = bounds
+
+        // Load saved tap sound preference
+        if UserDefaults.standard.object(forKey: "tapSoundEnabled") != nil {
+            tapSoundEnabled = UserDefaults.standard.bool(forKey: "tapSoundEnabled")
+        }
 
         // Create stars
         stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
@@ -895,7 +907,7 @@ class GameViewModel: ObservableObject {
                     // Clicked a trap box! Minus 10 points
                     score = max(0, score - 10)
                     showPoints(at: point, points: -10)
-                    SoundManager.shared.playExplosion()
+                    if tapSoundEnabled { SoundManager.shared.playExplosion() }
 
                     // Red particles for trap box
                     for _ in 0..<8 {
@@ -912,10 +924,12 @@ class GameViewModel: ObservableObject {
                     let points = (currentLevel >= 3 && shape.isSmall) ? 5 : 10
                     addScore(points)
                     showPoints(at: point, points: points)
-                    if StoreManager.shared.soundPackPurchased {
-                        SoundManager.shared.playShapeTap()
-                    } else {
-                        SoundManager.shared.playSparkle()
+                    if tapSoundEnabled {
+                        if StoreManager.shared.fullGamePurchased {
+                            SoundManager.shared.playShapeTap()
+                        } else {
+                            SoundManager.shared.playSparkle()
+                        }
                     }
 
                     // Create particles
@@ -933,7 +947,7 @@ class GameViewModel: ObservableObject {
     func snakeAteShape(_ shape: ConstellationShape) {
         snakeScore += 10
         showPoints(at: CGPoint(x: shape.x, y: shape.y), points: 10)
-        SoundManager.shared.playSnakeEat()
+        if tapSoundEnabled { SoundManager.shared.playSnakeEat() }
 
         // Create particles
         for _ in 0..<10 {
@@ -952,7 +966,7 @@ class GameViewModel: ObservableObject {
         pu.isActive = false
         powerUp = nil
 
-        SoundManager.shared.playExplosion()
+        if tapSoundEnabled { SoundManager.shared.playExplosion() }
 
         // Create explosion fireballs
         for _ in 0..<30 {
@@ -992,7 +1006,18 @@ class GameViewModel: ObservableObject {
     func addScore(_ points: Int) {
         score += points
         if currentLevel == 1 && score >= GameConstants.level1WinScore {
-            transitionToLevel2()
+            if StoreManager.shared.fullGamePurchased {
+                transitionToLevel2()
+            } else {
+                // Pause game and show unlock prompt
+                displayLink?.invalidate()
+                displayLink = nil
+                powerUpTimer?.invalidate()
+                powerUpTimer = nil
+                trapBoxTimer?.invalidate()
+                trapBoxTimer = nil
+                showUnlockPrompt = true
+            }
         } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
             transitionToLevel3()
         } else if currentLevel == 3 && score >= GameConstants.level3WinScore {
@@ -1441,30 +1466,39 @@ struct IntroOverlay: View {
                 .background(Color.black.opacity(0.5))
                 .cornerRadius(15)
 
-                // Sound Pack IAP
+                // Full Game IAP
                 VStack(spacing: 10) {
-                    if store.soundPackPurchased {
+                    if store.fullGamePurchased {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(GameColors.neonGreen)
-                            Text("Sound Pack Unlocked")
+                            Text("Full Game Unlocked")
                                 .font(.system(size: 14, weight: .bold, design: .monospaced))
                                 .foregroundColor(GameColors.neonGreen)
                         }
                     } else {
                         Button {
-                            Task { await store.purchaseSoundPack() }
+                            Task { await store.purchaseFullGame() }
                         } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: "speaker.wave.3.fill")
+                                Image(systemName: "lock.open.fill")
                                     .foregroundColor(.black)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Sound Pack")
+                                    Text("Unlock Full Game")
                                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                                         .foregroundColor(.black)
-                                    Text(store.soundPackProduct?.displayPrice ?? "£0.49")
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .foregroundColor(.black.opacity(0.7))
+                                    if let price = store.fullGameProduct?.displayPrice {
+                                        Text(price)
+                                            .font(.system(size: 12, design: .monospaced))
+                                            .foregroundColor(.black.opacity(0.7))
+                                    } else {
+                                        Text("Loading...")
+                                            .font(.system(size: 12, design: .monospaced))
+                                            .foregroundColor(.black.opacity(0.5))
+                                    }
+                                    Text("Levels 2 & 3 + Sound Pack")
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundColor(.black.opacity(0.6))
                                 }
                             }
                             .padding(.horizontal, 25)
@@ -1528,6 +1562,103 @@ struct RuleRow: View {
             Text(text)
                 .foregroundColor(.white)
                 .font(.system(size: 16, design: .monospaced))
+        }
+    }
+}
+
+// MARK: - Unlock Overlay
+struct UnlockOverlay: View {
+    let onPurchaseComplete: () -> Void
+    let onReplayLevel1: () -> Void
+    @ObservedObject var store = StoreManager.shared
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.95)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Text("LEVEL 1 COMPLETE!")
+                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                    .foregroundColor(GameColors.neonGreen)
+                    .shadow(color: GameColors.neonGreen, radius: 10)
+
+                Text("Unlock the full game to continue")
+                    .font(.system(size: 16, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.8))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    RuleRow(icon: "2.circle.fill", text: "Level 2 — More shapes & speed", color: GameColors.neonCyan)
+                    RuleRow(icon: "3.circle.fill", text: "Level 3 — Ultimate challenge", color: GameColors.neonPink)
+                    RuleRow(icon: "speaker.wave.3.fill", text: "Premium tap sounds", color: GameColors.neonYellow)
+                }
+                .padding()
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(12)
+
+                Button {
+                    Task {
+                        await store.purchaseFullGame()
+                        if store.fullGamePurchased {
+                            onPurchaseComplete()
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lock.open.fill")
+                            .foregroundColor(.black)
+                        VStack(spacing: 2) {
+                            Text("UNLOCK FULL GAME")
+                                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                .foregroundColor(.black)
+                            if let price = store.fullGameProduct?.displayPrice {
+                                Text(price)
+                                    .font(.system(size: 13, design: .monospaced))
+                                    .foregroundColor(.black.opacity(0.7))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 15)
+                    .background(
+                        LinearGradient(
+                            colors: [GameColors.neonGreen, GameColors.neonCyan],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                    .shadow(color: GameColors.neonGreen, radius: 10)
+                }
+                .disabled(store.isPurchasing)
+                .opacity(store.isPurchasing ? 0.6 : 1)
+
+                Button {
+                    Task {
+                        await store.restorePurchases()
+                        if store.fullGamePurchased {
+                            onPurchaseComplete()
+                        }
+                    }
+                } label: {
+                    Text("Restore Purchases")
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+
+                Button(action: onReplayLevel1) {
+                    Text("Replay Level 1")
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundColor(GameColors.neonYellow)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(GameColors.neonYellow.opacity(0.5), lineWidth: 1)
+                        )
+                }
+            }
+            .padding(30)
         }
     }
 }
@@ -1767,7 +1898,12 @@ struct ContentView: View {
                         .id(game.updateTrigger)
                 }
 
-                // Header
+                // Tap gesture layer
+                TapGestureView { location in
+                    game.handleTap(at: location)
+                }
+
+                // Header (on top of tap gesture so buttons are tappable)
                 VStack {
                     // Level indicator
                     Text("LEVEL \(game.currentLevel)")
@@ -1782,25 +1918,51 @@ struct ContentView: View {
                                 .stroke(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange, lineWidth: 1)
                         )
                         .padding(.top, 50)
+                        .allowsHitTesting(false)
 
                     HStack {
-                        // Snake score (left)
-                        VStack(alignment: .leading) {
-                            Text("Snake")
-                                .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            Text("\(game.snakeScore)")
-                                .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        // Snake score (left) + sound toggle below
+                        VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading) {
+                                Text("Snake")
+                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                Text("\(game.snakeScore)")
+                                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(GameColors.neonPink)
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(GameColors.neonPink, lineWidth: 2)
+                            )
+                            .allowsHitTesting(false)
+
+                            // Tap sound toggle
+                            Button(action: {
+                                game.tapSoundEnabled.toggle()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: game.tapSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                        .font(.system(size: 12))
+                                    Text(game.tapSoundEnabled ? "Sound On" : "Sound Off")
+                                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                }
+                                .foregroundColor(game.tapSoundEnabled ? GameColors.neonCyan : .gray)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(game.tapSoundEnabled ? GameColors.neonCyan : .gray, lineWidth: 1)
+                                )
+                            }
                         }
-                        .foregroundColor(GameColors.neonPink)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(GameColors.neonPink, lineWidth: 2)
-                        )
 
                         Spacer()
+                            .allowsHitTesting(false)
 
                         // Target score
                         VStack {
@@ -1811,8 +1973,10 @@ struct ContentView: View {
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
                                 .foregroundColor(GameColors.neonYellow)
                         }
+                        .allowsHitTesting(false)
 
                         Spacer()
+                            .allowsHitTesting(false)
 
                         // Player score (right)
                         VStack(alignment: .trailing) {
@@ -1829,11 +1993,13 @@ struct ContentView: View {
                             RoundedRectangle(cornerRadius: 10)
                                 .stroke(GameColors.neonGreen, lineWidth: 2)
                         )
+                        .allowsHitTesting(false)
                     }
                     .padding(.horizontal)
                     .padding(.top, 5)
 
                     Spacer()
+                        .allowsHitTesting(false)
 
                     // Win record
                     HStack(spacing: 30) {
@@ -1863,12 +2029,9 @@ struct ContentView: View {
                             .stroke(GameColors.neonGreen, lineWidth: 1)
                     )
                     .padding(.bottom, 30)
+                    .allowsHitTesting(false)
                 }
-
-                // Tap gesture layer
-                TapGestureView { location in
-                    game.handleTap(at: location)
-                }
+                .allowsHitTesting(true)
 
                 // Intro overlay
                 if game.showIntro {
@@ -1911,6 +2074,20 @@ struct ContentView: View {
                         }
                     }
                     .transition(.opacity)
+                }
+
+                // Unlock prompt (after beating Level 1 without IAP)
+                if game.showUnlockPrompt {
+                    UnlockOverlay(
+                        onPurchaseComplete: {
+                            game.showUnlockPrompt = false
+                            game.transitionToLevel2()
+                        },
+                        onReplayLevel1: {
+                            game.showUnlockPrompt = false
+                            game.restartGame()
+                        }
+                    )
                 }
 
                 // Win overlay
