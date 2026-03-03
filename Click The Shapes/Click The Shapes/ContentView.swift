@@ -10,6 +10,14 @@ import Combine
 import AVFoundation
 import StoreKit
 
+// MARK: - Debug Logging
+@inline(__always)
+nonisolated func debugLog(_ message: @autoclosure () -> String) {
+    #if DEBUG
+    print(message())
+    #endif
+}
+
 // MARK: - Game Constants (optimized for older phones like iPhone XS Max)
 struct GameConstants {
     static let level1WinScore = 500
@@ -488,7 +496,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("Audio session error: \(error)")
+            debugLog("Audio session error: \(error)")
         }
     }
 
@@ -501,14 +509,14 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         // Try bundle first
         if let bundleURL = Bundle.main.url(forResource: "Untitled", withExtension: "wav") {
             url = bundleURL
-            print("Found audio in bundle: \(bundleURL)")
+            debugLog("Found audio in bundle: \(bundleURL)")
         }
 
         guard let audioURL = url else {
-            print("Background music file 'Untitled.wav' not found in bundle")
-            print("Bundle path: \(Bundle.main.bundlePath)")
+            debugLog("Background music file 'Untitled.wav' not found in bundle")
+            debugLog("Bundle path: \(Bundle.main.bundlePath)")
             if let resources = Bundle.main.urls(forResourcesWithExtension: "wav", subdirectory: nil) {
-                print("WAV files in bundle: \(resources)")
+                debugLog("WAV files in bundle: \(resources)")
             }
             return
         }
@@ -520,18 +528,18 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             backgroundMusicPlayer?.volume = 0.5
             backgroundMusicPlayer?.prepareToPlay()
             isSetup = true
-            print("Background music loaded successfully")
+            debugLog("Background music loaded successfully")
         } catch {
-            print("Error loading background music: \(error)")
+            debugLog("Error loading background music: \(error)")
         }
     }
 
     func playBackgroundMusic() {
         setupBackgroundMusic()
         if backgroundMusicPlayer?.play() == true {
-            print("Music started playing")
+            debugLog("Music started playing")
         } else {
-            print("Music failed to play")
+            debugLog("Music failed to play")
         }
     }
 
@@ -563,9 +571,9 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         if shapeTapURL == nil {
             shapeTapURL = Bundle.main.url(forResource: "alex_jauk-strange-echoing-noises-230895", withExtension: "mp3")
             if shapeTapURL == nil {
-                print("Shape tap sound NOT found in bundle")
+                debugLog("Shape tap sound NOT found in bundle")
                 if let mp3s = Bundle.main.urls(forResourcesWithExtension: "mp3", subdirectory: nil) {
-                    print("MP3 files in bundle: \(mp3s)")
+                    debugLog("MP3 files in bundle: \(mp3s)")
                 }
                 return
             }
@@ -584,16 +592,16 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             player.play()
             shapeTapPlayers.append(player)
         } catch {
-            print("Error playing shape tap sound: \(error)")
+            debugLog("Error playing shape tap sound: \(error)")
         }
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        print("Audio finished: \(flag)")
+        debugLog("Audio finished: \(flag)")
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("Audio decode error: \(error?.localizedDescription ?? "unknown")")
+        debugLog("Audio decode error: \(error?.localizedDescription ?? "unknown")")
     }
 }
 
@@ -635,7 +643,7 @@ class StoreManager: ObservableObject {
                     await self.updatePurchaseStatus(transaction)
                     await transaction.finish()
                 } catch {
-                    print("Transaction verification failed: \(error)")
+                    debugLog("Transaction verification failed: \(error)")
                 }
             }
         }
@@ -646,9 +654,9 @@ class StoreManager: ObservableObject {
         do {
             let products = try await Product.products(for: [StoreManager.fullGameProductID])
             fullGameProduct = products.first
-            print("Loaded product: \(fullGameProduct?.displayName ?? "none")")
+            debugLog("Loaded product: \(fullGameProduct?.displayName ?? "none")")
         } catch {
-            print("Failed to load products: \(error)")
+            debugLog("Failed to load products: \(error)")
         }
     }
 
@@ -662,7 +670,7 @@ class StoreManager: ObservableObject {
                     UserDefaults.standard.set(true, forKey: "fullGamePurchased")
                 }
             } catch {
-                print("Entitlement check failed: \(error)")
+                debugLog("Entitlement check failed: \(error)")
             }
         }
     }
@@ -670,7 +678,7 @@ class StoreManager: ObservableObject {
     @MainActor
     func purchaseFullGame() async {
         guard let product = fullGameProduct else {
-            print("Product not loaded yet")
+            debugLog("Product not loaded yet")
             return
         }
 
@@ -683,14 +691,14 @@ class StoreManager: ObservableObject {
                 await updatePurchaseStatus(transaction)
                 await transaction.finish()
             case .userCancelled:
-                print("User cancelled purchase")
+                debugLog("User cancelled purchase")
             case .pending:
-                print("Purchase pending")
+                debugLog("Purchase pending")
             @unknown default:
                 break
             }
         } catch {
-            print("Purchase failed: \(error)")
+            debugLog("Purchase failed: \(error)")
         }
         isPurchasing = false
     }
@@ -701,7 +709,7 @@ class StoreManager: ObservableObject {
             try await AppStore.sync()
             await checkCurrentEntitlements()
         } catch {
-            print("Restore failed: \(error)")
+            debugLog("Restore failed: \(error)")
         }
     }
 
@@ -740,6 +748,7 @@ class GameViewModel: ObservableObject {
     @Published var currentLevel = 1
     @Published var showLevelTransition = false
     @Published var showUnlockPrompt = false
+    @Published var hardcoreMode = false
     @Published var tapSoundEnabled: Bool = true {
         didSet {
             UserDefaults.standard.set(tapSoundEnabled, forKey: "tapSoundEnabled")
@@ -1132,6 +1141,7 @@ class GameViewModel: ObservableObject {
         gameStarted = false
         currentLevel = 1
         showLevelTransition = false
+        hardcoreMode = false
         particles.removeAll()
         fireballs.removeAll()
         powerUp = nil
@@ -1443,6 +1453,7 @@ struct PowerUpView: View {
 // MARK: - Intro Overlay
 struct IntroOverlay: View {
     let onStart: () -> Void
+    let onStartHardcore: () -> Void
     @ObservedObject var store = StoreManager.shared
 
     var body: some View {
@@ -1458,7 +1469,7 @@ struct IntroOverlay: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                     RuleRow(icon: "target", text: "Tap shapes to earn 10 points", color: .yellow)
-                    RuleRow(icon: "flame.fill", text: "Snake gets fireballs for 2X points!", color: .orange)
+                    RuleRow(icon: "flame.fill", text: "Snake gets fireballs for bonus points!", color: .orange)
                     RuleRow(icon: "tortoise.fill", text: "Snake starts hunting on first tap!", color: GameColors.neonPink)
                     RuleRow(icon: "trophy.fill", text: "First to 500 points wins!", color: GameColors.neonGreen)
                 }
@@ -1496,7 +1507,7 @@ struct IntroOverlay: View {
                                             .font(.system(size: 12, design: .monospaced))
                                             .foregroundColor(.black.opacity(0.5))
                                     }
-                                    Text("Levels 2 & 3 + Sound Pack")
+                                    Text("Levels 2 & 3 + Sound Pack + Hardcore mode")
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundColor(.black.opacity(0.6))
                                 }
@@ -1526,6 +1537,23 @@ struct IntroOverlay: View {
                     }
                 }
 
+                #if DEBUG
+                Button {
+                    store.fullGamePurchased.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: store.fullGamePurchased ? "lock.open.fill" : "lock.fill")
+                        Text(store.fullGamePurchased ? "DEBUG: Locked" : "DEBUG: Unlock Full Game")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.8))
+                    .cornerRadius(8)
+                }
+                #endif
+
                 Button(action: onStart) {
                     Text("START GAME")
                         .font(.system(size: 22, weight: .bold, design: .monospaced))
@@ -1543,6 +1571,30 @@ struct IntroOverlay: View {
                         .shadow(color: GameColors.neonGreen, radius: 10)
                 }
                 .padding(.top, 10)
+
+                if store.fullGamePurchased {
+                    Button(action: onStartHardcore) {
+                        VStack(spacing: 4) {
+                            Text("HARDCORE MODE")
+                                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                .foregroundColor(.black)
+                            Text("You can't restart at any point")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.black.opacity(0.7))
+                        }
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 12)
+                        .background(
+                            LinearGradient(
+                                colors: [GameColors.neonPink, GameColors.neonOrange],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                        .shadow(color: GameColors.neonPink, radius: 8)
+                    }
+                }
             }
             .padding(30)
         }
@@ -1668,6 +1720,7 @@ struct WinOverlay: View {
     let message: String
     let color: Color
     let levelText: String
+    let hardcoreMode: Bool
     let onRestart: () -> Void
     let onRestartLevel: () -> Void
 
@@ -1694,36 +1747,39 @@ struct WinOverlay: View {
                         }
                     }
 
-                // Restart Level button - glowing pulsing green
-                Button(action: onRestartLevel) {
-                    Text("RESTART \(levelText)")
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 30)
-                        .padding(.vertical, 15)
-                        .background(
-                            GameColors.neonGreen
-                        )
-                        .cornerRadius(12)
-                        .shadow(color: GameColors.neonGreen, radius: buttonGlow)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(GameColors.neonGreen.opacity(0.8), lineWidth: 2)
-                        )
+                if !hardcoreMode {
+                    // Restart Level button - glowing pulsing green (hidden in hardcore mode)
+                    Button(action: onRestartLevel) {
+                        Text("RESTART \(levelText)")
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 30)
+                            .padding(.vertical, 15)
+                            .background(
+                                GameColors.neonGreen
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: GameColors.neonGreen, radius: buttonGlow)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(GameColors.neonGreen.opacity(0.8), lineWidth: 2)
+                            )
+                    }
                 }
 
                 // Play Again (from Level 1) button
                 Button(action: onRestart) {
                     Text("PLAY AGAIN")
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                        .font(.system(size: hardcoreMode ? 20 : 16, weight: .bold, design: .monospaced))
+                        .foregroundColor(hardcoreMode ? .black : .white)
                         .padding(.horizontal, 30)
-                        .padding(.vertical, 12)
-                        .background(Color.white.opacity(0.15))
+                        .padding(.vertical, hardcoreMode ? 15 : 12)
+                        .background(hardcoreMode ? GameColors.neonGreen : Color.white.opacity(0.15))
                         .cornerRadius(12)
+                        .shadow(color: hardcoreMode ? GameColors.neonGreen : .clear, radius: hardcoreMode ? buttonGlow : 0)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                .stroke(hardcoreMode ? GameColors.neonGreen.opacity(0.8) : Color.white.opacity(0.3), lineWidth: hardcoreMode ? 2 : 1)
                         )
                 }
             }
@@ -2037,6 +2093,9 @@ struct ContentView: View {
                 if game.showIntro {
                     IntroOverlay(onStart: {
                         game.startGame()
+                    }, onStartHardcore: {
+                        game.hardcoreMode = true
+                        game.startGame()
                     })
                 }
 
@@ -2096,6 +2155,7 @@ struct ContentView: View {
                         message: game.winMessage,
                         color: game.winColor,
                         levelText: "LEVEL \(game.currentLevel)",
+                        hardcoreMode: game.hardcoreMode,
                         onRestart: {
                             game.restartGame()
                         },
