@@ -41,9 +41,9 @@ struct GameConstants {
     static let level2WinScore = 1000
     static let level3WinScore = 1500
     static let level4WinScore = 2000
-    static let maxStars = 60
-    static let maxParticles = 80
-    static let maxFireballs = 50
+    static let maxStars = 40
+    static let maxParticles = 50
+    static let maxFireballs = 30
     static let shapeCount = 8
     static let powerUpInterval: TimeInterval = 5.0
     static let trapBoxDuration: TimeInterval = 1.2  // How long a shape stays as a trap box
@@ -207,8 +207,8 @@ class ConstellationShape: Identifiable {
     var baseSize: CGFloat = 60  // The current actual size (changes in Level 3)
 
     init(bounds: CGSize) {
-        x = CGFloat.random(in: 80...(bounds.width - 80))
-        y = CGFloat.random(in: 150...(bounds.height - 150))
+        x = CGFloat.random(in: 80...max(81, bounds.width - 80))
+        y = CGFloat.random(in: 150...max(151, bounds.height - 150))
         vx = CGFloat.random(in: -0.4...0.4)
         vy = CGFloat.random(in: -0.4...0.4)
         color = GameColors.shapeColors.randomElement()!
@@ -228,8 +228,8 @@ class ConstellationShape: Identifiable {
     }
 
     func reset(bounds: CGSize, level: Int = 1) {
-        x = CGFloat.random(in: 80...(bounds.width - 80))
-        y = CGFloat.random(in: 150...(bounds.height - 150))
+        x = CGFloat.random(in: 80...max(81, bounds.width - 80))
+        y = CGFloat.random(in: 150...max(151, bounds.height - 150))
         color = GameColors.shapeColors.randomElement()!
         shapeType = ShapeType.allCases.randomElement()!
 
@@ -364,7 +364,7 @@ class PowerUp: Identifiable {
     var isActive = true
 
     init(bounds: CGSize) {
-        x = CGFloat.random(in: 60...(bounds.width - 60))
+        x = CGFloat.random(in: 60...max(61, bounds.width - 60))
         y = -60
     }
 
@@ -410,14 +410,17 @@ class Snake {
     }
 
     func update(shapes: [ConstellationShape], bounds: CGSize, powerUp: PowerUp?, onEatShape: (ConstellationShape) -> Void, onEatPowerUp: (PowerUp) -> Void) {
-        guard !segments.isEmpty else { return }
+        guard !segments.isEmpty, bounds.width > 0, bounds.height > 0 else { return }
+
+        let headX = segments[0].x
+        let headY = segments[0].y
 
         // Find nearest shape
         var nearestShape: ConstellationShape?
         var nearestShapeDist = CGFloat.infinity
 
         for shape in shapes {
-            let dist = hypot(shape.x - segments[0].x, shape.y - segments[0].y)
+            let dist = hypot(shape.x - headX, shape.y - headY)
             if dist < nearestShapeDist {
                 nearestShapeDist = dist
                 nearestShape = shape
@@ -425,12 +428,11 @@ class Snake {
         }
 
         // Check if power-up is closer (prioritize power-ups!)
-        var targetX: CGFloat = nearestShape?.x ?? segments[0].x
-        var targetY: CGFloat = nearestShape?.y ?? segments[0].y
+        var targetX: CGFloat = nearestShape?.x ?? headX
+        var targetY: CGFloat = nearestShape?.y ?? headY
 
         if let pu = powerUp, pu.isActive {
-            let powerUpDist = hypot(pu.x - segments[0].x, pu.y - segments[0].y)
-            // Prioritize power-up if it exists
+            let powerUpDist = hypot(pu.x - headX, pu.y - headY)
             if powerUpDist < nearestShapeDist + 100 {
                 targetX = pu.x
                 targetY = pu.y
@@ -438,9 +440,13 @@ class Snake {
         }
 
         // Move head towards target
-        let angle = atan2(targetY - segments[0].y, targetX - segments[0].x)
-        let newX = segments[0].x + cos(angle) * speed
-        let newY = segments[0].y + sin(angle) * speed
+        let angle = atan2(targetY - headY, targetX - headX)
+        var newX = headX + cos(angle) * speed
+        var newY = headY + sin(angle) * speed
+
+        // Clamp to screen bounds
+        newX = min(max(0, newX), bounds.width)
+        newY = min(max(0, newY), bounds.height)
 
         // Check if snake eats the power-up (larger detection radius)
         if let pu = powerUp, pu.isActive {
@@ -467,7 +473,7 @@ class Snake {
             segments.removeLast()
         }
 
-        // Maintain segment spacing (optimize by limiting updates)
+        // Maintain segment spacing
         let maxUpdate = min(25, segments.count)
         for i in 1..<maxUpdate {
             let prev = segments[i - 1]
@@ -476,19 +482,16 @@ class Snake {
             let dy = prev.y - current.y
             let dist = hypot(dx, dy)
 
-            if dist > segmentSize * 2 {
+            if dist > segmentSize * 2, dist > 0 {
                 let ratio = (segmentSize * 2) / dist
                 current.x = prev.x - dx * ratio
                 current.y = prev.y - dy * ratio
+                // Clamp segments to screen
+                current.x = min(max(0, current.x), bounds.width)
+                current.y = min(max(0, current.y), bounds.height)
                 segments[i] = current
             }
         }
-
-        // Wrap around edges
-        if segments[0].x < 0 { segments[0].x = bounds.width }
-        if segments[0].x > bounds.width { segments[0].x = 0 }
-        if segments[0].y < 0 { segments[0].y = bounds.height }
-        if segments[0].y > bounds.height { segments[0].y = 0 }
     }
 
     func grow() {
@@ -553,6 +556,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 
     func playBackgroundMusic() {
+        setupAudioSession()
         setupBackgroundMusic()
         if backgroundMusicPlayer?.play() == true {
             debugLog("Music started playing")
@@ -563,6 +567,15 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 
     func stopBackgroundMusic() {
         backgroundMusicPlayer?.stop()
+    }
+
+    func pauseBackgroundMusic() {
+        backgroundMusicPlayer?.pause()
+    }
+
+    func resumeBackgroundMusic() {
+        setupAudioSession()
+        backgroundMusicPlayer?.play()
     }
 
     func stopAllShapeTapSounds() {
@@ -590,17 +603,15 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             shapeTapURL = Bundle.main.url(forResource: "alex_jauk-strange-echoing-noises-230895", withExtension: "mp3")
             if shapeTapURL == nil {
                 debugLog("Shape tap sound NOT found in bundle")
-                if let mp3s = Bundle.main.urls(forResourcesWithExtension: "mp3", subdirectory: nil) {
-                    debugLog("MP3 files in bundle: \(mp3s)")
-                }
                 return
             }
         }
 
         guard let url = shapeTapURL else { return }
 
-        // Clean up finished players
+        // Clean up finished players — limit pool to prevent memory buildup
         shapeTapPlayers.removeAll { !$0.isPlaying }
+        guard shapeTapPlayers.count < 5 else { return }
 
         // Create a fresh player each tap so sounds overlap for fast tapping
         do {
@@ -760,6 +771,13 @@ class StoreManager: ObservableObject {
 
 // MARK: - Game View Model
 class GameViewModel: ObservableObject {
+    deinit {
+        displayLink?.invalidate()
+        displayLink = nil
+        powerUpTimer?.invalidate()
+        trapBoxTimer?.invalidate()
+    }
+
     @Published var score = 0
     @Published var snakeScore = 0
     @Published var gameOver = false
@@ -805,8 +823,15 @@ class GameViewModel: ObservableObject {
         }
     }
 
+    private var isSetup = false
+
     func setupGame(bounds: CGSize) {
+        guard bounds.width > 0, bounds.height > 0 else { return }
         self.bounds = bounds
+
+        // Only set up once
+        guard !isSetup else { return }
+        isSetup = true
 
         // Load saved tap sound preference
         if UserDefaults.standard.object(forKey: "tapSoundEnabled") != nil {
@@ -828,14 +853,20 @@ class GameViewModel: ObservableObject {
 
     func startGame() {
         showIntro = false
+        if displayLink == nil {
+            startGameLoop()
+        }
         SoundManager.shared.playBackgroundMusic()
         AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
     }
 
     func startGameLoop() {
-        displayLink = CADisplayLink(target: self, selector: #selector(gameLoop))
-        displayLink?.preferredFramesPerSecond = 60
-        displayLink?.add(to: .main, forMode: .common)
+        displayLink?.invalidate()
+        displayLink = nil
+        let link = CADisplayLink(target: self, selector: #selector(gameLoop))
+        link.preferredFramesPerSecond = 60
+        link.add(to: .main, forMode: .common)
+        displayLink = link
 
         // Power-up spawn timer
         powerUpTimer = Timer.scheduledTimer(withTimeInterval: GameConstants.powerUpInterval, repeats: true) { [weak self] _ in
@@ -852,8 +883,37 @@ class GameViewModel: ObservableObject {
         trapBoxTimer = nil
     }
 
+    func pauseGame() {
+        displayLink?.isPaused = true
+        powerUpTimer?.invalidate()
+        powerUpTimer = nil
+        trapBoxTimer?.invalidate()
+        trapBoxTimer = nil
+        SoundManager.shared.pauseBackgroundMusic()
+    }
+
+    func resumeGame() {
+        guard !gameOver else { return }
+        displayLink?.isPaused = false
+        if displayLink == nil && isSetup {
+            startGameLoop()
+        }
+        if !showIntro {
+            SoundManager.shared.resumeBackgroundMusic()
+            // Restart power-up spawn timer
+            if powerUpTimer == nil {
+                powerUpTimer = Timer.scheduledTimer(withTimeInterval: GameConstants.powerUpInterval, repeats: true) { [weak self] _ in
+                    self?.spawnPowerUp()
+                }
+            }
+            if currentLevel >= 2 {
+                startTrapBoxTimer()
+            }
+        }
+    }
+
     @objc func gameLoop() {
-        guard !gameOver, !showIntro else { return }
+        guard !gameOver, !showIntro, bounds.width > 0, bounds.height > 0 else { return }
 
         // Update stars
         for star in stars {
@@ -870,17 +930,19 @@ class GameViewModel: ObservableObject {
         }
 
         // Update snake (only if game started)
-        if gameStarted {
+        if gameStarted, !gameOver {
             snake?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
                 self?.snakeAteShape(shape)
             }, onEatPowerUp: { [weak self] pu in
                 self?.snakeAtePowerUp(pu)
             })
-            snake2?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
-                self?.snakeAteShape(shape)
-            }, onEatPowerUp: { [weak self] pu in
-                self?.snakeAtePowerUp(pu)
-            })
+            if !gameOver {
+                snake2?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
+                    self?.snakeAteShape(shape)
+                }, onEatPowerUp: { [weak self] pu in
+                    self?.snakeAtePowerUp(pu)
+                })
+            }
         }
 
         // Update power-up
@@ -976,13 +1038,13 @@ class GameViewModel: ObservableObject {
                     // Create particles — Level 4 gets a colorful explosion burst
                     if currentLevel >= 4 {
                         let burstColors: [Color] = [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink]
-                        for i in 0..<20 {
+                        for i in 0..<12 {
                             let p = Particle(x: point.x, y: point.y)
                             p.color = burstColors[i % burstColors.count]
-                            p.size = CGFloat.random(in: 3...8)
+                            p.size = CGFloat.random(in: 3...7)
                             particles.append(p)
                         }
-                        for _ in 0..<8 {
+                        for _ in 0..<4 {
                             fireballs.append(FireballParticle(x: point.x, y: point.y))
                         }
                     } else {
@@ -999,6 +1061,7 @@ class GameViewModel: ObservableObject {
     }
 
     func snakeAteShape(_ shape: ConstellationShape) {
+        guard !gameOver else { return }
         snakeScore += 10
         showPoints(at: CGPoint(x: shape.x, y: shape.y), points: 10)
         if tapSoundEnabled { SoundManager.shared.playSnakeEat() }
@@ -1016,6 +1079,7 @@ class GameViewModel: ObservableObject {
     }
 
     func snakeAtePowerUp(_ pu: PowerUp) {
+        guard !gameOver, pu.isActive else { return }
         let point = CGPoint(x: pu.x, y: pu.y)
         pu.isActive = false
         powerUp = nil
@@ -1023,7 +1087,7 @@ class GameViewModel: ObservableObject {
         if tapSoundEnabled { SoundManager.shared.playExplosion() }
 
         // Create explosion fireballs
-        for _ in 0..<30 {
+        for _ in 0..<15 {
             fireballs.append(FireballParticle(x: point.x, y: point.y))
         }
 
@@ -1035,7 +1099,7 @@ class GameViewModel: ObservableObject {
             let dist = hypot(shape.x - point.x, shape.y - point.y)
             if dist < explosionRadius {
                 // Create fireballs at shape location
-                for _ in 0..<10 {
+                for _ in 0..<5 {
                     fireballs.append(FireballParticle(x: shape.x, y: shape.y))
                 }
 
@@ -1060,6 +1124,7 @@ class GameViewModel: ObservableObject {
     }
 
     func addScore(_ points: Int) {
+        guard !gameOver else { return }
         score += points
         if currentLevel == 1 && score >= GameConstants.level1WinScore {
             if StoreManager.shared.fullGamePurchased {
@@ -1091,7 +1156,7 @@ class GameViewModel: ObservableObject {
         gameStarted = false  // Snake waits until user taps a shape
 
         // Add more stars for the deeper space background
-        let extraStars = (0..<40).map { _ in BackgroundStar(bounds: bounds) }
+        let extraStars = (0..<20).map { _ in BackgroundStar(bounds: bounds) }
         stars.append(contentsOf: extraStars)
 
         // Reset snake score to give player a fair start in Level 2
@@ -1116,7 +1181,7 @@ class GameViewModel: ObservableObject {
         gameStarted = false  // Snake waits until user taps a shape
 
         // Add even more stars for depth effect and set up parallax
-        let extraStars = (0..<50).map { _ in BackgroundStar(bounds: bounds) }
+        let extraStars = (0..<25).map { _ in BackgroundStar(bounds: bounds) }
         stars.append(contentsOf: extraStars)
         for star in stars {
             star.setupForLevel3(bounds: bounds)
@@ -1152,7 +1217,7 @@ class GameViewModel: ObservableObject {
         gameStarted = false
 
         // Add more stars
-        let extraStars = (0..<30).map { _ in BackgroundStar(bounds: bounds) }
+        let extraStars = (0..<15).map { _ in BackgroundStar(bounds: bounds) }
         stars.append(contentsOf: extraStars)
         for star in stars {
             star.setupForLevel3(bounds: bounds)
@@ -1209,6 +1274,7 @@ class GameViewModel: ObservableObject {
     }
 
     func endGame(message: String, color: Color, snakeWon: Bool) {
+        guard !gameOver else { return }
         gameOver = true
         winMessage = message
         winColor = color
@@ -1305,18 +1371,18 @@ class GameViewModel: ObservableObject {
         case 2:
             score = GameConstants.level1WinScore
             // Keep Level 2 star count
-            stars = (0..<(GameConstants.maxStars + 40)).map { _ in BackgroundStar(bounds: bounds) }
+            stars = (0..<(GameConstants.maxStars + 20)).map { _ in BackgroundStar(bounds: bounds) }
             startTrapBoxTimer()
         case 3:
             score = GameConstants.level2WinScore
-            stars = (0..<(GameConstants.maxStars + 90)).map { _ in BackgroundStar(bounds: bounds) }
+            stars = (0..<(GameConstants.maxStars + 45)).map { _ in BackgroundStar(bounds: bounds) }
             for star in stars {
                 star.setupForLevel3(bounds: bounds)
             }
             startTrapBoxTimer()
         case 4:
             score = GameConstants.level3WinScore
-            stars = (0..<(GameConstants.maxStars + 120)).map { _ in BackgroundStar(bounds: bounds) }
+            stars = (0..<(GameConstants.maxStars + 60)).map { _ in BackgroundStar(bounds: bounds) }
             for star in stars {
                 star.setupForLevel3(bounds: bounds)
             }
@@ -1506,13 +1572,16 @@ struct SnakeView: View {
     var glowing: Bool = false
 
     var body: some View {
-        let maxVisible = min(40, snake.segments.count)
+        let segments = snake.segments
+        let maxVisible = min(30, segments.count)
 
         Canvas { context, size in
+            guard maxVisible > 0 else { return }
+
             // Draw glow layer for second snake
             if glowing {
                 for i in 0..<maxVisible {
-                    let segment = snake.segments[i]
+                    let segment = segments[i]
                     let glowSize = snake.segmentSize * 4
                     context.fill(
                         Circle().path(in: CGRect(
@@ -1528,7 +1597,7 @@ struct SnakeView: View {
 
             // Draw segments
             for i in 0..<maxVisible {
-                let segment = snake.segments[i]
+                let segment = segments[i]
                 let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
                 let color: Color
                 if glowing {
@@ -1552,7 +1621,7 @@ struct SnakeView: View {
 
                 // Draw connecting line
                 if i < maxVisible - 1 && i < 30 {
-                    let next = snake.segments[i + 1]
+                    let next = segments[i + 1]
                     var path = Path()
                     path.move(to: CGPoint(x: segment.x, y: segment.y))
                     path.addLine(to: CGPoint(x: next.x, y: next.y))
@@ -1561,7 +1630,7 @@ struct SnakeView: View {
             }
 
             // Draw eyes on head
-            if let head = snake.segments.first {
+            if let head = segments.first {
                 let eyeColor: Color = glowing ? .cyan : .white
                 context.fill(
                     Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)),
@@ -2437,6 +2506,12 @@ struct ContentView: View {
         }
         .ignoresSafeArea()
         .statusBar(hidden: true)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            game.pauseGame()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            game.resumeGame()
+        }
     }
 }
 
@@ -2458,12 +2533,12 @@ struct GameCanvasView: View {
                 )
 
                 if isLevel3 {
-                    // Level 3: 3D depth stars with motion streaks
-                    let depthSize = (star.depth * 3.0 + 1.0)  // Near stars are bigger
-                    let depthBrightness = star.brightness * (star.depth * 0.6 + 0.4) // Near = brighter
+                    // Level 3+: 3D depth stars with motion streaks
+                    let depthSize = (star.depth * 3.0 + 1.0)
+                    let depthBrightness = star.brightness * (star.depth * 0.6 + 0.4)
 
-                    // Motion streak trail (shows direction/speed)
-                    if star.streakLength > 2 {
+                    // Motion streak trail (skip short streaks)
+                    if star.streakLength > 3 {
                         let streakEndX = star.x - star.driftX * star.streakLength
                         let streakEndY = star.y - star.driftY * star.streakLength
                         var path = Path()
@@ -2476,21 +2551,7 @@ struct GameCanvasView: View {
                         )
                     }
 
-                    // Outer glow for near stars
-                    if star.depth > 0.6 {
-                        let glowSize = depthSize * 4
-                        context.fill(
-                            Circle().path(in: CGRect(
-                                x: star.x - glowSize / 2,
-                                y: star.y - glowSize / 2,
-                                width: glowSize,
-                                height: glowSize
-                            )),
-                            with: .color(starColor.opacity(depthBrightness * 0.12))
-                        )
-                    }
-
-                    // Star core
+                    // Star core only (skip glow for performance)
                     context.fill(
                         Circle().path(in: CGRect(
                             x: star.x - depthSize / 2,
@@ -2502,24 +2563,8 @@ struct GameCanvasView: View {
                     )
 
                 } else if isLevel2 {
-                    // Level 2: Coloured shining stars
+                    // Level 2: Coloured stars (no glow for performance)
                     let drawSize = star.level2Size
-
-                    // Outer glow for bigger stars
-                    if drawSize > 2.5 {
-                        let glowSize = drawSize * 3
-                        context.fill(
-                            Circle().path(in: CGRect(
-                                x: star.x - glowSize / 2,
-                                y: star.y - glowSize / 2,
-                                width: glowSize,
-                                height: glowSize
-                            )),
-                            with: .color(starColor.opacity(star.brightness * 0.15))
-                        )
-                    }
-
-                    // Star core
                     context.fill(
                         Circle().path(in: CGRect(
                             x: star.x - drawSize / 2,
@@ -2543,26 +2588,17 @@ struct GameCanvasView: View {
                 }
             }
 
-            // Draw fireballs
+            // Draw fireballs (single draw per fireball for performance)
             for fireball in game.fireballs {
-                let pulse = fireball.size
+                let s = fireball.size
                 context.fill(
                     Circle().path(in: CGRect(
-                        x: fireball.x - pulse / 2,
-                        y: fireball.y - pulse / 2,
-                        width: pulse,
-                        height: pulse
+                        x: fireball.x - s / 2,
+                        y: fireball.y - s / 2,
+                        width: s,
+                        height: s
                     )),
                     with: .color(.orange.opacity(fireball.life))
-                )
-                context.fill(
-                    Circle().path(in: CGRect(
-                        x: fireball.x - pulse / 4,
-                        y: fireball.y - pulse / 4,
-                        width: pulse / 2,
-                        height: pulse / 2
-                    )),
-                    with: .color(.yellow.opacity(fireball.life))
                 )
             }
 
