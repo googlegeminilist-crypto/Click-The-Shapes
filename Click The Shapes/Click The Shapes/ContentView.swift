@@ -2405,36 +2405,28 @@ struct ContentView: View {
                 // Background gradient - evolves per level
                 Group {
                     if game.currentLevel >= 4 {
-                        // Level 4: dark evil void
+                        // Level 4: deep space nebula background
                         ZStack {
                             Color.black
 
-                            // Deep blood-red core
+                            if let uiImage = UIImage(named: "level4bg") ?? UIImage(contentsOfFile: Bundle.main.path(forResource: "level4bg", ofType: "png") ?? "") {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .clipped()
+                                    .opacity(0.6)
+                            }
+
+                            // Dark overlay for depth and contrast
+                            Color.black.opacity(0.3)
+
+                            // Subtle vignette for 3D depth
                             RadialGradient(
-                                colors: [
-                                    Color(red: 0.25, green: 0.0, blue: 0.0).opacity(0.5),
-                                    Color(red: 0.12, green: 0.0, blue: 0.02).opacity(0.3),
-                                    .clear
-                                ],
+                                colors: [.clear, Color.black.opacity(0.7)],
                                 center: .center,
-                                startRadius: 10,
-                                endRadius: geometry.size.width * 0.4
-                            )
-
-                            // Sinister crimson glow (top)
-                            RadialGradient(
-                                colors: [Color(red: 0.3, green: 0.0, blue: 0.05).opacity(0.2), .clear],
-                                center: UnitPoint(x: 0.5, y: 0.05),
-                                startRadius: 0,
-                                endRadius: geometry.size.width * 0.6
-                            )
-
-                            // Dark purple shadow (bottom)
-                            RadialGradient(
-                                colors: [Color(red: 0.1, green: 0.0, blue: 0.15).opacity(0.25), .clear],
-                                center: UnitPoint(x: 0.5, y: 0.95),
-                                startRadius: 0,
-                                endRadius: geometry.size.width * 0.5
+                                startRadius: geometry.size.width * 0.2,
+                                endRadius: geometry.size.width * 0.7
                             )
                         }
                     } else if game.currentLevel >= 3 {
