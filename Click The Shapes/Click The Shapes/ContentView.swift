@@ -86,6 +86,63 @@ struct StarColors {
     ]
 }
 
+// MARK: - Nebula Dust (Level 4 floating particles)
+class NebulaDust: Identifiable {
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var size: CGFloat
+    var opacity: CGFloat
+    var driftX: CGFloat
+    var driftY: CGFloat
+    var depth: CGFloat
+    var colorR: CGFloat
+    var colorG: CGFloat
+    var colorB: CGFloat
+    var phase: CGFloat
+
+    init(bounds: CGSize) {
+        x = CGFloat.random(in: 0...bounds.width)
+        y = CGFloat.random(in: 0...bounds.height)
+        depth = CGFloat.random(in: 0...1)
+        size = depth * 6 + 2  // near = bigger
+        opacity = depth * 0.3 + 0.05  // near = brighter, but still subtle
+        driftX = CGFloat.random(in: -0.3...0.3) * (depth + 0.5)
+        driftY = CGFloat.random(in: -0.2...0.2) * (depth + 0.5)
+        phase = CGFloat.random(in: 0...(.pi * 2))
+
+        // Nebula colors: purples, pinks, blues, cyans
+        let palette: [(CGFloat, CGFloat, CGFloat)] = [
+            (0.5, 0.1, 0.6),   // purple
+            (0.7, 0.15, 0.4),  // pink
+            (0.15, 0.2, 0.7),  // blue
+            (0.2, 0.5, 0.8),   // cyan-blue
+            (0.4, 0.1, 0.5),   // dark purple
+            (0.8, 0.3, 0.5),   // rose
+        ]
+        let c = palette.randomElement()!
+        colorR = c.0
+        colorG = c.1
+        colorB = c.2
+    }
+
+    func update(bounds: CGSize) {
+        x += driftX
+        y += driftY
+        phase += 0.015
+
+        // Gentle bobbing
+        x += sin(phase) * 0.2
+        y += cos(phase * 0.7) * 0.15
+
+        // Wrap around screen
+        if x < -size { x = bounds.width + size }
+        if x > bounds.width + size { x = -size }
+        if y < -size { y = bounds.height + size }
+        if y > bounds.height + size { y = -size }
+    }
+}
+
 // MARK: - Star Model
 class BackgroundStar: Identifiable {
     let id = UUID()
@@ -889,6 +946,7 @@ class GameViewModel: ObservableObject {
     var snake: Snake?
     var snake2: Snake?
     var lightningBolts: [LightningBolt] = []
+    var nebulaDust: [NebulaDust] = []
     var lightningTimer: Timer?
     // Level 4 sequence challenge
     var shapeSequence: [ShapeType] = []
@@ -1046,6 +1104,11 @@ class GameViewModel: ObservableObject {
         powerUp?.update(bounds: bounds)
         if let pu = powerUp, !pu.isActive {
             powerUp = nil
+        }
+
+        // Update nebula dust (Level 4)
+        for dust in nebulaDust {
+            dust.update(bounds: bounds)
         }
 
         // Update lightning bolts (Level 4)
@@ -1351,6 +1414,9 @@ class GameViewModel: ObservableObject {
         gameStarted = false
         SoundManager.shared.playLevel4Music()
 
+        // Create nebula dust
+        nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
+
         // Add more stars
         let extraStars = (0..<15).map { _ in BackgroundStar(bounds: bounds) }
         stars.append(contentsOf: extraStars)
@@ -1492,6 +1558,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
         lightningRainActive = false
@@ -1519,6 +1586,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
         lightningRainActive = false
@@ -1549,6 +1617,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
         lightningRainActive = false
@@ -1597,8 +1666,10 @@ class GameViewModel: ObservableObject {
         if level >= 4 {
             snake2 = Snake(bounds: bounds)
             snake2?.speed = 3.5
+            nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
         } else {
             snake2 = nil
+            nebulaDust.removeAll()
         }
 
         startGameLoop()
@@ -2405,29 +2476,13 @@ struct ContentView: View {
                 // Background gradient - evolves per level
                 Group {
                     if game.currentLevel >= 4 {
-                        // Level 4: deep space nebula background
+                        // Level 4: nebula photo at native size, centered, with black fill
                         ZStack {
                             Color.black
-
-                            if let uiImage = UIImage(named: "level4bg") ?? UIImage(contentsOfFile: Bundle.main.path(forResource: "level4bg", ofType: "png") ?? "") {
+                            if let uiImage = Level4Background.image {
                                 Image(uiImage: uiImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: geometry.size.width, height: geometry.size.height)
-                                    .clipped()
-                                    .opacity(0.6)
+                                    .interpolation(.high)
                             }
-
-                            // Dark overlay for depth and contrast
-                            Color.black.opacity(0.3)
-
-                            // Subtle vignette for 3D depth
-                            RadialGradient(
-                                colors: [.clear, Color.black.opacity(0.7)],
-                                center: .center,
-                                startRadius: geometry.size.width * 0.2,
-                                endRadius: geometry.size.width * 0.7
-                            )
                         }
                     } else if game.currentLevel >= 3 {
                         // Level 3: deep 3D warp space with galaxy center
@@ -2951,6 +3006,39 @@ struct GameCanvasView: View {
                             height: star.size
                         )),
                         with: .color(.white.opacity(star.brightness))
+                    )
+                }
+            }
+
+            // Draw nebula dust (Level 4) — soft glowing particles with depth
+            if game.currentLevel >= 4 {
+                for dust in game.nebulaDust {
+                    let pulse = (sin(dust.phase * 2) + 1) / 2 * 0.3 + 0.7
+                    let drawSize = dust.size * pulse
+                    let drawOpacity = dust.opacity * pulse
+                    let color = Color(red: dust.colorR, green: dust.colorG, blue: dust.colorB)
+
+                    // Outer glow
+                    let glowSize = drawSize * 3
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: dust.x - glowSize / 2,
+                            y: dust.y - glowSize / 2,
+                            width: glowSize,
+                            height: glowSize
+                        )),
+                        with: .color(color.opacity(drawOpacity * 0.3))
+                    )
+
+                    // Core
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: dust.x - drawSize / 2,
+                            y: dust.y - drawSize / 2,
+                            width: drawSize,
+                            height: drawSize
+                        )),
+                        with: .color(color.opacity(drawOpacity))
                     )
                 }
             }
