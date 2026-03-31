@@ -1951,60 +1951,51 @@ struct SnakeView: View {
                 }
             }
 
-            // Stripe colors matching icon: lime green, sky blue, yellow
-            let stripeColors: [Color] = [
-                Color(red: 0.5, green: 0.8, blue: 0.2),   // lime green
-                Color(red: 0.3, green: 0.75, blue: 0.9),   // sky blue
-                Color(red: 0.95, green: 0.9, blue: 0.3),   // yellow
+            // Pastel candy colors — different from rainbow
+            let candyColors: [Color] = [
+                Color(red: 0.45, green: 0.85, blue: 0.5),   // mint green
+                Color(red: 0.4, green: 0.7, blue: 0.95),    // sky blue
+                Color(red: 0.95, green: 0.85, blue: 0.3),   // golden yellow
+                Color(red: 0.95, green: 0.5, blue: 0.6),    // coral pink
+                Color(red: 0.6, green: 0.5, blue: 0.95),    // soft purple
+                Color(red: 0.3, green: 0.9, blue: 0.85),    // turquoise
             ]
 
-            // Draw body segments — thick with stripes
+            // Draw body — thin, tapers to a point at the tail
             for i in stride(from: maxVisible - 1, through: 1, by: -1) {
                 let segment = segments[i]
-                let fade = 1 - (Double(i) / Double(maxVisible)) * 0.3
+                let taper = 1.0 - (Double(i) / Double(maxVisible))  // 1 at head, 0 at tail
+                let fade = taper * 0.6 + 0.4
                 let color: Color
                 if glowing {
                     let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
                     color = Color(hue: hue, saturation: 0.6, brightness: fade)
                 } else {
-                    color = stripeColors[i % 3].opacity(fade)
+                    color = candyColors[i % candyColors.count].opacity(fade)
                 }
 
-                let segSize = snake.segmentSize * 1.8
+                // Body width tapers: thick near head, pointy at tail
+                let bodyWidth = snake.segmentSize * CGFloat(taper * 1.4 + 0.3)
 
-                // Connecting line (thick body)
+                // Connecting line
                 if i < maxVisible - 1 {
                     let next = segments[i + 1]
                     var path = Path()
                     path.move(to: CGPoint(x: segment.x, y: segment.y))
                     path.addLine(to: CGPoint(x: next.x, y: next.y))
-                    context.stroke(path, with: .color(color), lineWidth: segSize * 2)
+                    context.stroke(path, with: .color(color), lineWidth: bodyWidth * 2)
                 }
 
-                // Segment circle
+                // Segment dot
                 context.fill(
                     Circle().path(in: CGRect(
-                        x: segment.x - segSize,
-                        y: segment.y - segSize,
-                        width: segSize * 2,
-                        height: segSize * 2
+                        x: segment.x - bodyWidth,
+                        y: segment.y - bodyWidth,
+                        width: bodyWidth * 2,
+                        height: bodyWidth * 2
                     )),
                     with: .color(color)
                 )
-
-                // Dark outline on each segment for cartoon look
-                if !glowing {
-                    context.stroke(
-                        Circle().path(in: CGRect(
-                            x: segment.x - segSize,
-                            y: segment.y - segSize,
-                            width: segSize * 2,
-                            height: segSize * 2
-                        )),
-                        with: .color(Color(red: 0.2, green: 0.35, blue: 0.1).opacity(0.3)),
-                        lineWidth: 0.5
-                    )
-                }
             }
 
             // Draw snake head
