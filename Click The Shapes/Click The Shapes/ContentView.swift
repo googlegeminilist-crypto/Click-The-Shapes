@@ -612,6 +612,25 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         backgroundMusicPlayer?.play()
     }
 
+    func playLevel4Music() {
+        setupAudioSession()
+        guard let url = Bundle.main.url(forResource: "Untitled 8", withExtension: "mp3") else {
+            debugLog("Level 4 music 'Untitled 8.mp3' not found in bundle")
+            return
+        }
+        do {
+            backgroundMusicPlayer?.stop()
+            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+            backgroundMusicPlayer?.delegate = self
+            backgroundMusicPlayer?.numberOfLoops = -1
+            backgroundMusicPlayer?.volume = 0.5
+            backgroundMusicPlayer?.prepareToPlay()
+            backgroundMusicPlayer?.play()
+        } catch {
+            debugLog("Error loading level 4 music: \(error)")
+        }
+    }
+
     func stopAllShapeTapSounds() {
         for player in shapeTapPlayers {
             player.stop()
@@ -1249,6 +1268,7 @@ class GameViewModel: ObservableObject {
         currentLevel = 4
         showLevelTransition = true
         gameStarted = false
+        SoundManager.shared.playLevel4Music()
 
         // Add more stars
         let extraStars = (0..<15).map { _ in BackgroundStar(bounds: bounds) }
@@ -1443,7 +1463,11 @@ class GameViewModel: ObservableObject {
         }
 
         startGameLoop()
-        SoundManager.shared.playBackgroundMusic()
+        if currentLevel >= 4 {
+            SoundManager.shared.playLevel4Music()
+        } else {
+            SoundManager.shared.playBackgroundMusic()
+        }
     }
 }
 
