@@ -9,7 +9,23 @@ import SwiftUI
 import Combine
 import AVFoundation
 import StoreKit
+#if canImport(FirebaseAnalytics)
 import FirebaseAnalytics
+#endif
+
+// MARK: - Analytics Wrapper
+enum AnalyticsHelper {
+    static func log(_ name: String, parameters: [String: Any]? = nil) {
+        #if canImport(FirebaseAnalytics)
+        Analytics.logEvent(name, parameters: parameters)
+        #endif
+    }
+    static func setProperty(_ value: String, forName name: String) {
+        #if canImport(FirebaseAnalytics)
+        Analytics.setUserProperty(value, forName: name)
+        #endif
+    }
+}
 
 // MARK: - Debug Logging
 @inline(__always)
@@ -684,7 +700,7 @@ class StoreManager: ObservableObject {
         }
 
         isPurchasing = true
-        Analytics.logEvent("purchase_started", parameters: nil)
+        AnalyticsHelper.log("purchase_started", parameters: nil)
         do {
             let result = try await product.purchase()
             switch result {
@@ -692,9 +708,9 @@ class StoreManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 await updatePurchaseStatus(transaction)
                 await transaction.finish()
-                Analytics.logEvent("purchase_completed", parameters: nil)
+                AnalyticsHelper.log("purchase_completed", parameters: nil)
             case .userCancelled:
-                Analytics.logEvent("purchase_cancelled", parameters: nil)
+                AnalyticsHelper.log("purchase_cancelled", parameters: nil)
                 debugLog("User cancelled purchase")
             case .pending:
                 debugLog("Purchase pending")
@@ -709,7 +725,7 @@ class StoreManager: ObservableObject {
 
     @MainActor
     func restorePurchases() async {
-        Analytics.logEvent("restore_purchases", parameters: nil)
+        AnalyticsHelper.log("restore_purchases", parameters: nil)
         do {
             try await AppStore.sync()
             await checkCurrentEntitlements()
@@ -732,7 +748,7 @@ class StoreManager: ObservableObject {
         if transaction.productID == StoreManager.fullGameProductID {
             fullGamePurchased = true
             UserDefaults.standard.set(true, forKey: "fullGamePurchased")
-            Analytics.setUserProperty("true", forName: "full_game_purchased")
+            AnalyticsHelper.setProperty("true", forName: "full_game_purchased")
         }
     }
 
@@ -810,7 +826,7 @@ class GameViewModel: ObservableObject {
     func startGame() {
         showIntro = false
         SoundManager.shared.playBackgroundMusic()
-        Analytics.logEvent("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
+        AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
     }
 
     func startGameLoop() {
@@ -923,7 +939,7 @@ class GameViewModel: ObservableObject {
                     // Clicked a trap box! Minus 10 points
                     score = max(0, score - 10)
                     showPoints(at: point, points: -10)
-                    Analytics.logEvent("trap_box_hit", parameters: ["score": score, "current_level": currentLevel])
+                    AnalyticsHelper.log("trap_box_hit", parameters: ["score": score, "current_level": currentLevel])
                     if tapSoundEnabled { SoundManager.shared.playExplosion() }
 
                     // Red particles for trap box
@@ -1034,7 +1050,7 @@ class GameViewModel: ObservableObject {
                 trapBoxTimer?.invalidate()
                 trapBoxTimer = nil
                 showUnlockPrompt = true
-                Analytics.logEvent("unlock_prompt_shown", parameters: ["score": score])
+                AnalyticsHelper.log("unlock_prompt_shown", parameters: ["score": score])
             }
         } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
             transitionToLevel3()
@@ -1044,7 +1060,7 @@ class GameViewModel: ObservableObject {
     }
 
     func transitionToLevel2() {
-        Analytics.logEvent("level_complete", parameters: ["level": 1, "score": score])
+        AnalyticsHelper.log("level_complete", parameters: ["level": 1, "score": score])
         currentLevel = 2
         showLevelTransition = true
         gameStarted = false  // Snake waits until user taps a shape
@@ -1069,7 +1085,7 @@ class GameViewModel: ObservableObject {
     }
 
     func transitionToLevel3() {
-        Analytics.logEvent("level_complete", parameters: ["level": 2, "score": score])
+        AnalyticsHelper.log("level_complete", parameters: ["level": 2, "score": score])
         currentLevel = 3
         showLevelTransition = true
         gameStarted = false  // Snake waits until user taps a shape
@@ -1145,15 +1161,15 @@ class GameViewModel: ObservableObject {
         SoundManager.shared.stopAllShapeTapSounds()
         SoundManager.shared.stopBackgroundMusic()
 
-        Analytics.logEvent("game_end", parameters: [
+        AnalyticsHelper.log("game_end", parameters: [
             "snake_won": snakeWon ? 1 : 0,
             "score": score,
             "snake_score": snakeScore,
             "current_level": currentLevel,
             "hardcore_mode": hardcoreMode ? 1 : 0
         ])
-        Analytics.setUserProperty("\(userWins)", forName: "total_user_wins")
-        Analytics.setUserProperty("\(snakeWins)", forName: "total_snake_wins")
+        AnalyticsHelper.setProperty("\(userWins)", forName: "total_user_wins")
+        AnalyticsHelper.setProperty("\(snakeWins)", forName: "total_snake_wins")
     }
 
     func restartGame() {

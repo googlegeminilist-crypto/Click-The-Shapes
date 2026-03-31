@@ -1,5 +1,8 @@
 import Foundation
+import Combine
+#if canImport(FirebaseFirestore)
 import FirebaseFirestore
+#endif
 
 struct LeaderboardEntry: Identifiable, Codable {
     var id: String
@@ -19,7 +22,9 @@ class LeaderboardManager: ObservableObject {
         }
     }
 
+    #if canImport(FirebaseFirestore)
     private let db = Firestore.firestore()
+    #endif
     private let collectionName = "leaderboard"
 
     var playerID: String {
@@ -41,22 +46,22 @@ class LeaderboardManager: ObservableObject {
 
     func recordWin(totalWins: Int) {
         guard hasSetName else { return }
-
+        #if canImport(FirebaseFirestore)
         let data: [String: Any] = [
             "displayName": playerName,
             "totalWins": totalWins,
             "lastUpdated": FieldValue.serverTimestamp()
         ]
-
         db.collection(collectionName)
             .document(playerID)
             .setData(data, merge: true)
+        #endif
     }
 
     @MainActor
     func fetchLeaderboard() async {
         isLoading = true
-
+        #if canImport(FirebaseFirestore)
         do {
             let snapshot = try await db.collection(collectionName)
                 .order(by: "totalWins", descending: true)
@@ -80,5 +85,8 @@ class LeaderboardManager: ObservableObject {
             debugLog("Leaderboard fetch failed: \(error)")
             isLoading = false
         }
+        #else
+        isLoading = false
+        #endif
     }
 }
