@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDE3pw6m9-SxDt1HbLcTIuolx79uZow_u8</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1038130340564</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>krakastan3-icloud.com.Click-The-Shapes</string>
+	<key>PROJECT_ID</key>
+	<string>click-the-shapes-ios</string>
+	<key>STORAGE_BUCKET</key>
+	<string>click-the-shapes-ios.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1038130340564:ios:c13023e4469bcd47549141</string>
+</dict>
+</plist>
