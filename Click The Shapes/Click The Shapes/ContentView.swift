@@ -2058,18 +2058,55 @@ struct SnakeView: View {
                     with: .color(color)
                 )
 
-                // Star sparkle on every 4th segment
-                if !glowing && i % 4 == 0 && taper > 0.3 {
-                    let sparkleSize = bodyWidth * 0.4
-                    context.fill(
-                        Circle().path(in: CGRect(
-                            x: segment.x - sparkleSize,
-                            y: segment.y - sparkleSize,
-                            width: sparkleSize * 2,
-                            height: sparkleSize * 2
-                        )),
-                        with: .color(.white.opacity(taper * 0.6))
-                    )
+                // Twinkling blue stars on body
+                if !glowing && taper > 0.15 {
+                    let twinkle = sin(snake.animPhase * 3 + CGFloat(i) * 1.7)
+                    let twinkle2 = sin(snake.animPhase * 2.3 + CGFloat(i) * 2.4)
+
+                    // Main star — every 2nd segment, offset to side of body
+                    if i % 2 == 0 {
+                        let starBright = (twinkle + 1) / 2  // 0 to 1
+                        let starSize = bodyWidth * 0.35 * (starBright * 0.5 + 0.5)
+                        let offsetX = cos(CGFloat(i) * 2.1) * bodyWidth * 0.6
+                        let offsetY = sin(CGFloat(i) * 2.1) * bodyWidth * 0.6
+                        // Glow
+                        context.fill(
+                            Circle().path(in: CGRect(
+                                x: segment.x + offsetX - starSize * 2,
+                                y: segment.y + offsetY - starSize * 2,
+                                width: starSize * 4,
+                                height: starSize * 4
+                            )),
+                            with: .color(Color(red: 0.3, green: 0.5, blue: 1.0).opacity(Double(starBright) * 0.2))
+                        )
+                        // Core
+                        context.fill(
+                            Circle().path(in: CGRect(
+                                x: segment.x + offsetX - starSize,
+                                y: segment.y + offsetY - starSize,
+                                width: starSize * 2,
+                                height: starSize * 2
+                            )),
+                            with: .color(Color(red: 0.6, green: 0.8, blue: 1.0).opacity(Double(starBright) * 0.8))
+                        )
+                    }
+
+                    // Smaller dimmer stars — every 3rd segment, opposite side
+                    if i % 3 == 0 {
+                        let starBright2 = (twinkle2 + 1) / 2
+                        let tinySize = bodyWidth * 0.2
+                        let ox = cos(CGFloat(i) * 3.7) * bodyWidth * 0.5
+                        let oy = sin(CGFloat(i) * 3.7) * bodyWidth * 0.5
+                        context.fill(
+                            Circle().path(in: CGRect(
+                                x: segment.x + ox - tinySize,
+                                y: segment.y + oy - tinySize,
+                                width: tinySize * 2,
+                                height: tinySize * 2
+                            )),
+                            with: .color(Color(red: 0.5, green: 0.7, blue: 1.0).opacity(Double(starBright2) * 0.6))
+                        )
+                    }
                 }
             }
 
