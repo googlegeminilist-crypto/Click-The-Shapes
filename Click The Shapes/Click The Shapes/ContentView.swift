@@ -1387,7 +1387,12 @@ class GameViewModel: ObservableObject {
     }
 
     func generateNewSequence() {
-        shapeSequence = (0..<5).map { _ in ShapeType.allCases.randomElement()! }
+        let first = ShapeType.allCases.randomElement()!
+        var second = ShapeType.allCases.randomElement()!
+        while second == first {
+            second = ShapeType.allCases.randomElement()!
+        }
+        shapeSequence = [first, second]
         sequenceProgress = 0
     }
 
@@ -1413,13 +1418,9 @@ class GameViewModel: ObservableObject {
     }
 
     func startLightningTimer() {
+        // Lightning only falls during lightning rain — no always-on timer
         lightningTimer?.invalidate()
-        lightningTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
-            guard let self = self, self.currentLevel >= 4, !self.gameOver else { return }
-            if self.lightningBolts.count < 3 {
-                self.lightningBolts.append(LightningBolt(bounds: self.bounds))
-            }
-        }
+        lightningTimer = nil
     }
 
     func startTrapBoxTimer() {
@@ -2707,19 +2708,36 @@ struct ContentView: View {
                                 Text("TAP IN ORDER")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundColor(.gray)
-                                HStack(spacing: 8) {
-                                    ForEach(0..<game.shapeSequence.count, id: \.self) { i in
-                                        let done = i < game.sequenceProgress
-                                        SequenceShapeIcon(shapeType: game.shapeSequence[i])
-                                            .opacity(done ? 0.3 : 1)
+                                HStack(spacing: 16) {
+                                    if game.shapeSequence.count >= 1 {
+                                        let done0 = 0 < game.sequenceProgress
+                                        SequenceShapeIcon(shapeType: game.shapeSequence[0])
+                                            .opacity(done0 ? 0.3 : 1)
                                             .overlay(
-                                                done ? AnyView(
+                                                done0 ? AnyView(
                                                     Image(systemName: "checkmark")
                                                         .font(.system(size: 10, weight: .bold))
                                                         .foregroundColor(GameColors.neonGreen)
                                                 ) : AnyView(EmptyView())
                                             )
-                                            .scaleEffect(i == game.sequenceProgress ? 1.2 : 1.0)
+                                            .scaleEffect(game.sequenceProgress == 0 ? 1.3 : 1.0)
+
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.gray)
+                                    }
+                                    if game.shapeSequence.count >= 2 {
+                                        let done1 = 1 < game.sequenceProgress
+                                        SequenceShapeIcon(shapeType: game.shapeSequence[1])
+                                            .opacity(done1 ? 0.3 : 1)
+                                            .overlay(
+                                                done1 ? AnyView(
+                                                    Image(systemName: "checkmark")
+                                                        .font(.system(size: 10, weight: .bold))
+                                                        .foregroundColor(GameColors.neonGreen)
+                                                ) : AnyView(EmptyView())
+                                            )
+                                            .scaleEffect(game.sequenceProgress == 1 ? 1.3 : 1.0)
                                     }
                                 }
                             }
