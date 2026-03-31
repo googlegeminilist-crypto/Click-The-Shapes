@@ -1981,32 +1981,62 @@ struct SnakeView: View {
                 }
             }
 
-            // Pastel candy colors — different from rainbow
-            let candyColors: [Color] = [
-                Color(red: 0.45, green: 0.85, blue: 0.5),   // mint green
-                Color(red: 0.4, green: 0.7, blue: 0.95),    // sky blue
-                Color(red: 0.95, green: 0.85, blue: 0.3),   // golden yellow
-                Color(red: 0.95, green: 0.5, blue: 0.6),    // coral pink
-                Color(red: 0.6, green: 0.5, blue: 0.95),    // soft purple
-                Color(red: 0.3, green: 0.9, blue: 0.85),    // turquoise
-            ]
-
+            // Universe/nebula body — deep space colours that shift as snake grows
             // Draw body — thin, tapers to a point at the tail
             for i in stride(from: maxVisible - 1, through: 1, by: -1) {
                 let segment = segments[i]
                 let taper = 1.0 - (Double(i) / Double(maxVisible))  // 1 at head, 0 at tail
-                let fade = taper * 0.6 + 0.4
+
+                // Universe colours — shift through nebula spectrum based on snake length + position
+                let lengthShift = Double(snake.targetLength) * 0.02  // shifts palette as snake grows
+                let hueBase = (Double(i) * 0.08 + lengthShift + Double(snake.animPhase) * 0.1)
+                    .truncatingRemainder(dividingBy: 1.0)
+
                 let color: Color
                 if glowing {
                     let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
-                    color = Color(hue: hue, saturation: 0.6, brightness: fade)
+                    color = Color(hue: hue, saturation: 0.6, brightness: taper * 0.5 + 0.5)
                 } else {
-                    color = candyColors[i % candyColors.count].opacity(fade)
+                    // Deep rich universe colours — purples, magentas, cyans, deep blues
+                    let r: Double
+                    let g: Double
+                    let b: Double
+                    if hueBase < 0.2 {
+                        // Deep purple
+                        r = 0.3 + hueBase; g = 0.05; b = 0.5 + hueBase
+                    } else if hueBase < 0.4 {
+                        // Hot magenta/pink
+                        r = 0.7 + (hueBase - 0.2); g = 0.05; b = 0.4
+                    } else if hueBase < 0.6 {
+                        // Deep blue
+                        r = 0.1; g = 0.15 + (hueBase - 0.4); b = 0.6 + (hueBase - 0.4)
+                    } else if hueBase < 0.8 {
+                        // Cyan/teal
+                        r = 0.05; g = 0.4 + (hueBase - 0.6); b = 0.7
+                    } else {
+                        // Warm nebula — orange to purple
+                        r = 0.5 + (hueBase - 0.8); g = 0.15; b = 0.3 + (hueBase - 0.8)
+                    }
+                    color = Color(red: r, green: g, blue: b).opacity(taper * 0.7 + 0.3)
                 }
 
                 // Body width tapers with breathing pulse
                 let breathe = sin(snake.animPhase + CGFloat(i) * 0.3) * 0.15 + 1.0
                 let bodyWidth = snake.segmentSize * CGFloat(taper * 1.4 + 0.3) * breathe
+
+                // Outer glow — nebula haze
+                if !glowing && i % 3 == 0 {
+                    let glowSize = bodyWidth * 3
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: segment.x - glowSize,
+                            y: segment.y - glowSize,
+                            width: glowSize * 2,
+                            height: glowSize * 2
+                        )),
+                        with: .color(color.opacity(0.12))
+                    )
+                }
 
                 // Connecting line
                 if i < maxVisible - 1 {
@@ -2017,7 +2047,7 @@ struct SnakeView: View {
                     context.stroke(path, with: .color(color), lineWidth: bodyWidth * 2)
                 }
 
-                // Segment dot
+                // Segment core — bright inner dot
                 context.fill(
                     Circle().path(in: CGRect(
                         x: segment.x - bodyWidth,
@@ -2027,6 +2057,20 @@ struct SnakeView: View {
                     )),
                     with: .color(color)
                 )
+
+                // Star sparkle on every 4th segment
+                if !glowing && i % 4 == 0 && taper > 0.3 {
+                    let sparkleSize = bodyWidth * 0.4
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: segment.x - sparkleSize,
+                            y: segment.y - sparkleSize,
+                            width: sparkleSize * 2,
+                            height: sparkleSize * 2
+                        )),
+                        with: .color(.white.opacity(taper * 0.6))
+                    )
+                }
             }
 
             // Draw snake head
