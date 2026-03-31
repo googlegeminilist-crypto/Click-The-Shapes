@@ -1483,6 +1483,7 @@ struct StarShapeView: View {
 
 struct ShapeView: View {
     let shape: ConstellationShape
+    var isLevel4: Bool = false
 
     var body: some View {
         let pulse = sin(shape.pulsePhase) * 0.2 + 1
@@ -1510,6 +1511,15 @@ struct ShapeView: View {
                         .fill(Color.red)
                         .frame(width: currentSize * 0.6, height: 4)
                         .rotationEffect(.degrees(-45))
+                }
+
+                // Level 4: flashing "Click Me" inside trap boxes
+                if isLevel4 {
+                    Text("Click Me")
+                        .font(.system(size: max(7, currentSize * 0.16), weight: .bold, design: .monospaced))
+                        .foregroundColor(.red)
+                        .opacity(sin(shape.pulsePhase * 3) > 0 ? 1 : 0.1)
+                        .offset(y: currentSize * 0.25)
                 }
             } else {
                 // Orbiting stars
@@ -2296,7 +2306,7 @@ struct ContentView: View {
 
                 // Shapes
                 ForEach(game.shapes) { shape in
-                    ShapeView(shape: shape)
+                    ShapeView(shape: shape, isLevel4: game.currentLevel >= 4)
                         .position(x: shape.x, y: shape.y)
                         .opacity(shape.isVisible ? 1 : 0)
                         .id("\(shape.id)-\(game.updateTrigger)")
