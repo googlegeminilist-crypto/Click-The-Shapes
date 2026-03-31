@@ -860,6 +860,7 @@ class GameViewModel: ObservableObject {
         powerUpTimer?.invalidate()
         trapBoxTimer?.invalidate()
         lightningTimer?.invalidate()
+        lightningRainTimer?.invalidate()
     }
 
     @Published var score = 0
@@ -889,6 +890,11 @@ class GameViewModel: ObservableObject {
     var snake2: Snake?
     var lightningBolts: [LightningBolt] = []
     var lightningTimer: Timer?
+    // Level 4 sequence challenge
+    var shapeSequence: [ShapeType] = []
+    var sequenceProgress: Int = 0
+    var lightningRainActive = false
+    var lightningRainTimer: Timer?
     var pointsPopup: (x: CGFloat, y: CGFloat, points: Int)?
     var pointsPopupTime: Date?
 
@@ -969,6 +975,9 @@ class GameViewModel: ObservableObject {
         trapBoxTimer = nil
         lightningTimer?.invalidate()
         lightningTimer = nil
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = nil
+        lightningRainActive = false
     }
 
     func pauseGame() {
@@ -1163,6 +1172,18 @@ class GameViewModel: ObservableObject {
                     } else {
                         for _ in 0..<8 {
                             particles.append(Particle(x: point.x, y: point.y))
+                        }
+                    }
+
+                    // Level 4 sequence challenge
+                    if currentLevel >= 4, !lightningRainActive, !shapeSequence.isEmpty {
+                        if sequenceProgress < shapeSequence.count && shape.shapeType == shapeSequence[sequenceProgress] {
+                            sequenceProgress += 1
+                            if sequenceProgress >= shapeSequence.count {
+                                startLightningRain()
+                            }
+                        } else {
+                            sequenceProgress = 0
                         }
                     }
 
@@ -1361,6 +1382,34 @@ class GameViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.showLevelTransition = false
         }
+
+        generateNewSequence()
+    }
+
+    func generateNewSequence() {
+        shapeSequence = (0..<5).map { _ in ShapeType.allCases.randomElement()! }
+        sequenceProgress = 0
+    }
+
+    func startLightningRain() {
+        lightningRainActive = true
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+            guard let self = self, !self.gameOver else { return }
+            if self.lightningBolts.count < 8 {
+                self.lightningBolts.append(LightningBolt(bounds: self.bounds))
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
+            self?.stopLightningRain()
+        }
+    }
+
+    func stopLightningRain() {
+        lightningRainActive = false
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = nil
+        generateNewSequence()
     }
 
     func startLightningTimer() {
@@ -1442,6 +1491,11 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        shapeSequence.removeAll()
+        sequenceProgress = 0
+        lightningRainActive = false
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = nil
         powerUp = nil
         stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
         for shape in shapes {
@@ -1464,6 +1518,11 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        shapeSequence.removeAll()
+        sequenceProgress = 0
+        lightningRainActive = false
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = nil
         powerUp = nil
 
         // Reset stars back to Level 1 count
@@ -1489,6 +1548,11 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        shapeSequence.removeAll()
+        sequenceProgress = 0
+        lightningRainActive = false
+        lightningRainTimer?.invalidate()
+        lightningRainTimer = nil
         powerUp = nil
 
         // Set score to start of current level
@@ -1660,6 +1724,40 @@ struct ShapeView: View {
                 .shadow(color: shape.color.opacity(0.6), radius: 8)
             }
         }
+    }
+}
+
+// MARK: - Sequence Shape Icon (Level 4 HUD)
+struct SequenceShapeIcon: View {
+    let shapeType: ShapeType
+    private let iconSize: CGFloat = 22
+
+    var body: some View {
+        Group {
+            switch shapeType {
+            case .star:
+                Image(systemName: "star.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(GameColors.neonYellow)
+            case .circle:
+                Circle()
+                    .stroke(GameColors.neonCyan, lineWidth: 2)
+                    .frame(width: iconSize, height: iconSize)
+            case .triangle:
+                TriangleShape()
+                    .stroke(GameColors.neonGreen, lineWidth: 2)
+                    .frame(width: iconSize, height: iconSize)
+            case .square:
+                Rectangle()
+                    .stroke(GameColors.neonOrange, lineWidth: 2)
+                    .frame(width: iconSize * 0.8, height: iconSize * 0.8)
+            case .pentagon:
+                PentagonShape()
+                    .stroke(GameColors.neonPink, lineWidth: 2)
+                    .frame(width: iconSize, height: iconSize)
+            }
+        }
+        .frame(width: iconSize, height: iconSize)
     }
 }
 
@@ -2596,6 +2694,47 @@ struct ContentView: View {
 
                     Spacer()
                         .allowsHitTesting(false)
+
+                    // Level 4 sequence challenge display
+                    if game.currentLevel >= 4, !game.shapeSequence.isEmpty {
+                        VStack(spacing: 4) {
+                            if game.lightningRainActive {
+                                Text("LIGHTNING RAIN!")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(GameColors.neonCyan)
+                                    .opacity(sin(Double(game.updateTrigger ? 1 : 0) * 3) > 0 ? 1 : 0.4)
+                            } else {
+                                Text("TAP IN ORDER")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.gray)
+                                HStack(spacing: 8) {
+                                    ForEach(0..<game.shapeSequence.count, id: \.self) { i in
+                                        let done = i < game.sequenceProgress
+                                        SequenceShapeIcon(shapeType: game.shapeSequence[i])
+                                            .opacity(done ? 0.3 : 1)
+                                            .overlay(
+                                                done ? AnyView(
+                                                    Image(systemName: "checkmark")
+                                                        .font(.system(size: 10, weight: .bold))
+                                                        .foregroundColor(GameColors.neonGreen)
+                                                ) : AnyView(EmptyView())
+                                            )
+                                            .scaleEffect(i == game.sequenceProgress ? 1.2 : 1.0)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(game.lightningRainActive ? GameColors.neonCyan : Color.gray.opacity(0.5), lineWidth: 1)
+                        )
+                        .allowsHitTesting(false)
+                        .padding(.bottom, 5)
+                    }
 
                     // Win record
                     HStack(spacing: 30) {
