@@ -1172,6 +1172,31 @@ class GameViewModel: ObservableObject {
         AnalyticsHelper.setProperty("\(snakeWins)", forName: "total_snake_wins")
     }
 
+    func goHome() {
+        stopGameLoop()
+        SoundManager.shared.stopAllShapeTapSounds()
+        SoundManager.shared.stopBackgroundMusic()
+        score = 0
+        snakeScore = 0
+        gameOver = false
+        gameStarted = false
+        currentLevel = 1
+        showLevelTransition = false
+        showUnlockPrompt = false
+        hardcoreMode = false
+        showIntro = true
+        particles.removeAll()
+        fireballs.removeAll()
+        powerUp = nil
+        stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
+        for shape in shapes {
+            shape.reset(bounds: bounds, level: 1)
+            shape.isTrapBox = false
+            shape.trapBoxTimer = nil
+        }
+        snake = Snake(bounds: bounds)
+    }
+
     func restartGame() {
         score = 0
         snakeScore = 0
@@ -2055,20 +2080,34 @@ struct ContentView: View {
 
                 // Header (on top of tap gesture so buttons are tappable)
                 VStack {
-                    // Level indicator
-                    Text("LEVEL \(game.currentLevel)")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange, lineWidth: 1)
-                        )
-                        .padding(.top, 50)
-                        .allowsHitTesting(false)
+                    // Level indicator + home button
+                    HStack {
+                        Button(action: { game.goHome() }) {
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                                .padding(8)
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+
+                        Text("LEVEL \(game.currentLevel)")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .foregroundColor(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.7))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(game.currentLevel == 1 ? GameColors.neonCyan : game.currentLevel == 2 ? .red : GameColors.neonOrange, lineWidth: 1)
+                            )
+                    }
+                    .padding(.top, 50)
 
                     HStack {
                         // Snake score (left) + sound toggle below
