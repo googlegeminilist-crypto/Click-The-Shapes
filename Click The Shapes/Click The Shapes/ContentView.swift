@@ -2017,56 +2017,89 @@ struct SnakeView: View {
                         with: .color(.white)
                     )
                 } else {
-                    // Green head — rounded wide top, tapered jaw like icon snake
                     let cx = head.x
                     let cy = head.y
-                    // Main head shape
-                    let headRect = CGRect(x: cx - hs * 1.1, y: cy - hs * 1.1, width: hs * 2.2, height: hs * 2.0)
-                    context.fill(Ellipse().path(in: headRect), with: .color(Color(red: 0.5, green: 0.8, blue: 0.35)))
-                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.3, green: 0.5, blue: 0.2)), lineWidth: 1)
 
-                    // Eyes — large, brown like icon
-                    let eyeW: CGFloat = hs * 0.55
-                    let eyeH: CGFloat = hs * 0.6
+                    // 3D depth shadow under head
+                    context.fill(
+                        Ellipse().path(in: CGRect(x: cx - hs * 1.3, y: cy - hs * 0.8, width: hs * 2.6, height: hs * 2.4)),
+                        with: .color(Color(red: 0.1, green: 0.0, blue: 0.2).opacity(0.25))
+                    )
+
+                    // Main head — deep rich green
+                    let headRect = CGRect(x: cx - hs * 1.1, y: cy - hs * 1.1, width: hs * 2.2, height: hs * 2.0)
+                    context.fill(Ellipse().path(in: headRect), with: .color(Color(red: 0.15, green: 0.55, blue: 0.2)))
+
+                    // 3D highlight on top — lighter green
+                    context.fill(
+                        Ellipse().path(in: CGRect(x: cx - hs * 0.7, y: cy - hs * 1.05, width: hs * 1.4, height: hs * 0.9)),
+                        with: .color(Color(red: 0.3, green: 0.75, blue: 0.35).opacity(0.6))
+                    )
+
+                    // Deep colour rim glow — magenta/purple
+                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.6, green: 0.1, blue: 0.5).opacity(0.4)), lineWidth: 2)
+                    // Inner outline
+                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.1, green: 0.35, blue: 0.15)), lineWidth: 1)
+
+                    // Eyes — deep colourful with 3D depth
+                    let eyeW: CGFloat = hs * 0.6
+                    let eyeH: CGFloat = hs * 0.65
                     let eyeSpacing: CGFloat = hs * 0.45
-                    let eyeY: CGFloat = head.y - hs * 0.25
+                    let eyeY: CGFloat = cy - hs * 0.2
 
                     for side in [-1.0, 1.0] {
-                        let ex = head.x + CGFloat(side) * eyeSpacing
-                        // White
+                        let ex = cx + CGFloat(side) * eyeSpacing
+
+                        // Eye shadow (3D depth)
+                        context.fill(
+                            Ellipse().path(in: CGRect(x: ex - eyeW/2 - 1, y: eyeY - eyeH/2 + 1, width: eyeW + 2, height: eyeH + 2)),
+                            with: .color(Color(red: 0.05, green: 0.2, blue: 0.1).opacity(0.4))
+                        )
+                        // White outer
                         context.fill(
                             Ellipse().path(in: CGRect(x: ex - eyeW/2, y: eyeY - eyeH/2, width: eyeW, height: eyeH)),
                             with: .color(.white)
                         )
-                        // Brown iris
+                        // Deep coloured iris — rich teal/emerald
                         let irisR = eyeW * 0.45
                         context.fill(
-                            Circle().path(in: CGRect(x: ex - irisR, y: eyeY - irisR * 0.8, width: irisR * 2, height: irisR * 2)),
-                            with: .color(Color(red: 0.4, green: 0.22, blue: 0.08))
+                            Circle().path(in: CGRect(x: ex - irisR, y: eyeY - irisR * 0.7, width: irisR * 2, height: irisR * 2)),
+                            with: .color(Color(red: 0.1, green: 0.5, blue: 0.4))
+                        )
+                        // Inner iris ring — deep blue
+                        let innerR = eyeW * 0.35
+                        context.fill(
+                            Circle().path(in: CGRect(x: ex - innerR, y: eyeY - innerR * 0.6, width: innerR * 2, height: innerR * 2)),
+                            with: .color(Color(red: 0.05, green: 0.2, blue: 0.35))
                         )
                         // Black pupil
-                        let pupilR = eyeW * 0.25
+                        let pupilR = eyeW * 0.22
                         context.fill(
                             Circle().path(in: CGRect(x: ex - pupilR, y: eyeY - pupilR * 0.5, width: pupilR * 2, height: pupilR * 2)),
                             with: .color(.black)
                         )
-                        // White highlight
+                        // Bright white highlight
                         let hlR = eyeW * 0.15
                         context.fill(
-                            Circle().path(in: CGRect(x: ex - hlR + 1, y: eyeY - hlR - 1, width: hlR * 2, height: hlR * 2)),
+                            Circle().path(in: CGRect(x: ex + hlR * 0.5, y: eyeY - hlR * 2, width: hlR * 2, height: hlR * 2)),
                             with: .color(.white)
+                        )
+                        // Small secondary highlight
+                        context.fill(
+                            Circle().path(in: CGRect(x: ex - hlR * 1.5, y: eyeY + hlR * 0.5, width: hlR, height: hlR)),
+                            with: .color(Color.white.opacity(0.5))
                         )
                     }
 
-                    // Smile
+                    // Colourful smile — deep coral
                     var smile = Path()
-                    smile.addArc(center: CGPoint(x: head.x, y: head.y + hs * 0.35), radius: hs * 0.4, startAngle: .degrees(15), endAngle: .degrees(165), clockwise: false)
-                    context.stroke(smile, with: .color(Color(red: 0.3, green: 0.15, blue: 0.05)), lineWidth: 1)
+                    smile.addArc(center: CGPoint(x: cx, y: cy + hs * 0.35), radius: hs * 0.4, startAngle: .degrees(15), endAngle: .degrees(165), clockwise: false)
+                    context.stroke(smile, with: .color(Color(red: 0.7, green: 0.15, blue: 0.2)), lineWidth: 1.5)
 
-                    // Yellow chin
+                    // Colourful chin — warm coral/orange
                     context.fill(
-                        Ellipse().path(in: CGRect(x: head.x - hs * 0.35, y: head.y + hs * 0.4, width: hs * 0.7, height: hs * 0.45)),
-                        with: .color(Color(red: 0.95, green: 0.9, blue: 0.5))
+                        Ellipse().path(in: CGRect(x: cx - hs * 0.35, y: cy + hs * 0.4, width: hs * 0.7, height: hs * 0.45)),
+                        with: .color(Color(red: 0.95, green: 0.6, blue: 0.3))
                     )
                 }
             }
