@@ -204,6 +204,8 @@ class ConstellationShape: Identifiable {
     var isTrapBox: Bool = false
     var trapBoxTimer: Date?
     var isShrinking: Bool = false
+    var teleportTimer: Date?
+    var isVisible: Bool = true
     var baseSize: CGFloat = 60  // The current actual size (changes in Level 3)
 
     init(bounds: CGSize) {
@@ -233,12 +235,22 @@ class ConstellationShape: Identifiable {
         color = GameColors.shapeColors.randomElement()!
         shapeType = ShapeType.allCases.randomElement()!
 
-        if level >= 3 {
+        if level >= 4 {
+            // Level 4: fast movement, shapes teleport instead of shrinking
+            let speed = GameConstants.level3ShapeSpeed * 1.2
+            vx = CGFloat.random(in: -speed...speed)
+            vy = CGFloat.random(in: -speed...speed)
+            if abs(vx) < 0.5 { vx = vx < 0 ? -0.5 : 0.5 }
+            if abs(vy) < 0.5 { vy = vy < 0 ? -0.5 : 0.5 }
+            baseSize = 60
+            isShrinking = false
+            isVisible = true
+            teleportTimer = Date().addingTimeInterval(Double.random(in: 1.5...4.0))
+        } else if level >= 3 {
             // Level 3: faster movement, reset to full size and start shrinking
             let speed = GameConstants.level3ShapeSpeed
             vx = CGFloat.random(in: -speed...speed)
             vy = CGFloat.random(in: -speed...speed)
-            // Make sure they don't move too slowly
             if abs(vx) < 0.5 { vx = vx < 0 ? -0.5 : 0.5 }
             if abs(vy) < 0.5 { vy = vy < 0 ? -0.5 : 0.5 }
             baseSize = GameConstants.level3MaxSize
@@ -252,16 +264,37 @@ class ConstellationShape: Identifiable {
     }
 
     func update(bounds: CGSize, level: Int = 1) {
-        x += vx
-        y += vy
+        if isVisible {
+            x += vx
+            y += vy
+        }
 
         if x < 80 || x > bounds.width - 80 { vx *= -1 }
         if y < 150 || y > bounds.height - 150 { vy *= -1 }
 
         pulsePhase += 0.05
 
-        // Level 3: shapes shrink over time
-        if level >= 3 && isShrinking && !isTrapBox {
+        // Level 4: shapes disappear and reappear randomly
+        if level >= 4, !isTrapBox, let timer = teleportTimer {
+            if Date() >= timer {
+                if isVisible {
+                    // Disappear
+                    isVisible = false
+                    teleportTimer = Date().addingTimeInterval(Double.random(in: 0.5...1.5))
+                } else {
+                    // Reappear at random position
+                    isVisible = true
+                    x = CGFloat.random(in: 80...max(81, bounds.width - 80))
+                    y = CGFloat.random(in: 150...max(151, bounds.height - 150))
+                    color = GameColors.shapeColors.randomElement()!
+                    shapeType = ShapeType.allCases.randomElement()!
+                    teleportTimer = Date().addingTimeInterval(Double.random(in: 1.5...4.0))
+                }
+            }
+        }
+
+        // Level 3: shapes shrink over time (not level 4)
+        if level == 3 && isShrinking && !isTrapBox {
             baseSize -= GameConstants.level3ShrinkRate
             if baseSize <= GameConstants.level3MinSize {
                 baseSize = GameConstants.level3MinSize
@@ -275,6 +308,7 @@ class ConstellationShape: Identifiable {
     }
 
     func isClicked(at point: CGPoint) -> Bool {
+        guard isVisible else { return false }
         let distance = hypot(point.x - x, point.y - y)
         return distance < baseSize
     }
@@ -419,7 +453,7 @@ class Snake {
         var nearestShape: ConstellationShape?
         var nearestShapeDist = CGFloat.infinity
 
-        for shape in shapes {
+        for shape in shapes where shape.isVisible {
             let dist = hypot(shape.x - headX, shape.y - headY)
             if dist < nearestShapeDist {
                 nearestShapeDist = dist
@@ -2130,7 +2164,40 @@ struct ContentView: View {
             ZStack {
                 // Background gradient - evolves per level
                 Group {
-                    if game.currentLevel >= 3 {
+                    if game.currentLevel >= 4 {
+                        // Level 4: dark evil void
+                        ZStack {
+                            Color.black
+
+                            // Deep blood-red core
+                            RadialGradient(
+                                colors: [
+                                    Color(red: 0.25, green: 0.0, blue: 0.0).opacity(0.5),
+                                    Color(red: 0.12, green: 0.0, blue: 0.02).opacity(0.3),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: geometry.size.width * 0.4
+                            )
+
+                            // Sinister crimson glow (top)
+                            RadialGradient(
+                                colors: [Color(red: 0.3, green: 0.0, blue: 0.05).opacity(0.2), .clear],
+                                center: UnitPoint(x: 0.5, y: 0.05),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.6
+                            )
+
+                            // Dark purple shadow (bottom)
+                            RadialGradient(
+                                colors: [Color(red: 0.1, green: 0.0, blue: 0.15).opacity(0.25), .clear],
+                                center: UnitPoint(x: 0.5, y: 0.95),
+                                startRadius: 0,
+                                endRadius: geometry.size.width * 0.5
+                            )
+                        }
+                    } else if game.currentLevel >= 3 {
                         // Level 3: deep 3D warp space with galaxy center
                         ZStack {
                             Color.black
@@ -2231,6 +2298,7 @@ struct ContentView: View {
                 ForEach(game.shapes) { shape in
                     ShapeView(shape: shape)
                         .position(x: shape.x, y: shape.y)
+                        .opacity(shape.isVisible ? 1 : 0)
                         .id("\(shape.id)-\(game.updateTrigger)")
                 }
 
