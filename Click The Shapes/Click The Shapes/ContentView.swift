@@ -2409,22 +2409,64 @@ struct IntroOverlay: View {
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
                     HStack(spacing: 20) {
-                        // Icon snake (default)
+                        // Candy snake (default)
                         Button { useRainbowSnake = false } label: {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 6) {
                                 ZStack {
-                                    Circle().fill(Color(red: 0.5, green: 0.8, blue: 0.35)).frame(width: 30, height: 30)
-                                    HStack(spacing: 2) {
-                                        Circle().fill(.white).frame(width: 7, height: 7)
-                                        Circle().fill(.white).frame(width: 7, height: 7)
-                                    }.offset(y: -2)
+                                    // Body segments tapering
+                                    HStack(spacing: -2) {
+                                        Circle().fill(Color(red: 0.1, green: 0.65, blue: 0.6)).frame(width: 5, height: 5)
+                                        Circle().fill(Color(red: 0.45, green: 0.3, blue: 0.85)).frame(width: 7, height: 7)
+                                        Circle().fill(Color(red: 0.85, green: 0.35, blue: 0.45)).frame(width: 9, height: 9)
+                                        Circle().fill(Color(red: 0.9, green: 0.75, blue: 0.15)).frame(width: 11, height: 11)
+                                        Circle().fill(Color(red: 0.3, green: 0.8, blue: 0.4)).frame(width: 13, height: 13)
+                                    }
+                                    .offset(x: -14, y: 2)
+                                    // Head with face
+                                    ZStack {
+                                        Ellipse().fill(Color.black.opacity(0.2)).frame(width: 34, height: 30).offset(y: 2)
+                                        Ellipse().fill(Color(red: 0.1, green: 0.48, blue: 0.18)).frame(width: 32, height: 28)
+                                        Ellipse().fill(Color(red: 0.2, green: 0.65, blue: 0.28).opacity(0.5)).frame(width: 22, height: 13).offset(y: -4)
+                                        HStack(spacing: 6) {
+                                            ZStack {
+                                                Ellipse().fill(.white).frame(width: 10, height: 11)
+                                                Circle().fill(Color(red: 0.06, green: 0.4, blue: 0.32)).frame(width: 7, height: 7)
+                                                Circle().fill(.black).frame(width: 3.5, height: 3.5)
+                                                Circle().fill(.white).frame(width: 1.5, height: 1.5).offset(x: 1, y: -1.5)
+                                            }
+                                            ZStack {
+                                                Ellipse().fill(.white).frame(width: 10, height: 11)
+                                                Circle().fill(Color(red: 0.06, green: 0.4, blue: 0.32)).frame(width: 7, height: 7)
+                                                Circle().fill(.black).frame(width: 3.5, height: 3.5)
+                                                Circle().fill(.white).frame(width: 1.5, height: 1.5).offset(x: 1, y: -1.5)
+                                            }
+                                        }
+                                        .offset(y: -2)
+                                        // Smile mouth
+                                        Path { p in
+                                            p.addArc(center: CGPoint(x: 16, y: 18), radius: 5, startAngle: .degrees(10), endAngle: .degrees(170), clockwise: false)
+                                        }
+                                        .stroke(Color(red: 0.6, green: 0.08, blue: 0.12), lineWidth: 1.5)
+                                        .frame(width: 32, height: 28)
+                                        // Tongue — bigger and visible
+                                        VStack(spacing: 0) {
+                                            Rectangle().fill(Color(red: 0.9, green: 0.08, blue: 0.1)).frame(width: 2, height: 9)
+                                            HStack(spacing: 3) {
+                                                Rectangle().fill(Color(red: 0.9, green: 0.08, blue: 0.1)).frame(width: 2, height: 6).rotationEffect(.degrees(-25))
+                                                Rectangle().fill(Color(red: 0.9, green: 0.08, blue: 0.1)).frame(width: 2, height: 6).rotationEffect(.degrees(25))
+                                            }
+                                        }
+                                        .offset(y: 19)
+                                    }
+                                    .offset(x: 20)
                                 }
-                                Text("Icon")
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(.white)
+                                .frame(height: 42)
+                                Text("Candy")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundColor(useRainbowSnake ? .gray : .white)
                             }
                             .padding(8)
-                            .background(useRainbowSnake ? Color.clear : Color.white.opacity(0.1))
+                            .background(Color.white.opacity(useRainbowSnake ? 0 : 0.08))
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
