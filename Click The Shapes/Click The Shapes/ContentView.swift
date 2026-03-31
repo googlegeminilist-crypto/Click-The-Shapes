@@ -40,6 +40,7 @@ struct GameConstants {
     static let level1WinScore = 500
     static let level2WinScore = 1000
     static let level3WinScore = 1500
+    static let level4WinScore = 2000
     static let maxStars = 60
     static let maxParticles = 80
     static let maxFireballs = 50
@@ -783,6 +784,7 @@ class GameViewModel: ObservableObject {
     var fireballs: [FireballParticle] = []
     var powerUp: PowerUp?
     var snake: Snake?
+    var snake2: Snake?
     var pointsPopup: (x: CGFloat, y: CGFloat, points: Int)?
     var pointsPopupTime: Date?
 
@@ -798,7 +800,8 @@ class GameViewModel: ObservableObject {
         switch currentLevel {
         case 1: return GameConstants.level1WinScore
         case 2: return GameConstants.level2WinScore
-        default: return GameConstants.level3WinScore
+        case 3: return GameConstants.level3WinScore
+        default: return GameConstants.level4WinScore
         }
     }
 
@@ -869,6 +872,11 @@ class GameViewModel: ObservableObject {
         // Update snake (only if game started)
         if gameStarted {
             snake?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
+                self?.snakeAteShape(shape)
+            }, onEatPowerUp: { [weak self] pu in
+                self?.snakeAtePowerUp(pu)
+            })
+            snake2?.update(shapes: shapes, bounds: bounds, powerUp: powerUp, onEatShape: { [weak self] shape in
                 self?.snakeAteShape(shape)
             }, onEatPowerUp: { [weak self] pu in
                 self?.snakeAtePowerUp(pu)
@@ -965,9 +973,22 @@ class GameViewModel: ObservableObject {
                         }
                     }
 
-                    // Create particles
-                    for _ in 0..<8 {
-                        particles.append(Particle(x: point.x, y: point.y))
+                    // Create particles — Level 4 gets a colorful explosion burst
+                    if currentLevel >= 4 {
+                        let burstColors: [Color] = [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .pink]
+                        for i in 0..<20 {
+                            let p = Particle(x: point.x, y: point.y)
+                            p.color = burstColors[i % burstColors.count]
+                            p.size = CGFloat.random(in: 3...8)
+                            particles.append(p)
+                        }
+                        for _ in 0..<8 {
+                            fireballs.append(FireballParticle(x: point.x, y: point.y))
+                        }
+                    } else {
+                        for _ in 0..<8 {
+                            particles.append(Particle(x: point.x, y: point.y))
+                        }
                     }
 
                     shape.reset(bounds: bounds, level: currentLevel)
@@ -1030,6 +1051,8 @@ class GameViewModel: ObservableObject {
         // Snake grows extra from power-up
         snake?.grow()
         snake?.grow()
+        snake2?.grow()
+        snake2?.grow()
 
         if snakeScore >= winningScore {
             endGame(message: "SNAKE WINS!", color: GameColors.neonPink, snakeWon: true)
@@ -1055,6 +1078,8 @@ class GameViewModel: ObservableObject {
         } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
             transitionToLevel3()
         } else if currentLevel == 3 && score >= GameConstants.level3WinScore {
+            transitionToLevel4()
+        } else if currentLevel == 4 && score >= GameConstants.level4WinScore {
             endGame(message: "YOU WIN!", color: GameColors.neonGreen, snakeWon: false)
         }
     }
@@ -1115,6 +1140,44 @@ class GameViewModel: ObservableObject {
         startTrapBoxTimer()
 
         // Hide transition after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.showLevelTransition = false
+        }
+    }
+
+    func transitionToLevel4() {
+        AnalyticsHelper.log("level_complete", parameters: ["level": 3, "score": score])
+        currentLevel = 4
+        showLevelTransition = true
+        gameStarted = false
+
+        // Add more stars
+        let extraStars = (0..<30).map { _ in BackgroundStar(bounds: bounds) }
+        stars.append(contentsOf: extraStars)
+        for star in stars {
+            star.setupForLevel3(bounds: bounds)
+        }
+
+        // Reset snake score
+        snakeScore = 0
+
+        // First snake — fast
+        snake = Snake(bounds: bounds)
+        snake?.speed = 4.5
+
+        // Second snake — spawns from opposite side, also fast
+        snake2 = Snake(bounds: bounds)
+        snake2?.speed = 3.5
+
+        // Reset shapes with Level 3+ properties (fast + shrinking)
+        for shape in shapes {
+            shape.reset(bounds: bounds, level: 4)
+            shape.isTrapBox = false
+            shape.trapBoxTimer = nil
+        }
+
+        startTrapBoxTimer()
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.showLevelTransition = false
         }
@@ -1195,6 +1258,7 @@ class GameViewModel: ObservableObject {
             shape.trapBoxTimer = nil
         }
         snake = Snake(bounds: bounds)
+        snake2 = nil
     }
 
     func restartGame() {
@@ -1219,6 +1283,7 @@ class GameViewModel: ObservableObject {
         }
 
         snake = Snake(bounds: bounds)
+        snake2 = nil
         startGameLoop()
         SoundManager.shared.playBackgroundMusic()
     }
@@ -1244,8 +1309,14 @@ class GameViewModel: ObservableObject {
             startTrapBoxTimer()
         case 3:
             score = GameConstants.level2WinScore
-            // Keep Level 3 star count with depth
             stars = (0..<(GameConstants.maxStars + 90)).map { _ in BackgroundStar(bounds: bounds) }
+            for star in stars {
+                star.setupForLevel3(bounds: bounds)
+            }
+            startTrapBoxTimer()
+        case 4:
+            score = GameConstants.level3WinScore
+            stars = (0..<(GameConstants.maxStars + 120)).map { _ in BackgroundStar(bounds: bounds) }
             for star in stars {
                 star.setupForLevel3(bounds: bounds)
             }
@@ -1262,7 +1333,13 @@ class GameViewModel: ObservableObject {
 
         snake = Snake(bounds: bounds)
         if level >= 3 {
-            snake?.speed = 4.0
+            snake?.speed = level >= 4 ? 4.5 : 4.0
+        }
+        if level >= 4 {
+            snake2 = Snake(bounds: bounds)
+            snake2?.speed = 3.5
+        } else {
+            snake2 = nil
         }
 
         startGameLoop()
@@ -1426,18 +1503,41 @@ struct PentagonShape: Shape {
 // MARK: - Snake View
 struct SnakeView: View {
     let snake: Snake
+    var glowing: Bool = false
 
     var body: some View {
         let maxVisible = min(40, snake.segments.count)
 
         Canvas { context, size in
+            // Draw glow layer for second snake
+            if glowing {
+                for i in 0..<maxVisible {
+                    let segment = snake.segments[i]
+                    let glowSize = snake.segmentSize * 4
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: segment.x - glowSize,
+                            y: segment.y - glowSize,
+                            width: glowSize * 2,
+                            height: glowSize * 2
+                        )),
+                        with: .color(Color.cyan.opacity(0.15))
+                    )
+                }
+            }
+
             // Draw segments
             for i in 0..<maxVisible {
                 let segment = snake.segments[i]
-                let hue = Double(i * 10).truncatingRemainder(dividingBy: 360) / 360
                 let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
-
-                let color = Color(hue: hue, saturation: 1, brightness: brightness)
+                let color: Color
+                if glowing {
+                    let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
+                    color = Color(hue: hue, saturation: 0.6, brightness: brightness)
+                } else {
+                    let hue = Double(i * 10).truncatingRemainder(dividingBy: 360) / 360
+                    color = Color(hue: hue, saturation: 1, brightness: brightness)
+                }
 
                 // Draw segment
                 context.fill(
@@ -1462,13 +1562,14 @@ struct SnakeView: View {
 
             // Draw eyes on head
             if let head = snake.segments.first {
+                let eyeColor: Color = glowing ? .cyan : .white
                 context.fill(
                     Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)),
-                    with: .color(.white)
+                    with: .color(eyeColor)
                 )
                 context.fill(
                     Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)),
-                    with: .color(.white)
+                    with: .color(eyeColor)
                 )
             }
         }
@@ -1517,6 +1618,7 @@ struct PowerUpView: View {
 struct IntroOverlay: View {
     let onStart: () -> Void
     let onStartHardcore: () -> Void
+    var onStartLevel4: () -> Void = {}
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -1649,6 +1751,18 @@ struct IntroOverlay: View {
                     .padding(.vertical, 8)
                     .background(Color.red.opacity(0.8))
                     .cornerRadius(8)
+                }
+
+                Button {
+                    onStartLevel4()
+                } label: {
+                    Text("DEBUG: Skip to Level 4")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
                 }
                 #endif
 
@@ -2057,6 +2171,12 @@ struct ContentView: View {
                         .id(game.updateTrigger)
                 }
 
+                // Second snake (Level 4) — with glow
+                if let snake2 = game.snake2 {
+                    SnakeView(snake: snake2, glowing: true)
+                        .id(game.updateTrigger)
+                }
+
                 // Power-up
                 if let powerUp = game.powerUp, powerUp.isActive {
                     PowerUpView(powerUp: powerUp)
@@ -2229,6 +2349,10 @@ struct ContentView: View {
                     }, onStartHardcore: {
                         game.hardcoreMode = true
                         game.startGame()
+                    }, onStartLevel4: {
+                        game.startGame()
+                        game.score = GameConstants.level3WinScore
+                        game.transitionToLevel4()
                     })
                 }
 
@@ -2241,8 +2365,8 @@ struct ContentView: View {
                         VStack(spacing: 20) {
                             Text("LEVEL \(game.currentLevel)")
                                 .font(.system(size: 48, weight: .bold, design: .monospaced))
-                                .foregroundColor(game.currentLevel == 2 ? .red : GameColors.neonOrange)
-                                .shadow(color: game.currentLevel == 2 ? .red : GameColors.neonOrange, radius: 15)
+                                .foregroundColor(game.currentLevel == 2 ? .red : game.currentLevel == 4 ? GameColors.neonCyan : GameColors.neonOrange)
+                                .shadow(color: game.currentLevel == 2 ? .red : game.currentLevel == 4 ? GameColors.neonCyan : GameColors.neonOrange, radius: 15)
 
                             if game.currentLevel == 2 {
                                 Text("Watch out for TRAP BOXES!")
@@ -2259,6 +2383,15 @@ struct ContentView: View {
                                     .foregroundColor(.white)
 
                                 Text("Shapes move fast and shrink!\nSmall shapes = only 5 points\nTrap boxes are still active!")
+                                    .font(.system(size: 14, design: .monospaced))
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            } else if game.currentLevel == 4 {
+                                Text("TWO SNAKES!")
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                    .foregroundColor(GameColors.neonCyan)
+
+                                Text("A second glowing snake joins the hunt!\nBoth snakes share the same score\nShapes explode when you tap them!")
                                     .font(.system(size: 14, design: .monospaced))
                                     .foregroundColor(.gray)
                                     .multilineTextAlignment(.center)
