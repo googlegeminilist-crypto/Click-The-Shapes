@@ -925,6 +925,7 @@ class GameViewModel: ObservableObject {
     @Published var gameOver = false
     @Published var gameStarted = false
     @Published var showIntro = true
+    @Published var useRainbowSnake = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1883,6 +1884,7 @@ struct PentagonShape: Shape {
 struct SnakeView: View {
     let snake: Snake
     var glowing: Bool = false
+    var useRainbow: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -1890,6 +1892,47 @@ struct SnakeView: View {
 
         Canvas { context, size in
             guard maxVisible > 0 else { return }
+
+            if useRainbow && !glowing {
+                // --- Rainbow snake (original) ---
+                for i in 0..<maxVisible {
+                    let segment = segments[i]
+                    let hue = Double(i * 10).truncatingRemainder(dividingBy: 360) / 360
+                    let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
+                    let color = Color(hue: hue, saturation: 1, brightness: brightness)
+
+                    context.fill(
+                        Circle().path(in: CGRect(
+                            x: segment.x - snake.segmentSize,
+                            y: segment.y - snake.segmentSize,
+                            width: snake.segmentSize * 2,
+                            height: snake.segmentSize * 2
+                        )),
+                        with: .color(color)
+                    )
+
+                    if i < maxVisible - 1 && i < 30 {
+                        let next = segments[i + 1]
+                        var path = Path()
+                        path.move(to: CGPoint(x: segment.x, y: segment.y))
+                        path.addLine(to: CGPoint(x: next.x, y: next.y))
+                        context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                    }
+                }
+                if let head = segments.first {
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)),
+                        with: .color(.white)
+                    )
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)),
+                        with: .color(.white)
+                    )
+                }
+                return
+            }
+
+            // --- Icon-style snake (default) ---
 
             // Draw glow layer for second snake
             if glowing {
@@ -1908,51 +1951,133 @@ struct SnakeView: View {
                 }
             }
 
-            // Draw segments
-            for i in 0..<maxVisible {
+            // Stripe colors matching icon: lime green, sky blue, yellow
+            let stripeColors: [Color] = [
+                Color(red: 0.5, green: 0.8, blue: 0.2),   // lime green
+                Color(red: 0.3, green: 0.75, blue: 0.9),   // sky blue
+                Color(red: 0.95, green: 0.9, blue: 0.3),   // yellow
+            ]
+
+            // Draw body segments — thick with stripes
+            for i in stride(from: maxVisible - 1, through: 1, by: -1) {
                 let segment = segments[i]
-                let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
+                let fade = 1 - (Double(i) / Double(maxVisible)) * 0.3
                 let color: Color
                 if glowing {
                     let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
-                    color = Color(hue: hue, saturation: 0.6, brightness: brightness)
+                    color = Color(hue: hue, saturation: 0.6, brightness: fade)
                 } else {
-                    let hue = Double(i * 10).truncatingRemainder(dividingBy: 360) / 360
-                    color = Color(hue: hue, saturation: 1, brightness: brightness)
+                    color = stripeColors[i % 3].opacity(fade)
                 }
 
-                // Draw segment
-                context.fill(
-                    Circle().path(in: CGRect(
-                        x: segment.x - snake.segmentSize,
-                        y: segment.y - snake.segmentSize,
-                        width: snake.segmentSize * 2,
-                        height: snake.segmentSize * 2
-                    )),
-                    with: .color(color)
-                )
+                let segSize = snake.segmentSize * 1.8
 
-                // Draw connecting line
-                if i < maxVisible - 1 && i < 30 {
+                // Connecting line (thick body)
+                if i < maxVisible - 1 {
                     let next = segments[i + 1]
                     var path = Path()
                     path.move(to: CGPoint(x: segment.x, y: segment.y))
                     path.addLine(to: CGPoint(x: next.x, y: next.y))
-                    context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                    context.stroke(path, with: .color(color), lineWidth: segSize * 2)
+                }
+
+                // Segment circle
+                context.fill(
+                    Circle().path(in: CGRect(
+                        x: segment.x - segSize,
+                        y: segment.y - segSize,
+                        width: segSize * 2,
+                        height: segSize * 2
+                    )),
+                    with: .color(color)
+                )
+
+                // Dark outline on each segment for cartoon look
+                if !glowing {
+                    context.stroke(
+                        Circle().path(in: CGRect(
+                            x: segment.x - segSize,
+                            y: segment.y - segSize,
+                            width: segSize * 2,
+                            height: segSize * 2
+                        )),
+                        with: .color(Color(red: 0.2, green: 0.35, blue: 0.1).opacity(0.3)),
+                        lineWidth: 0.5
+                    )
                 }
             }
 
-            // Draw eyes on head
+            // Draw snake head
             if let head = segments.first {
-                let eyeColor: Color = glowing ? .cyan : .white
-                context.fill(
-                    Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)),
-                    with: .color(eyeColor)
-                )
-                context.fill(
-                    Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)),
-                    with: .color(eyeColor)
-                )
+                let hs: CGFloat = snake.segmentSize * 2.2
+
+                if glowing {
+                    // Glowing head
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - hs, y: head.y - hs, width: hs * 2, height: hs * 2)),
+                        with: .color(Color.cyan.opacity(0.9))
+                    )
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - 6, y: head.y - 7, width: 5, height: 5)),
+                        with: .color(.white)
+                    )
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 5, height: 5)),
+                        with: .color(.white)
+                    )
+                } else {
+                    // Green head — rounded wide top, tapered jaw like icon snake
+                    let cx = head.x
+                    let cy = head.y
+                    // Main head shape
+                    let headRect = CGRect(x: cx - hs * 1.1, y: cy - hs * 1.1, width: hs * 2.2, height: hs * 2.0)
+                    context.fill(Ellipse().path(in: headRect), with: .color(Color(red: 0.5, green: 0.8, blue: 0.35)))
+                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.3, green: 0.5, blue: 0.2)), lineWidth: 1)
+
+                    // Eyes — large, brown like icon
+                    let eyeW: CGFloat = hs * 0.55
+                    let eyeH: CGFloat = hs * 0.6
+                    let eyeSpacing: CGFloat = hs * 0.45
+                    let eyeY: CGFloat = head.y - hs * 0.25
+
+                    for side in [-1.0, 1.0] {
+                        let ex = head.x + CGFloat(side) * eyeSpacing
+                        // White
+                        context.fill(
+                            Ellipse().path(in: CGRect(x: ex - eyeW/2, y: eyeY - eyeH/2, width: eyeW, height: eyeH)),
+                            with: .color(.white)
+                        )
+                        // Brown iris
+                        let irisR = eyeW * 0.45
+                        context.fill(
+                            Circle().path(in: CGRect(x: ex - irisR, y: eyeY - irisR * 0.8, width: irisR * 2, height: irisR * 2)),
+                            with: .color(Color(red: 0.4, green: 0.22, blue: 0.08))
+                        )
+                        // Black pupil
+                        let pupilR = eyeW * 0.25
+                        context.fill(
+                            Circle().path(in: CGRect(x: ex - pupilR, y: eyeY - pupilR * 0.5, width: pupilR * 2, height: pupilR * 2)),
+                            with: .color(.black)
+                        )
+                        // White highlight
+                        let hlR = eyeW * 0.15
+                        context.fill(
+                            Circle().path(in: CGRect(x: ex - hlR + 1, y: eyeY - hlR - 1, width: hlR * 2, height: hlR * 2)),
+                            with: .color(.white)
+                        )
+                    }
+
+                    // Smile
+                    var smile = Path()
+                    smile.addArc(center: CGPoint(x: head.x, y: head.y + hs * 0.35), radius: hs * 0.4, startAngle: .degrees(15), endAngle: .degrees(165), clockwise: false)
+                    context.stroke(smile, with: .color(Color(red: 0.3, green: 0.15, blue: 0.05)), lineWidth: 1)
+
+                    // Yellow chin
+                    context.fill(
+                        Ellipse().path(in: CGRect(x: head.x - hs * 0.35, y: head.y + hs * 0.4, width: hs * 0.7, height: hs * 0.45)),
+                        with: .color(Color(red: 0.95, green: 0.9, blue: 0.5))
+                    )
+                }
             }
         }
     }
@@ -2033,6 +2158,7 @@ struct IntroOverlay: View {
     let onStart: () -> Void
     let onStartHardcore: () -> Void
     var onStartLevel4: () -> Void = {}
+    @Binding var useRainbowSnake: Bool
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -2179,6 +2305,55 @@ struct IntroOverlay: View {
                         .cornerRadius(8)
                 }
                 #endif
+
+                // Snake skin chooser
+                VStack(spacing: 6) {
+                    Text("CHOOSE SNAKE")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.gray)
+                    HStack(spacing: 20) {
+                        // Icon snake (default)
+                        Button { useRainbowSnake = false } label: {
+                            VStack(spacing: 4) {
+                                ZStack {
+                                    Circle().fill(Color(red: 0.5, green: 0.8, blue: 0.35)).frame(width: 30, height: 30)
+                                    HStack(spacing: 2) {
+                                        Circle().fill(.white).frame(width: 7, height: 7)
+                                        Circle().fill(.white).frame(width: 7, height: 7)
+                                    }.offset(y: -2)
+                                }
+                                Text("Icon")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(8)
+                            .background(useRainbowSnake ? Color.clear : Color.white.opacity(0.1))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useRainbowSnake ? Color.gray.opacity(0.3) : GameColors.neonGreen, lineWidth: useRainbowSnake ? 1 : 2)
+                            )
+                        }
+                        // Rainbow snake
+                        Button { useRainbowSnake = true } label: {
+                            VStack(spacing: 4) {
+                                Circle()
+                                    .fill(LinearGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .frame(width: 30, height: 30)
+                                Text("Rainbow")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(8)
+                            .background(useRainbowSnake ? Color.white.opacity(0.1) : Color.clear)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useRainbowSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useRainbowSnake ? 2 : 1)
+                            )
+                        }
+                    }
+                }
 
                 Button(action: onStart) {
                     Text("START GAME")
@@ -2591,13 +2766,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: false)
                         .id(game.updateTrigger)
                 }
 
@@ -2844,7 +3019,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    })
+                    }, useRainbowSnake: $game.useRainbowSnake)
                 }
 
                 // Level transition overlay
