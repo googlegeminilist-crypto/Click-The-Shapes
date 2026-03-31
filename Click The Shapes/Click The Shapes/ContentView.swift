@@ -653,7 +653,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
             backgroundMusicPlayer?.delegate = self
             backgroundMusicPlayer?.numberOfLoops = -1
-            backgroundMusicPlayer?.volume = 0.5
+            backgroundMusicPlayer?.volume = 0.85
             backgroundMusicPlayer?.prepareToPlay()
             backgroundMusicPlayer?.play()
         } catch {
@@ -699,7 +699,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         // Create a fresh player each tap so sounds overlap for fast tapping
         do {
             let player = try AVAudioPlayer(contentsOf: url)
-            player.volume = 1.0
+            player.volume = 0.4
             player.prepareToPlay()
             player.play()
             shapeTapPlayers.append(player)
