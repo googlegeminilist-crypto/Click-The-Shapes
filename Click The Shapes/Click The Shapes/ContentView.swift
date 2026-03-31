@@ -387,6 +387,36 @@ class FireballParticle: Identifiable {
     var isDead: Bool { life <= 0 }
 }
 
+// MARK: - Lightning Bolt (Level 4)
+class LightningBolt: Identifiable {
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var fallSpeed: CGFloat
+    var size: CGFloat = 20
+    var isActive = true
+    var flickerPhase: CGFloat = 0
+
+    init(bounds: CGSize) {
+        x = CGFloat.random(in: 40...max(41, bounds.width - 40))
+        y = -20
+        fallSpeed = CGFloat.random(in: 3...5)
+    }
+
+    func update(bounds: CGSize) {
+        y += fallSpeed
+        flickerPhase += 0.3
+        if y > bounds.height + 30 {
+            isActive = false
+        }
+    }
+
+    func isClicked(at point: CGPoint) -> Bool {
+        guard isActive else { return false }
+        return hypot(point.x - x, point.y - y) < size * 1.5
+    }
+}
+
 // MARK: - Power Up Model
 class PowerUp: Identifiable {
     let id = UUID()
@@ -829,6 +859,7 @@ class GameViewModel: ObservableObject {
         displayLink = nil
         powerUpTimer?.invalidate()
         trapBoxTimer?.invalidate()
+        lightningTimer?.invalidate()
     }
 
     @Published var score = 0
@@ -856,6 +887,8 @@ class GameViewModel: ObservableObject {
     var powerUp: PowerUp?
     var snake: Snake?
     var snake2: Snake?
+    var lightningBolts: [LightningBolt] = []
+    var lightningTimer: Timer?
     var pointsPopup: (x: CGFloat, y: CGFloat, points: Int)?
     var pointsPopupTime: Date?
 
@@ -934,6 +967,8 @@ class GameViewModel: ObservableObject {
         powerUpTimer = nil
         trapBoxTimer?.invalidate()
         trapBoxTimer = nil
+        lightningTimer?.invalidate()
+        lightningTimer = nil
     }
 
     func pauseGame() {
@@ -1004,6 +1039,12 @@ class GameViewModel: ObservableObject {
             powerUp = nil
         }
 
+        // Update lightning bolts (Level 4)
+        for bolt in lightningBolts {
+            bolt.update(bounds: bounds)
+        }
+        lightningBolts.removeAll { !$0.isActive }
+
         // Update particles
         for particle in particles {
             particle.update()
@@ -1050,6 +1091,25 @@ class GameViewModel: ObservableObject {
 
     func handleTap(at point: CGPoint) {
         guard !gameOver, !showIntro, !showLevelTransition else { return }
+
+        // Check lightning bolts (Level 4) — 50 points
+        for bolt in lightningBolts {
+            if bolt.isClicked(at: point) {
+                bolt.isActive = false
+                if !gameStarted { gameStarted = true }
+                addScore(50)
+                showPoints(at: point, points: 50)
+                if tapSoundEnabled { SoundManager.shared.playExplosion() }
+                // Blue particles
+                let blueColors: [Color] = [.cyan, .blue, .white]
+                for i in 0..<8 {
+                    let p = Particle(x: bolt.x, y: bolt.y)
+                    p.color = blueColors[i % blueColors.count]
+                    particles.append(p)
+                }
+                return
+            }
+        }
 
         // Check shapes (user can no longer click power-ups - snake gets them)
         for shape in shapes {
@@ -1296,9 +1356,20 @@ class GameViewModel: ObservableObject {
         }
 
         startTrapBoxTimer()
+        startLightningTimer()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             self?.showLevelTransition = false
+        }
+    }
+
+    func startLightningTimer() {
+        lightningTimer?.invalidate()
+        lightningTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            guard let self = self, self.currentLevel >= 4, !self.gameOver else { return }
+            if self.lightningBolts.count < 3 {
+                self.lightningBolts.append(LightningBolt(bounds: self.bounds))
+            }
         }
     }
 
@@ -1370,6 +1441,7 @@ class GameViewModel: ObservableObject {
         showIntro = true
         particles.removeAll()
         fireballs.removeAll()
+        lightningBolts.removeAll()
         powerUp = nil
         stars = (0..<GameConstants.maxStars).map { _ in BackgroundStar(bounds: bounds) }
         for shape in shapes {
@@ -1391,6 +1463,7 @@ class GameViewModel: ObservableObject {
         hardcoreMode = false
         particles.removeAll()
         fireballs.removeAll()
+        lightningBolts.removeAll()
         powerUp = nil
 
         // Reset stars back to Level 1 count
@@ -1415,6 +1488,7 @@ class GameViewModel: ObservableObject {
         snakeScore = 0
         particles.removeAll()
         fireballs.removeAll()
+        lightningBolts.removeAll()
         powerUp = nil
 
         // Set score to start of current level
@@ -1465,6 +1539,7 @@ class GameViewModel: ObservableObject {
         startGameLoop()
         if currentLevel >= 4 {
             SoundManager.shared.playLevel4Music()
+            startLightningTimer()
         } else {
             SoundManager.shared.playBackgroundMusic()
         }
@@ -1714,6 +1789,38 @@ struct SnakeView: View {
 }
 
 // MARK: - Power Up View
+// MARK: - Lightning Bolt View
+struct LightningBoltView: View {
+    let bolt: LightningBolt
+
+    var body: some View {
+        let flicker = sin(bolt.flickerPhase) > 0 ? 1.0 : 0.5
+        let s = bolt.size
+
+        Canvas { context, size in
+            // Glow
+            context.fill(
+                Circle().path(in: CGRect(x: s * 0.5 - s, y: s * 0.5 - s, width: s * 2, height: s * 2)),
+                with: .color(Color.cyan.opacity(0.15 * flicker))
+            )
+
+            // Lightning bolt shape (⚡)
+            var path = Path()
+            path.move(to: CGPoint(x: s * 0.6, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.25, y: s * 0.45))
+            path.addLine(to: CGPoint(x: s * 0.55, y: s * 0.45))
+            path.addLine(to: CGPoint(x: s * 0.35, y: s))
+            path.addLine(to: CGPoint(x: s * 0.75, y: s * 0.5))
+            path.addLine(to: CGPoint(x: s * 0.45, y: s * 0.5))
+            path.closeSubpath()
+
+            context.fill(path, with: .color(Color.cyan.opacity(flicker)))
+            context.stroke(path, with: .color(Color.white.opacity(flicker * 0.8)), lineWidth: 1)
+        }
+        .frame(width: s, height: s)
+    }
+}
+
 struct PowerUpView: View {
     let powerUp: PowerUp
 
@@ -2352,6 +2459,15 @@ struct ContentView: View {
                 if let powerUp = game.powerUp, powerUp.isActive {
                     PowerUpView(powerUp: powerUp)
                         .id(game.updateTrigger)
+                }
+
+                // Lightning bolts (Level 4)
+                ForEach(game.lightningBolts) { bolt in
+                    if bolt.isActive {
+                        LightningBoltView(bolt: bolt)
+                            .position(x: bolt.x, y: bolt.y)
+                            .id("\(bolt.id)-\(game.updateTrigger)")
+                    }
                 }
 
                 // Points popup
