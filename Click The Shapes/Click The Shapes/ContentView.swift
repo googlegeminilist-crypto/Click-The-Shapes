@@ -2132,26 +2132,36 @@ struct SnakeView: View {
 
                     // Tongue — flicks out from mouth
                     if snake.tongueOut > 0 {
-                        let tongueLen = hs * 1.2 * CGFloat(snake.tongueOut)
-                        let tongueY = cy + hs * 0.5
+                        let tongueLen = hs * 2.5 * CGFloat(snake.tongueOut)
+                        let forkLen: CGFloat = hs * 0.6
                         // Tongue direction — towards movement
                         let dx: CGFloat = segments.count >= 2 ? head.x - segments[1].x : 0
                         let dy: CGFloat = segments.count >= 2 ? head.y - segments[1].y : 1
                         let dist = max(hypot(dx, dy), 1)
                         let tx = dx / dist
                         let ty = dy / dist
+                        let startX = cx + tx * hs * 0.5
+                        let startY = cy + ty * hs * 0.5
+                        let tipX = startX + tx * tongueLen
+                        let tipY = startY + ty * tongueLen
 
-                        // Forked tongue
+                        // Main tongue
                         var tongue = Path()
-                        tongue.move(to: CGPoint(x: cx, y: tongueY))
-                        tongue.addLine(to: CGPoint(x: cx + tx * tongueLen, y: tongueY + ty * tongueLen))
+                        tongue.move(to: CGPoint(x: startX, y: startY))
+                        tongue.addLine(to: CGPoint(x: tipX, y: tipY))
+                        context.stroke(tongue, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 3)
+
                         // Left fork
-                        tongue.move(to: CGPoint(x: cx + tx * tongueLen, y: tongueY + ty * tongueLen))
-                        tongue.addLine(to: CGPoint(x: cx + tx * tongueLen + ty * 3, y: tongueY + ty * tongueLen - tx * 3))
+                        var leftFork = Path()
+                        leftFork.move(to: CGPoint(x: tipX, y: tipY))
+                        leftFork.addLine(to: CGPoint(x: tipX + tx * forkLen + ty * forkLen * 0.5, y: tipY + ty * forkLen - tx * forkLen * 0.5))
+                        context.stroke(leftFork, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 2.5)
+
                         // Right fork
-                        tongue.move(to: CGPoint(x: cx + tx * tongueLen, y: tongueY + ty * tongueLen))
-                        tongue.addLine(to: CGPoint(x: cx + tx * tongueLen - ty * 3, y: tongueY + ty * tongueLen + tx * 3))
-                        context.stroke(tongue, with: .color(Color(red: 0.9, green: 0.15, blue: 0.2)), lineWidth: 1.5)
+                        var rightFork = Path()
+                        rightFork.move(to: CGPoint(x: tipX, y: tipY))
+                        rightFork.addLine(to: CGPoint(x: tipX + tx * forkLen - ty * forkLen * 0.5, y: tipY + ty * forkLen + tx * forkLen * 0.5))
+                        context.stroke(rightFork, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 2.5)
                     }
 
                     // Smile
