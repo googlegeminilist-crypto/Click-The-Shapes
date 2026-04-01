@@ -1450,6 +1450,7 @@ class GameViewModel: ObservableObject {
     }
 
     func startLightningRain() {
+        if hardcoreMode { return }
         lightningRainActive = true
         lightningRainTimer?.invalidate()
         lightningRainTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
