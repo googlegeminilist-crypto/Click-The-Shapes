@@ -1981,19 +1981,186 @@ struct SnakeView: View {
                 }
             }
 
-            // Candy snake — 2D drawn image, head always first
-            if !glowing, let snakeImg = CustomSnakeImage.image, let head = segments.first, segments.count >= 2 {
-                let lookI = min(5, segments.count - 1)
-                let back = segments[lookI]
-                let angle = atan2(head.y - back.y, head.x - back.x)
-                let imgW: CGFloat = CGFloat(min(snake.targetLength, maxVisible)) * snake.segmentSize * 1.5
-                let imgH: CGFloat = imgW * 0.3
-                let resolved = context.resolve(Image(uiImage: snakeImg))
-                context.translateBy(x: head.x, y: head.y)
-                context.rotate(by: Angle(radians: Double(angle)))
-                context.draw(resolved, in: CGRect(x: -imgW, y: -imgH / 2, width: imgW, height: imgH))
-                context.rotate(by: Angle(radians: -Double(angle)))
-                context.translateBy(x: -head.x, y: -head.y)
+            // Candy snake — exact match to hand drawing, bright colours
+            if !glowing {
+                let yellow = Color(red: 0.95, green: 0.8, blue: 0.0)
+                let green = Color(red: 0.1, green: 0.7, blue: 0.15)
+                let darkOutline = Color(red: 0.1, green: 0.1, blue: 0.05)
+                let ss = snake.segmentSize
+
+                // Body — wavy oblongs that get smaller towards tail
+                for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                    let seg = segments[i]
+                    let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+
+                    // Taper: big at head, small at tail
+                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.6
+                    let oblongW = ss * 2.8 * taper   // width along body direction
+                    let oblongH = ss * 1.6 * taper   // height perpendicular
+
+                    // Direction at this segment
+                    let nextI = min(i + 1, segments.count - 1)
+                    let prevI = max(i - 1, 0)
+                    let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+
+                    // Wave offset perpendicular to movement
+                    let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                    let perpX = -sin(angle) * wave
+                    let perpY = cos(angle) * wave
+
+                    // Green bands or yellow
+                    let isGreenBand = (i % 6 < 2)
+                    let bodyColor = (isGreenBand ? green : yellow).opacity(fade)
+
+                    // Draw oblong rotated along path direction
+                    var oblong = Path()
+                    oblong.addRoundedRect(in: CGRect(x: -oblongW, y: -oblongH / 2, width: oblongW * 2, height: oblongH), cornerSize: CGSize(width: oblongH * 0.4, height: oblongH * 0.4))
+                    let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+
+                    // Fill
+                    context.fill(oblong.applying(oblongT), with: .color(bodyColor))
+                    // Dark outline
+                    context.stroke(oblong.applying(oblongT), with: .color(darkOutline.opacity(fade * 0.6)), lineWidth: 1.2)
+                }
+
+                // Pointed tail tip
+                if maxVisible > 3 {
+                    let tail = segments[maxVisible - 1]
+                    let prev = segments[maxVisible - 2]
+                    let tAngle = atan2(prev.y - tail.y, prev.x - tail.x)
+                    let tipLen: CGFloat = ss * 3
+                    var tip = Path()
+                    tip.move(to: CGPoint(x: 0, y: -ss * 0.3))
+                    tip.addLine(to: CGPoint(x: -tipLen, y: 0))
+                    tip.addLine(to: CGPoint(x: 0, y: ss * 0.3))
+                    tip.closeSubpath()
+                    let tipT = CGAffineTransform(translationX: tail.x, y: tail.y).rotated(by: tAngle + .pi)
+                    context.fill(tip.applying(tipT), with: .color(yellow.opacity(0.8)))
+                    context.stroke(tip.applying(tipT), with: .color(darkOutline.opacity(0.5)), lineWidth: 1)
+                }
+
+                // Head — exact copy of drawing: triangular, green top, yellow bottom
+                if let head = segments.first, segments.count >= 2 {
+                    let lookI = min(3, segments.count - 1)
+                    let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                    let cosA = cos(angle)
+                    let sinA = sin(angle)
+                    let hs = ss * 2.2
+
+                    let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
+
+                    // Full head outline — pointed snout, curvy bottom, steep top
+                    var headShape = Path()
+                    headShape.move(to: CGPoint(x: hs * 1.4, y: 0))  // snout tip
+                    // Bottom — big round curve (belly/jaw)
+                    headShape.addCurve(
+                        to: CGPoint(x: -hs * 0.6, y: hs * 0.35),
+                        control1: CGPoint(x: hs * 0.9, y: hs * 0.55),
+                        control2: CGPoint(x: hs * 0.1, y: hs * 0.7))
+                    // Back of head
+                    headShape.addCurve(
+                        to: CGPoint(x: -hs * 0.6, y: -hs * 0.55),
+                        control1: CGPoint(x: -hs * 0.75, y: hs * 0.1),
+                        control2: CGPoint(x: -hs * 0.75, y: -hs * 0.25))
+                    // Top — lump/bump then curves steeply down to pointed snout
+                    headShape.addCurve(
+                        to: CGPoint(x: hs * 0.2, y: -hs * 0.75),
+                        control1: CGPoint(x: -hs * 0.3, y: -hs * 0.7),
+                        control2: CGPoint(x: 0, y: -hs * 0.85))
+                    headShape.addCurve(
+                        to: CGPoint(x: hs * 1.4, y: 0),
+                        control1: CGPoint(x: hs * 0.5, y: -hs * 0.65),
+                        control2: CGPoint(x: hs * 1.1, y: -hs * 0.25))
+                    headShape.closeSubpath()
+
+                    // Yellow bottom — curvy jaw
+                    var bottomHalf = Path()
+                    bottomHalf.move(to: CGPoint(x: hs * 1.4, y: 0))
+                    bottomHalf.addCurve(
+                        to: CGPoint(x: -hs * 0.6, y: hs * 0.35),
+                        control1: CGPoint(x: hs * 0.9, y: hs * 0.55),
+                        control2: CGPoint(x: hs * 0.1, y: hs * 0.7))
+                    bottomHalf.addLine(to: CGPoint(x: -hs * 0.6, y: 0))
+                    bottomHalf.addLine(to: CGPoint(x: hs * 1.4, y: 0))
+                    bottomHalf.closeSubpath()
+                    context.fill(bottomHalf.applying(ht), with: .color(Color(red: 0.95, green: 0.82, blue: 0.0)))
+
+                    // Green top — steep slope
+                    var topHalf = Path()
+                    topHalf.move(to: CGPoint(x: hs * 1.4, y: 0))
+                    topHalf.addLine(to: CGPoint(x: -hs * 0.6, y: 0))
+                    topHalf.addCurve(
+                        to: CGPoint(x: -hs * 0.6, y: -hs * 0.55),
+                        control1: CGPoint(x: -hs * 0.7, y: -hs * 0.05),
+                        control2: CGPoint(x: -hs * 0.75, y: -hs * 0.3))
+                    // Lump then steep drop to point
+                    topHalf.addCurve(
+                        to: CGPoint(x: hs * 0.2, y: -hs * 0.75),
+                        control1: CGPoint(x: -hs * 0.3, y: -hs * 0.7),
+                        control2: CGPoint(x: 0, y: -hs * 0.85))
+                    topHalf.addCurve(
+                        to: CGPoint(x: hs * 1.4, y: 0),
+                        control1: CGPoint(x: hs * 0.5, y: -hs * 0.65),
+                        control2: CGPoint(x: hs * 1.1, y: -hs * 0.25))
+                    topHalf.closeSubpath()
+                    context.fill(topHalf.applying(ht), with: .color(Color(red: 0.05, green: 0.72, blue: 0.18)))
+
+                    // Dark outline around whole head
+                    context.stroke(headShape.applying(ht), with: .color(darkOutline), lineWidth: 2.0)
+
+                    // Big round eye — sits high and back on the head
+                    let eyePos = CGPoint(x: hs * 0.1, y: -hs * 0.2).applying(ht)
+                    let eyeR: CGFloat = hs * 0.32
+                    // Black ring around eye
+                    context.fill(
+                        Circle().path(in: CGRect(x: eyePos.x - eyeR - 1, y: eyePos.y - eyeR - 1, width: (eyeR + 1) * 2, height: (eyeR + 1) * 2)),
+                        with: .color(darkOutline))
+                    // White outer
+                    context.fill(
+                        Circle().path(in: CGRect(x: eyePos.x - eyeR, y: eyePos.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
+                        with: .color(.white))
+                    // Blue-teal iris
+                    let irisR = eyeR * 0.72
+                    context.fill(
+                        Circle().path(in: CGRect(x: eyePos.x - irisR, y: eyePos.y - irisR, width: irisR * 2, height: irisR * 2)),
+                        with: .color(Color(red: 0.0, green: 0.35, blue: 0.65)))
+                    // Black pupil — big
+                    let pupilR = eyeR * 0.5
+                    context.fill(
+                        Circle().path(in: CGRect(x: eyePos.x - pupilR, y: eyePos.y - pupilR, width: pupilR * 2, height: pupilR * 2)),
+                        with: .color(.black))
+                    // White highlight
+                    let hlR = eyeR * 0.2
+                    context.fill(
+                        Circle().path(in: CGRect(x: eyePos.x + hlR, y: eyePos.y - hlR * 2, width: hlR * 2, height: hlR * 2)),
+                        with: .color(.white))
+
+                    // Smile — curved line on the yellow jaw area
+                    var smile = Path()
+                    let smileStart = CGPoint(x: hs * 0.9, y: hs * 0.1).applying(ht)
+                    let smileEnd = CGPoint(x: hs * 0.2, y: hs * 0.25).applying(ht)
+                    let smileCtrl = CGPoint(x: hs * 0.55, y: hs * 0.35).applying(ht)
+                    smile.move(to: smileStart)
+                    smile.addQuadCurve(to: smileEnd, control: smileCtrl)
+                    context.stroke(smile, with: .color(darkOutline), lineWidth: 1.5)
+
+                    // Tongue — always visible, black forked, sticks out from mouth
+                    let tongueLen: CGFloat = hs * 1.2 + sin(snake.animPhase * 4) * hs * 0.4  // wiggles
+                    let fLen = hs * 0.4
+                    let tStart = CGPoint(x: head.x + cosA * hs * 1.4, y: head.y + sinA * hs * 1.4)
+                    let tEnd = CGPoint(x: tStart.x + cosA * tongueLen, y: tStart.y + sinA * tongueLen)
+                    // Main tongue
+                    var t = Path(); t.move(to: tStart); t.addLine(to: tEnd)
+                    context.stroke(t, with: .color(.black), lineWidth: 1.5)
+                    // Left fork
+                    var lf = Path(); lf.move(to: tEnd)
+                    lf.addLine(to: CGPoint(x: tEnd.x + cosA * fLen + sinA * fLen * 0.5, y: tEnd.y + sinA * fLen - cosA * fLen * 0.5))
+                    context.stroke(lf, with: .color(.black), lineWidth: 1.2)
+                    // Right fork
+                    var rf = Path(); rf.move(to: tEnd)
+                    rf.addLine(to: CGPoint(x: tEnd.x + cosA * fLen - sinA * fLen * 0.5, y: tEnd.y + sinA * fLen + cosA * fLen * 0.5))
+                    context.stroke(rf, with: .color(.black), lineWidth: 1.2)
+                }
             }
 
             // Glowing snake head (Level 4 second snake)
@@ -3230,6 +3397,3 @@ struct GameCanvasView: View {
     }
 }
 
-#Preview {
-    ContentView()
-}
