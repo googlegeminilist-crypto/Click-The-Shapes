@@ -517,7 +517,7 @@ class Snake {
     var segments: [SnakeSegment] = []
     var segmentSize: CGFloat = 8
     var speed: CGFloat = 3.0
-    var targetLength = 5
+    var targetLength = 3
     // Animation state
     var animPhase: CGFloat = 0
     var blinkTimer: CGFloat = 0
@@ -528,7 +528,7 @@ class Snake {
     init(bounds: CGSize) {
         let startX = bounds.width / 2
         let startY = bounds.height / 2
-        for i in 0..<5 {
+        for i in 0..<3 {
             segments.append(SnakeSegment(
                 x: startX - CGFloat(i) * segmentSize * 2,
                 y: startY
@@ -1918,7 +1918,7 @@ struct SnakeView: View {
 
     var body: some View {
         let segments = snake.segments
-        let maxVisible = min(30, segments.count)
+        let maxVisible = min(50, segments.count)
 
         Canvas { context, size in
             guard maxVisible > 0 else { return }
@@ -1993,10 +1993,10 @@ struct SnakeView: View {
                     let seg = segments[i]
                     let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
 
-                    // Taper: big at head, small at tail
-                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.6
-                    let oblongW = ss * 2.8 * taper   // width along body direction
-                    let oblongH = ss * 1.6 * taper   // height perpendicular
+                    // Taper: big at head, gradually smaller at tail
+                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.45
+                    let oblongW = ss * 2.5 * taper   // width along body direction
+                    let oblongH = ss * 1.5 * taper   // height perpendicular
 
                     // Direction at this segment
                     let nextI = min(i + 1, segments.count - 1)
