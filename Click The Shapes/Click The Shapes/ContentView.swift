@@ -1244,11 +1244,7 @@ class GameViewModel: ObservableObject {
                     addScore(points)
                     showPoints(at: point, points: points)
                     if tapSoundEnabled {
-                        if StoreManager.shared.fullGamePurchased {
-                            SoundManager.shared.playShapeTap()
-                        } else {
-                            SoundManager.shared.playSparkle()
-                        }
+                        SoundManager.shared.playShapeTap()
                     }
 
                     // Create particles — Level 4 gets a colorful explosion burst
@@ -1355,19 +1351,7 @@ class GameViewModel: ObservableObject {
         guard !gameOver else { return }
         score += points
         if currentLevel == 1 && score >= GameConstants.level1WinScore {
-            if StoreManager.shared.fullGamePurchased {
-                transitionToLevel2()
-            } else {
-                // Pause game and show unlock prompt
-                displayLink?.invalidate()
-                displayLink = nil
-                powerUpTimer?.invalidate()
-                powerUpTimer = nil
-                trapBoxTimer?.invalidate()
-                trapBoxTimer = nil
-                showUnlockPrompt = true
-                AnalyticsHelper.log("unlock_prompt_shown", parameters: ["score": score])
-            }
+            transitionToLevel2()
         } else if currentLevel == 2 && score >= GameConstants.level2WinScore {
             transitionToLevel3()
         } else if currentLevel == 3 && score >= GameConstants.level3WinScore {
@@ -2165,28 +2149,92 @@ struct SnakeView: View {
                 }
             }
 
-            // Glowing snake head (Level 4 second snake)
-            if glowing, let head = segments.first {
-                let hs: CGFloat = snake.segmentSize * 2
+            // Glowing snake (Level 4 second snake)
+            if glowing {
+                // Cyan glow aura
                 for i in 0..<maxVisible {
                     let seg = segments[i]
-                    let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
-                    let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
-                    let color = Color(hue: hue, saturation: 0.6, brightness: brightness)
+                    let glowSize = snake.segmentSize * 4
                     context.fill(
-                        Circle().path(in: CGRect(x: seg.x - snake.segmentSize, y: seg.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
-                        with: .color(color)
+                        Circle().path(in: CGRect(x: seg.x - glowSize, y: seg.y - glowSize, width: glowSize * 2, height: glowSize * 2)),
+                        with: .color(Color.cyan.opacity(0.1))
                     )
-                    if i < maxVisible - 1 {
-                        let next = segments[i + 1]
-                        var path = Path()
-                        path.move(to: CGPoint(x: seg.x, y: seg.y))
-                        path.addLine(to: CGPoint(x: next.x, y: next.y))
-                        context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                }
+
+                if useRainbow {
+                    // Glowing rainbow segments
+                    for i in 0..<maxVisible {
+                        let seg = segments[i]
+                        let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
+                        let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
+                        let color = Color(hue: hue, saturation: 0.6, brightness: brightness)
+                        context.fill(
+                            Circle().path(in: CGRect(x: seg.x - snake.segmentSize, y: seg.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                            with: .color(color)
+                        )
+                        if i < maxVisible - 1 {
+                            let next = segments[i + 1]
+                            var path = Path()
+                            path.move(to: CGPoint(x: seg.x, y: seg.y))
+                            path.addLine(to: CGPoint(x: next.x, y: next.y))
+                            context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                        }
+                    }
+                    if let head = segments.first {
+                        context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
+                        context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
+                    }
+                } else {
+                    // Glowing candy snake — same body/head but with glow
+                    let yellow = Color(red: 0.95, green: 0.8, blue: 0.0)
+                    let green = Color(red: 0.1, green: 0.7, blue: 0.15)
+                    let ss = snake.segmentSize
+
+                    for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                        let seg = segments[i]
+                        let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+                        let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.45
+                        let oblongW = ss * 2.5 * taper
+                        let oblongH = ss * 1.5 * taper
+                        let nextI = min(i + 1, segments.count - 1)
+                        let prevI = max(i - 1, 0)
+                        let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+                        let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                        let perpX = -sin(angle) * wave
+                        let perpY = cos(angle) * wave
+                        let isGreenBand = (i % 6 < 2)
+                        let bodyColor = (isGreenBand ? green : yellow).opacity(fade)
+                        let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+                        var blur = Path()
+                        blur.addEllipse(in: CGRect(x: -oblongW * 1.3, y: -oblongH * 0.7, width: oblongW * 2.6, height: oblongH * 1.4))
+                        context.fill(blur.applying(oblongT), with: .color(bodyColor.opacity(fade * 0.25)))
+                        var oblong = Path()
+                        oblong.addEllipse(in: CGRect(x: -oblongW, y: -oblongH / 2, width: oblongW * 2, height: oblongH))
+                        context.fill(oblong.applying(oblongT), with: .color(bodyColor))
+                    }
+
+                    // Candy head on glowing snake
+                    if let head = segments.first, segments.count >= 2 {
+                        let lookI = min(3, segments.count - 1)
+                        let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                        let hs = ss * 2.2
+                        let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
+
+                        var headShape = Path()
+                        headShape.move(to: CGPoint(x: hs * 1.4, y: 0))
+                        headShape.addCurve(to: CGPoint(x: -hs * 0.6, y: hs * 0.35), control1: CGPoint(x: hs * 0.9, y: hs * 0.55), control2: CGPoint(x: hs * 0.1, y: hs * 0.7))
+                        headShape.addCurve(to: CGPoint(x: -hs * 0.6, y: -hs * 0.55), control1: CGPoint(x: -hs * 0.75, y: hs * 0.1), control2: CGPoint(x: -hs * 0.75, y: -hs * 0.25))
+                        headShape.addCurve(to: CGPoint(x: hs * 0.2, y: -hs * 0.75), control1: CGPoint(x: -hs * 0.3, y: -hs * 0.7), control2: CGPoint(x: 0, y: -hs * 0.85))
+                        headShape.addCurve(to: CGPoint(x: hs * 1.4, y: 0), control1: CGPoint(x: hs * 0.5, y: -hs * 0.65), control2: CGPoint(x: hs * 1.1, y: -hs * 0.25))
+                        headShape.closeSubpath()
+                        context.fill(headShape.applying(ht), with: .color(Color(red: 0.05, green: 0.72, blue: 0.18)))
+
+                        let eyePos = CGPoint(x: hs * 0.1, y: -hs * 0.2).applying(ht)
+                        let eyeR: CGFloat = hs * 0.32
+                        context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR, y: eyePos.y - eyeR, width: eyeR * 2, height: eyeR * 2)), with: .color(.white))
+                        context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR * 0.5, y: eyePos.y - eyeR * 0.5, width: eyeR, height: eyeR)), with: .color(.black))
                     }
                 }
-                context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
-                context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
             }
         }
     }
@@ -2296,65 +2344,6 @@ struct IntroOverlay: View {
                 .background(Color.black.opacity(0.5))
                 .cornerRadius(15)
 
-                // Full Game IAP
-                VStack(spacing: 10) {
-                    if store.fullGamePurchased {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(GameColors.neonGreen)
-                            Text("Full Game Unlocked")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                .foregroundColor(GameColors.neonGreen)
-                        }
-                    } else {
-                        Button {
-                            Task { await store.purchaseFullGame() }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "lock.open.fill")
-                                    .foregroundColor(.black)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Unlock Full Game")
-                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.black)
-                                    if let price = store.fullGameProduct?.displayPrice {
-                                        Text(price)
-                                            .font(.system(size: 12, design: .monospaced))
-                                            .foregroundColor(.black.opacity(0.7))
-                                    } else {
-                                        Text("Loading...")
-                                            .font(.system(size: 12, design: .monospaced))
-                                            .foregroundColor(.black.opacity(0.5))
-                                    }
-                                    Text("Levels 2 & 3 + Sound Pack + Hardcore mode")
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(.black.opacity(0.6))
-                                }
-                            }
-                            .padding(.horizontal, 25)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(
-                                    colors: [GameColors.neonYellow, GameColors.neonOrange],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(10)
-                            .shadow(color: GameColors.neonYellow, radius: 5)
-                        }
-                        .disabled(store.isPurchasing)
-                        .opacity(store.isPurchasing ? 0.6 : 1)
-
-                        Button {
-                            Task { await store.restorePurchases() }
-                        } label: {
-                            Text("Restore Purchases")
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
 
                 // Leaderboard
                 Button { showLeaderboard = true } label: {
@@ -2531,8 +2520,7 @@ struct IntroOverlay: View {
                 }
                 .padding(.top, 10)
 
-                if store.fullGamePurchased {
-                    Button(action: onStartHardcore) {
+                Button(action: onStartHardcore) {
                         VStack(spacing: 4) {
                             Text("HARDCORE MODE")
                                 .font(.system(size: 18, weight: .bold, design: .monospaced))
@@ -2553,7 +2541,6 @@ struct IntroOverlay: View {
                         .cornerRadius(12)
                         .shadow(color: GameColors.neonPink, radius: 8)
                     }
-                }
             }
             .padding(30)
             }
@@ -2930,7 +2917,7 @@ struct ContentView: View {
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: false)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake)
                         .id(game.updateTrigger)
                 }
 
