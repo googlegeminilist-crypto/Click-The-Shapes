@@ -2012,15 +2012,18 @@ struct SnakeView: View {
                     let isGreenBand = (i % 6 < 2)
                     let bodyColor = (isGreenBand ? green : yellow).opacity(fade)
 
-                    // Draw oblong rotated along path direction
-                    var oblong = Path()
-                    oblong.addRoundedRect(in: CGRect(x: -oblongW, y: -oblongH / 2, width: oblongW * 2, height: oblongH), cornerSize: CGSize(width: oblongH * 0.4, height: oblongH * 0.4))
+                    // Draw soft ellipse — no hard edges
                     let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
 
-                    // Fill
+                    // Outer soft blur
+                    var blur = Path()
+                    blur.addEllipse(in: CGRect(x: -oblongW * 1.3, y: -oblongH * 0.7, width: oblongW * 2.6, height: oblongH * 1.4))
+                    context.fill(blur.applying(oblongT), with: .color(bodyColor.opacity(fade * 0.25)))
+
+                    // Main body fill — soft ellipse
+                    var oblong = Path()
+                    oblong.addEllipse(in: CGRect(x: -oblongW, y: -oblongH / 2, width: oblongW * 2, height: oblongH))
                     context.fill(oblong.applying(oblongT), with: .color(bodyColor))
-                    // Dark outline
-                    context.stroke(oblong.applying(oblongT), with: .color(darkOutline.opacity(fade * 0.6)), lineWidth: 1.2)
                 }
 
                 // Pointed tail tip
@@ -2035,8 +2038,7 @@ struct SnakeView: View {
                     tip.addLine(to: CGPoint(x: 0, y: ss * 0.3))
                     tip.closeSubpath()
                     let tipT = CGAffineTransform(translationX: tail.x, y: tail.y).rotated(by: tAngle + .pi)
-                    context.fill(tip.applying(tipT), with: .color(yellow.opacity(0.8)))
-                    context.stroke(tip.applying(tipT), with: .color(darkOutline.opacity(0.5)), lineWidth: 1)
+                    context.fill(tip.applying(tipT), with: .color(yellow.opacity(0.6)))
                 }
 
                 // Head — exact copy of drawing: triangular, green top, yellow bottom
