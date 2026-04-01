@@ -516,7 +516,7 @@ struct SnakeSegment: Identifiable {
 class Snake {
     var segments: [SnakeSegment] = []
     var segmentSize: CGFloat = 8
-    var speed: CGFloat = 3.0
+    var speed: CGFloat = 4.5
     var targetLength = 3
     // Animation state
     var animPhase: CGFloat = 0
@@ -1345,8 +1345,9 @@ class GameViewModel: ObservableObject {
         // Reset snake score to give player a fair start in Level 2
         snakeScore = 0
 
-        // Reset snake
+        // Reset snake — Level 2 speed
         snake = Snake(bounds: bounds)
+        snake?.speed = 8.0
 
         // Start trap box timer (will only activate shapes once transition is done)
         startTrapBoxTimer()
@@ -1375,7 +1376,7 @@ class GameViewModel: ObservableObject {
 
         // Reset snake (faster in Level 3)
         snake = Snake(bounds: bounds)
-        snake?.speed = 4.0
+        snake?.speed = 6.5
 
         // Reset all shapes with Level 3 properties (fast + shrinking)
         for shape in shapes {
@@ -1415,11 +1416,11 @@ class GameViewModel: ObservableObject {
 
         // First snake — fast
         snake = Snake(bounds: bounds)
-        snake?.speed = 4.5
+        snake?.speed = 8.0
 
         // Second snake — spawns from opposite side, also fast
         snake2 = Snake(bounds: bounds)
-        snake2?.speed = 3.5
+        snake2?.speed = 7.0
 
         // Reset shapes with Level 3+ properties (fast + shrinking)
         for shape in shapes {
@@ -1646,12 +1647,16 @@ class GameViewModel: ObservableObject {
         }
 
         snake = Snake(bounds: bounds)
-        if level >= 3 {
-            snake?.speed = level >= 4 ? 4.5 : 4.0
+        if level >= 4 {
+            snake?.speed = 8.0
+        } else if level >= 3 {
+            snake?.speed = 6.5
+        } else if level >= 2 {
+            snake?.speed = 8.0
         }
         if level >= 4 {
             snake2 = Snake(bounds: bounds)
-            snake2?.speed = 3.5
+            snake2?.speed = 7.0
             nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
         } else {
             snake2 = nil
