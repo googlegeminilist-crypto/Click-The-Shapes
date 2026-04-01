@@ -654,8 +654,6 @@ class Snake {
 class SoundManager: NSObject, AVAudioPlayerDelegate {
     static let shared = SoundManager()
     private var backgroundMusicPlayer: AVAudioPlayer?
-    private var shapeTapURL: URL?
-    private var shapeTapPlayers: [AVAudioPlayer] = []
     private var isSetup = false
 
     override init() {
@@ -749,10 +747,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 
     func stopAllShapeTapSounds() {
-        for player in shapeTapPlayers {
-            player.stop()
-        }
-        shapeTapPlayers.removeAll()
+        // No longer using AVAudioPlayer for tap sounds
     }
 
     func playSparkle() {
@@ -768,31 +763,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 
     func playShapeTap() {
-        // Find URL once
-        if shapeTapURL == nil {
-            shapeTapURL = Bundle.main.url(forResource: "alex_jauk-strange-echoing-noises-230895", withExtension: "mp3")
-            if shapeTapURL == nil {
-                debugLog("Shape tap sound NOT found in bundle")
-                return
-            }
-        }
-
-        guard let url = shapeTapURL else { return }
-
-        // Clean up finished players — limit pool to prevent memory buildup
-        shapeTapPlayers.removeAll { !$0.isPlaying }
-        guard shapeTapPlayers.count < 5 else { return }
-
-        // Create a fresh player each tap so sounds overlap for fast tapping
-        do {
-            let player = try AVAudioPlayer(contentsOf: url)
-            player.volume = 0.4
-            player.prepareToPlay()
-            player.play()
-            shapeTapPlayers.append(player)
-        } catch {
-            debugLog("Error playing shape tap sound: \(error)")
-        }
+        AudioServicesPlaySystemSound(1104)
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
