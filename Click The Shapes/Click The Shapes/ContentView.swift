@@ -1962,9 +1962,9 @@ struct SnakeView: View {
                 return
             }
 
-            // --- Icon-style snake (default) ---
+            // --- Candy snake (default) — 2D drawn image ---
 
-            // Draw glow layer for second snake
+            // Glow layer for Level 4 second snake
             if glowing {
                 for i in 0..<maxVisible {
                     let segment = segments[i]
@@ -1981,281 +1981,43 @@ struct SnakeView: View {
                 }
             }
 
-            // Universe/nebula body — deep space colours that shift as snake grows
-            // Draw body — thin, tapers to a point at the tail
-            for i in stride(from: maxVisible - 1, through: 1, by: -1) {
-                let segment = segments[i]
-                let taper = 1.0 - (Double(i) / Double(maxVisible))  // 1 at head, 0 at tail
-
-                // Universe colours — shift through nebula spectrum based on snake length + position
-                let lengthShift = Double(snake.targetLength) * 0.02  // shifts palette as snake grows
-                let hueBase = (Double(i) * 0.08 + lengthShift + Double(snake.animPhase) * 0.1)
-                    .truncatingRemainder(dividingBy: 1.0)
-
-                let color: Color
-                if glowing {
-                    let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
-                    color = Color(hue: hue, saturation: 0.6, brightness: taper * 0.5 + 0.5)
-                } else {
-                    // Deep rich universe colours — purples, magentas, cyans, deep blues
-                    let r: Double
-                    let g: Double
-                    let b: Double
-                    if hueBase < 0.2 {
-                        // Deep purple
-                        r = 0.3 + hueBase; g = 0.05; b = 0.5 + hueBase
-                    } else if hueBase < 0.4 {
-                        // Hot magenta/pink
-                        r = 0.7 + (hueBase - 0.2); g = 0.05; b = 0.4
-                    } else if hueBase < 0.6 {
-                        // Deep blue
-                        r = 0.1; g = 0.15 + (hueBase - 0.4); b = 0.6 + (hueBase - 0.4)
-                    } else if hueBase < 0.8 {
-                        // Cyan/teal
-                        r = 0.05; g = 0.4 + (hueBase - 0.6); b = 0.7
-                    } else {
-                        // Warm nebula — orange to purple
-                        r = 0.5 + (hueBase - 0.8); g = 0.15; b = 0.3 + (hueBase - 0.8)
-                    }
-                    color = Color(red: r, green: g, blue: b).opacity(taper * 0.7 + 0.3)
-                }
-
-                // Body width tapers with breathing pulse
-                let breathe = sin(snake.animPhase + CGFloat(i) * 0.3) * 0.15 + 1.0
-                let bodyWidth = snake.segmentSize * CGFloat(taper * 1.4 + 0.3) * breathe
-
-                // Outer glow — nebula haze
-                if !glowing && i % 3 == 0 {
-                    let glowSize = bodyWidth * 3
-                    context.fill(
-                        Circle().path(in: CGRect(
-                            x: segment.x - glowSize,
-                            y: segment.y - glowSize,
-                            width: glowSize * 2,
-                            height: glowSize * 2
-                        )),
-                        with: .color(color.opacity(0.12))
-                    )
-                }
-
-                // Connecting line
-                if i < maxVisible - 1 {
-                    let next = segments[i + 1]
-                    var path = Path()
-                    path.move(to: CGPoint(x: segment.x, y: segment.y))
-                    path.addLine(to: CGPoint(x: next.x, y: next.y))
-                    context.stroke(path, with: .color(color), lineWidth: bodyWidth * 2)
-                }
-
-                // Segment core — bright inner dot
-                context.fill(
-                    Circle().path(in: CGRect(
-                        x: segment.x - bodyWidth,
-                        y: segment.y - bodyWidth,
-                        width: bodyWidth * 2,
-                        height: bodyWidth * 2
-                    )),
-                    with: .color(color)
-                )
-
-                // Twinkling blue stars on body
-                if !glowing && taper > 0.15 {
-                    let twinkle = sin(snake.animPhase * 3 + CGFloat(i) * 1.7)
-                    let twinkle2 = sin(snake.animPhase * 2.3 + CGFloat(i) * 2.4)
-
-                    // Main star — every 2nd segment, offset to side of body
-                    if i % 2 == 0 {
-                        let starBright = (twinkle + 1) / 2  // 0 to 1
-                        let starSize = bodyWidth * 0.35 * (starBright * 0.5 + 0.5)
-                        let offsetX = cos(CGFloat(i) * 2.1) * bodyWidth * 0.6
-                        let offsetY = sin(CGFloat(i) * 2.1) * bodyWidth * 0.6
-                        // Glow
-                        context.fill(
-                            Circle().path(in: CGRect(
-                                x: segment.x + offsetX - starSize * 2,
-                                y: segment.y + offsetY - starSize * 2,
-                                width: starSize * 4,
-                                height: starSize * 4
-                            )),
-                            with: .color(Color(red: 0.3, green: 0.5, blue: 1.0).opacity(Double(starBright) * 0.2))
-                        )
-                        // Core
-                        context.fill(
-                            Circle().path(in: CGRect(
-                                x: segment.x + offsetX - starSize,
-                                y: segment.y + offsetY - starSize,
-                                width: starSize * 2,
-                                height: starSize * 2
-                            )),
-                            with: .color(Color(red: 0.6, green: 0.8, blue: 1.0).opacity(Double(starBright) * 0.8))
-                        )
-                    }
-
-                    // Smaller dimmer stars — every 3rd segment, opposite side
-                    if i % 3 == 0 {
-                        let starBright2 = (twinkle2 + 1) / 2
-                        let tinySize = bodyWidth * 0.2
-                        let ox = cos(CGFloat(i) * 3.7) * bodyWidth * 0.5
-                        let oy = sin(CGFloat(i) * 3.7) * bodyWidth * 0.5
-                        context.fill(
-                            Circle().path(in: CGRect(
-                                x: segment.x + ox - tinySize,
-                                y: segment.y + oy - tinySize,
-                                width: tinySize * 2,
-                                height: tinySize * 2
-                            )),
-                            with: .color(Color(red: 0.5, green: 0.7, blue: 1.0).opacity(Double(starBright2) * 0.6))
-                        )
-                    }
-                }
+            // Candy snake — 2D drawn image, head always first
+            if !glowing, let snakeImg = CustomSnakeImage.image, let head = segments.first, segments.count >= 2 {
+                let lookI = min(5, segments.count - 1)
+                let back = segments[lookI]
+                let angle = atan2(head.y - back.y, head.x - back.x)
+                let imgW: CGFloat = CGFloat(min(snake.targetLength, maxVisible)) * snake.segmentSize * 1.5
+                let imgH: CGFloat = imgW * 0.3
+                let resolved = context.resolve(Image(uiImage: snakeImg))
+                context.translateBy(x: head.x, y: head.y)
+                context.rotate(by: Angle(radians: Double(angle)))
+                context.draw(resolved, in: CGRect(x: -imgW, y: -imgH / 2, width: imgW, height: imgH))
+                context.rotate(by: Angle(radians: -Double(angle)))
+                context.translateBy(x: -head.x, y: -head.y)
             }
 
-            // Draw snake head
-            if let head = segments.first {
-                let hs: CGFloat = snake.segmentSize * 2.2
-
-                if glowing {
-                    // Glowing head
+            // Glowing snake head (Level 4 second snake)
+            if glowing, let head = segments.first {
+                let hs: CGFloat = snake.segmentSize * 2
+                for i in 0..<maxVisible {
+                    let seg = segments[i]
+                    let hue = (Double(i * 8) + 180).truncatingRemainder(dividingBy: 360) / 360
+                    let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.5
+                    let color = Color(hue: hue, saturation: 0.6, brightness: brightness)
                     context.fill(
-                        Circle().path(in: CGRect(x: head.x - hs, y: head.y - hs, width: hs * 2, height: hs * 2)),
-                        with: .color(Color.cyan.opacity(0.9))
+                        Circle().path(in: CGRect(x: seg.x - snake.segmentSize, y: seg.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                        with: .color(color)
                     )
-                    context.fill(
-                        Circle().path(in: CGRect(x: head.x - 6, y: head.y - 7, width: 5, height: 5)),
-                        with: .color(.white)
-                    )
-                    context.fill(
-                        Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 5, height: 5)),
-                        with: .color(.white)
-                    )
-                } else {
-                    let cx = head.x
-                    let cy = head.y
-
-                    // 3D depth shadow under head
-                    context.fill(
-                        Ellipse().path(in: CGRect(x: cx - hs * 1.3, y: cy - hs * 0.8, width: hs * 2.6, height: hs * 2.4)),
-                        with: .color(Color(red: 0.1, green: 0.0, blue: 0.2).opacity(0.25))
-                    )
-
-                    // Main head — deep rich green
-                    let headRect = CGRect(x: cx - hs * 1.1, y: cy - hs * 1.1, width: hs * 2.2, height: hs * 2.0)
-                    context.fill(Ellipse().path(in: headRect), with: .color(Color(red: 0.15, green: 0.55, blue: 0.2)))
-
-                    // 3D highlight on top — lighter green
-                    context.fill(
-                        Ellipse().path(in: CGRect(x: cx - hs * 0.7, y: cy - hs * 1.05, width: hs * 1.4, height: hs * 0.9)),
-                        with: .color(Color(red: 0.3, green: 0.75, blue: 0.35).opacity(0.6))
-                    )
-
-                    // Deep colour rim glow — magenta/purple
-                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.6, green: 0.1, blue: 0.5).opacity(0.4)), lineWidth: 2)
-                    // Inner outline
-                    context.stroke(Ellipse().path(in: headRect), with: .color(Color(red: 0.1, green: 0.35, blue: 0.15)), lineWidth: 1)
-
-                    // Eyes — blink animation
-                    let eyeW: CGFloat = hs * 0.6
-                    let eyeH: CGFloat = snake.isBlinking ? hs * 0.1 : hs * 0.65
-                    let eyeSpacing: CGFloat = hs * 0.45
-                    let eyeY: CGFloat = cy - hs * 0.2
-
-                    for side in [-1.0, 1.0] {
-                        let ex = cx + CGFloat(side) * eyeSpacing
-
-                        // Eye shadow
-                        context.fill(
-                            Ellipse().path(in: CGRect(x: ex - eyeW/2 - 1, y: eyeY - eyeH/2 + 1, width: eyeW + 2, height: eyeH + 2)),
-                            with: .color(Color(red: 0.05, green: 0.2, blue: 0.1).opacity(0.4))
-                        )
-
-                        if snake.isBlinking {
-                            // Closed eye — just a line
-                            var closedEye = Path()
-                            closedEye.move(to: CGPoint(x: ex - eyeW/2, y: eyeY))
-                            closedEye.addQuadCurve(to: CGPoint(x: ex + eyeW/2, y: eyeY), control: CGPoint(x: ex, y: eyeY + 2))
-                            context.stroke(closedEye, with: .color(Color(red: 0.1, green: 0.3, blue: 0.15)), lineWidth: 2)
-                        } else {
-                            // White outer
-                            context.fill(
-                                Ellipse().path(in: CGRect(x: ex - eyeW/2, y: eyeY - eyeH/2, width: eyeW, height: eyeH)),
-                                with: .color(.white)
-                            )
-                            // Teal iris
-                            let irisR = eyeW * 0.45
-                            context.fill(
-                                Circle().path(in: CGRect(x: ex - irisR, y: eyeY - irisR * 0.7, width: irisR * 2, height: irisR * 2)),
-                                with: .color(Color(red: 0.1, green: 0.5, blue: 0.4))
-                            )
-                            // Deep blue inner
-                            let innerR = eyeW * 0.35
-                            context.fill(
-                                Circle().path(in: CGRect(x: ex - innerR, y: eyeY - innerR * 0.6, width: innerR * 2, height: innerR * 2)),
-                                with: .color(Color(red: 0.05, green: 0.2, blue: 0.35))
-                            )
-                            // Black pupil
-                            let pupilR = eyeW * 0.22
-                            context.fill(
-                                Circle().path(in: CGRect(x: ex - pupilR, y: eyeY - pupilR * 0.5, width: pupilR * 2, height: pupilR * 2)),
-                                with: .color(.black)
-                            )
-                            // Highlights
-                            let hlR = eyeW * 0.15
-                            context.fill(
-                                Circle().path(in: CGRect(x: ex + hlR * 0.5, y: eyeY - hlR * 2, width: hlR * 2, height: hlR * 2)),
-                                with: .color(.white)
-                            )
-                            context.fill(
-                                Circle().path(in: CGRect(x: ex - hlR * 1.5, y: eyeY + hlR * 0.5, width: hlR, height: hlR)),
-                                with: .color(Color.white.opacity(0.5))
-                            )
-                        }
+                    if i < maxVisible - 1 {
+                        let next = segments[i + 1]
+                        var path = Path()
+                        path.move(to: CGPoint(x: seg.x, y: seg.y))
+                        path.addLine(to: CGPoint(x: next.x, y: next.y))
+                        context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
                     }
-
-                    // Tongue — flicks out from mouth
-                    if snake.tongueOut > 0 {
-                        let tongueLen = hs * 2.5 * CGFloat(snake.tongueOut)
-                        let forkLen: CGFloat = hs * 0.6
-                        // Tongue direction — towards movement
-                        let dx: CGFloat = segments.count >= 2 ? head.x - segments[1].x : 0
-                        let dy: CGFloat = segments.count >= 2 ? head.y - segments[1].y : 1
-                        let dist = max(hypot(dx, dy), 1)
-                        let tx = dx / dist
-                        let ty = dy / dist
-                        let startX = cx + tx * hs * 0.5
-                        let startY = cy + ty * hs * 0.5
-                        let tipX = startX + tx * tongueLen
-                        let tipY = startY + ty * tongueLen
-
-                        // Main tongue
-                        var tongue = Path()
-                        tongue.move(to: CGPoint(x: startX, y: startY))
-                        tongue.addLine(to: CGPoint(x: tipX, y: tipY))
-                        context.stroke(tongue, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 3)
-
-                        // Left fork
-                        var leftFork = Path()
-                        leftFork.move(to: CGPoint(x: tipX, y: tipY))
-                        leftFork.addLine(to: CGPoint(x: tipX + tx * forkLen + ty * forkLen * 0.5, y: tipY + ty * forkLen - tx * forkLen * 0.5))
-                        context.stroke(leftFork, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 2.5)
-
-                        // Right fork
-                        var rightFork = Path()
-                        rightFork.move(to: CGPoint(x: tipX, y: tipY))
-                        rightFork.addLine(to: CGPoint(x: tipX + tx * forkLen - ty * forkLen * 0.5, y: tipY + ty * forkLen + tx * forkLen * 0.5))
-                        context.stroke(rightFork, with: .color(Color(red: 0.9, green: 0.1, blue: 0.15)), lineWidth: 2.5)
-                    }
-
-                    // Smile
-                    var smile = Path()
-                    smile.addArc(center: CGPoint(x: cx, y: cy + hs * 0.35), radius: hs * 0.4, startAngle: .degrees(15), endAngle: .degrees(165), clockwise: false)
-                    context.stroke(smile, with: .color(Color(red: 0.7, green: 0.15, blue: 0.2)), lineWidth: 1.5)
-
-                    // Chin
-                    context.fill(
-                        Ellipse().path(in: CGRect(x: cx - hs * 0.35, y: cy + hs * 0.4, width: hs * 0.7, height: hs * 0.45)),
-                        with: .color(Color(red: 0.95, green: 0.6, blue: 0.3))
-                    )
                 }
+                context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
+                context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 5, height: 5)), with: .color(.cyan))
             }
         }
     }
