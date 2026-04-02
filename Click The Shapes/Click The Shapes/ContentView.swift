@@ -2019,9 +2019,9 @@ struct SnakeView: View {
                     bleed2.addEllipse(in: CGRect(x: -hs * 0.9, y: -hs * 0.85, width: hs * 1.8, height: hs * 1.7))
                     context.fill(bleed2.applying(ht), with: .color(lightGreen.opacity(0.15)))
 
-                    // Main head — slightly wider than tall, flat on top
+                    // Main head — oval, taller than wide
                     var headShape = Path()
-                    headShape.addEllipse(in: CGRect(x: -hs * 0.7, y: -hs * 0.55, width: hs * 1.4, height: hs * 1.15))
+                    headShape.addEllipse(in: CGRect(x: -hs * 0.55, y: -hs * 0.7, width: hs * 1.1, height: hs * 1.4))
                     context.fill(headShape.applying(ht), with: .color(lightGreen.opacity(0.7)))
 
                     // Darker green edges — paint pooling at edges
@@ -2059,16 +2059,22 @@ struct SnakeView: View {
                             Circle().path(in: CGRect(x: ep.x - eyeR - 2, y: ep.y - eyeR - 2, width: (eyeR + 2) * 2, height: (eyeR + 2) * 2)),
                             with: .color(darkGreen.opacity(0.15)))
 
-                        // Eye ball — yellow-green watercolour
+                        // Eye ball — bright yellow watercolour
                         context.fill(
                             Circle().path(in: CGRect(x: ep.x - eyeR * 1.2, y: ep.y - eyeR * 1.2, width: eyeR * 2.4, height: eyeR * 2.4)),
-                            with: .color(Color(red: 0.72, green: 0.78, blue: 0.38).opacity(0.3)))
+                            with: .color(Color(red: 0.9, green: 0.88, blue: 0.5).opacity(0.3)))
                         context.fill(
                             Circle().path(in: CGRect(x: ep.x - eyeR, y: ep.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
-                            with: .color(Color(red: 0.72, green: 0.78, blue: 0.38).opacity(0.7)))
+                            with: .color(Color(red: 0.92, green: 0.9, blue: 0.5).opacity(0.8)))
 
-                        // Black pupil — small, slightly off-center
-                        let pupilR = eyeR * 0.35
+                        // Yellow ring around pupil
+                        let ringR = eyeR * 0.55
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x - ringR, y: ep.y - ringR - 1, width: ringR * 2, height: ringR * 2)),
+                            with: .color(Color(red: 0.95, green: 0.92, blue: 0.45)))
+
+                        // Black pupil — small dot
+                        let pupilR = eyeR * 0.25
                         context.fill(
                             Circle().path(in: CGRect(x: ep.x - pupilR + 1, y: ep.y - pupilR - 1, width: pupilR * 2, height: pupilR * 2)),
                             with: .color(.black))
@@ -2087,15 +2093,14 @@ struct SnakeView: View {
                     crease2.move(to: c2s); crease2.addLine(to: c2e)
                     context.stroke(crease2, with: .color(darkGreen.opacity(0.2)), lineWidth: 0.7)
 
-                    // Wide grin — one big curve across the face, upturn at corners
+                    // Wide grin — lower on face, away from eyes
                     var mouth = Path()
-                    let mS = CGPoint(x: hs * 0.55, y: -hs * 0.02).applying(ht)
-                    let mMid = CGPoint(x: hs * 0.1, y: hs * 0.25).applying(ht)
-                    let mE = CGPoint(x: -hs * 0.4, y: hs * 0.0).applying(ht)
+                    let mS = CGPoint(x: hs * 0.45, y: hs * 0.2).applying(ht)
+                    let mE = CGPoint(x: -hs * 0.35, y: hs * 0.22).applying(ht)
                     mouth.move(to: mS)
                     mouth.addCurve(to: mE,
-                        control1: CGPoint(x: hs * 0.4, y: hs * 0.25).applying(ht),
-                        control2: CGPoint(x: -hs * 0.1, y: hs * 0.28).applying(ht))
+                        control1: CGPoint(x: hs * 0.3, y: hs * 0.45).applying(ht),
+                        control2: CGPoint(x: -hs * 0.1, y: hs * 0.48).applying(ht))
                     context.stroke(mouth, with: .color(Color.black.opacity(0.5)), lineWidth: 1.8)
                 }
 
