@@ -1973,18 +1973,33 @@ struct SnakeView: View {
                     context.stroke(ring.applying(oblongT), with: .color(Color.black.opacity(fade * 0.35)), lineWidth: ringWidth)
                 }
 
-                // Tail point
+                // Tail — small circles getting tinier with ring lines
                 if maxVisible > 3 {
                     let tail = segments[maxVisible - 1]
                     let prev = segments[maxVisible - 2]
                     let tAngle = atan2(prev.y - tail.y, prev.x - tail.x)
-                    var tip = Path()
-                    tip.move(to: CGPoint(x: 0, y: -ss * 0.3))
-                    tip.addLine(to: CGPoint(x: -ss * 2.5, y: 0))
-                    tip.addLine(to: CGPoint(x: 0, y: ss * 0.3))
-                    tip.closeSubpath()
-                    let tipT = CGAffineTransform(translationX: tail.x, y: tail.y).rotated(by: tAngle + .pi)
-                    context.fill(tip.applying(tipT), with: .color(lightGreen.opacity(0.6)))
+                    let cosT = cos(tAngle + .pi)
+                    let sinT = sin(tAngle + .pi)
+
+                    // Draw 8 tiny circles getting smaller, packed close together
+                    for t in 0..<8 {
+                        let progress = CGFloat(t) / 8.0
+                        let radius = ss * (0.8 - progress * 0.7)  // shrinks from 0.8 to 0.1
+                        let dist = CGFloat(t) * ss * 0.6  // packed close
+                        let cx = tail.x + cosT * dist
+                        let cy = tail.y + sinT * dist
+
+                        // Green circle
+                        context.fill(
+                            Circle().path(in: CGRect(x: cx - radius, y: cy - radius, width: radius * 2, height: radius * 2)),
+                            with: .color(lightGreen.opacity(0.7 - Double(progress) * 0.3)))
+
+                        // Ring line on each circle
+                        var ring = Path()
+                        ring.addArc(center: CGPoint(x: cx, y: cy), radius: radius, startAngle: .degrees(-80), endAngle: .degrees(80), clockwise: false)
+                        let lineW = max(0.3, 1.0 - progress * 0.8)
+                        context.stroke(ring, with: .color(Color.black.opacity(0.3 - Double(progress) * 0.15)), lineWidth: lineW)
+                    }
                 }
 
                 // Big round watercolour head — matching painting
