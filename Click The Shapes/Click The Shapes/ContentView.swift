@@ -2074,7 +2074,22 @@ struct SnakeView: View {
                 return
             }
 
-            // --- Candy snake (default) — 2D drawn image ---
+            // --- Candy snake (default) — only if not wormy ---
+            guard !useWormy else {
+                // Wormy glowing handled below
+                if glowing {
+                    // Glow aura for wormy
+                    for i in 0..<maxVisible {
+                        let seg = segments[i]
+                        let glowSize = snake.segmentSize * 4
+                        context.fill(
+                            Circle().path(in: CGRect(x: seg.x - glowSize, y: seg.y - glowSize, width: glowSize * 2, height: glowSize * 2)),
+                            with: .color(Color.cyan.opacity(0.1))
+                        )
+                    }
+                }
+                return
+            }
 
             // Glow layer for Level 4 second snake
             if glowing {
@@ -2600,14 +2615,14 @@ struct IntroOverlay: View {
 
                                 Text("Candy")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(useRainbowSnake ? .gray : .white)
+                                    .foregroundColor(!useRainbowSnake && !useWormySnake ? .white : .gray)
                             }
                             .padding(8)
-                            .background(Color.white.opacity(useRainbowSnake ? 0 : 0.08))
+                            .background(Color.white.opacity(!useRainbowSnake && !useWormySnake ? 0.08 : 0))
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(useRainbowSnake ? Color.gray.opacity(0.3) : GameColors.neonGreen, lineWidth: useRainbowSnake ? 1 : 2)
+                                    .stroke(!useRainbowSnake && !useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: !useRainbowSnake && !useWormySnake ? 2 : 1)
                             )
                         }
                         // Rainbow snake
