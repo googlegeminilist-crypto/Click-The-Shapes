@@ -927,6 +927,7 @@ class GameViewModel: ObservableObject {
     @Published var gameStarted = false
     @Published var showIntro = true
     @Published var useRainbowSnake = false
+    @Published var useWormySnake = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1876,6 +1877,7 @@ struct SnakeView: View {
     let snake: Snake
     var glowing: Bool = false
     var useRainbow: Bool = false
+    var useWormy: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -1920,6 +1922,168 @@ struct SnakeView: View {
                         with: .color(.white)
                     )
                 }
+                return
+            }
+
+            // --- Wormy snake — green watercolour worm with bulging eyes ---
+            if useWormy && !glowing {
+                let lightGreen = Color(red: 0.55, green: 0.75, blue: 0.35)
+                let darkGreen = Color(red: 0.35, green: 0.55, blue: 0.2)
+                let ss = snake.segmentSize
+
+                // Body segments — green with darker band stripes
+                for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                    let seg = segments[i]
+                    let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.5
+                    let bodyW = ss * 2.2 * taper
+                    let bodyH = ss * 1.4 * taper
+
+                    let nextI = min(i + 1, segments.count - 1)
+                    let prevI = max(i - 1, 0)
+                    let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+                    let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                    let perpX = -sin(angle) * wave
+                    let perpY = cos(angle) * wave
+
+                    let isDarkBand = (i % 4 == 0)
+                    let bodyColor = (isDarkBand ? darkGreen : lightGreen).opacity(fade)
+                    let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+
+                    // Soft outer blur
+                    var blur = Path()
+                    blur.addEllipse(in: CGRect(x: -bodyW * 1.3, y: -bodyH * 0.7, width: bodyW * 2.6, height: bodyH * 1.4))
+                    context.fill(blur.applying(oblongT), with: .color(darkGreen.opacity(fade * 0.12)))
+
+                    // Main body — green back
+                    var body = Path()
+                    body.addEllipse(in: CGRect(x: -bodyW, y: -bodyH / 2, width: bodyW * 2, height: bodyH))
+                    context.fill(body.applying(oblongT), with: .color(darkGreen.opacity(fade * 0.7)))
+
+                    // Lighter tummy/belly — underside of the body
+                    var tummy = Path()
+                    tummy.addEllipse(in: CGRect(x: -bodyW * 0.7, y: 0, width: bodyW * 1.4, height: bodyH * 0.55))
+                    context.fill(tummy.applying(oblongT), with: .color(lightGreen.opacity(fade * 0.8)))
+
+                    // Ring stripe — curved line wrapping around body, gets thinner towards tail
+                    var ring = Path()
+                    ring.move(to: CGPoint(x: 0, y: -bodyH * 0.65))
+                    ring.addQuadCurve(to: CGPoint(x: 0, y: bodyH * 0.65), control: CGPoint(x: bodyW * 0.25, y: 0))
+                    let ringWidth = max(0.3, 1.3 * taper)
+                    context.stroke(ring.applying(oblongT), with: .color(Color.black.opacity(fade * 0.35)), lineWidth: ringWidth)
+                }
+
+                // Tail point
+                if maxVisible > 3 {
+                    let tail = segments[maxVisible - 1]
+                    let prev = segments[maxVisible - 2]
+                    let tAngle = atan2(prev.y - tail.y, prev.x - tail.x)
+                    var tip = Path()
+                    tip.move(to: CGPoint(x: 0, y: -ss * 0.3))
+                    tip.addLine(to: CGPoint(x: -ss * 2.5, y: 0))
+                    tip.addLine(to: CGPoint(x: 0, y: ss * 0.3))
+                    tip.closeSubpath()
+                    let tipT = CGAffineTransform(translationX: tail.x, y: tail.y).rotated(by: tAngle + .pi)
+                    context.fill(tip.applying(tipT), with: .color(lightGreen.opacity(0.6)))
+                }
+
+                // Big round watercolour head — matching painting
+                if let head = segments.first, segments.count >= 2 {
+                    let lookI = min(3, segments.count - 1)
+                    let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                    let hs = ss * 2.8
+                    let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
+
+                    // Layer 1 — big soft watercolour bleed (paint soaking into paper)
+                    var bleed1 = Path()
+                    bleed1.addEllipse(in: CGRect(x: -hs * 1.1, y: -hs * 1.1, width: hs * 2.2, height: hs * 2.2))
+                    context.fill(bleed1.applying(ht), with: .color(lightGreen.opacity(0.08)))
+
+                    // Layer 2 — medium bleed
+                    var bleed2 = Path()
+                    bleed2.addEllipse(in: CGRect(x: -hs * 0.9, y: -hs * 0.85, width: hs * 1.8, height: hs * 1.7))
+                    context.fill(bleed2.applying(ht), with: .color(lightGreen.opacity(0.15)))
+
+                    // Main head — slightly wider than tall, flat on top
+                    var headShape = Path()
+                    headShape.addEllipse(in: CGRect(x: -hs * 0.7, y: -hs * 0.55, width: hs * 1.4, height: hs * 1.15))
+                    context.fill(headShape.applying(ht), with: .color(lightGreen.opacity(0.7)))
+
+                    // Darker green edges — paint pooling at edges
+                    var edgeTop = Path()
+                    edgeTop.addEllipse(in: CGRect(x: -hs * 0.65, y: -hs * 0.5, width: hs * 1.3, height: hs * 0.3))
+                    context.fill(edgeTop.applying(ht), with: .color(darkGreen.opacity(0.2)))
+
+                    var edgeBottom = Path()
+                    edgeBottom.addEllipse(in: CGRect(x: -hs * 0.5, y: hs * 0.2, width: hs * 1.0, height: hs * 0.3))
+                    context.fill(edgeBottom.applying(ht), with: .color(darkGreen.opacity(0.18)))
+
+                    // Light patch where paint is thin — watercolour highlight
+                    var highlight = Path()
+                    highlight.addEllipse(in: CGRect(x: -hs * 0.1, y: -hs * 0.35, width: hs * 0.5, height: hs * 0.4))
+                    context.fill(highlight.applying(ht), with: .color(Color(red: 0.7, green: 0.85, blue: 0.5).opacity(0.25)))
+
+                    // Random paint spots — watercolour texture
+                    for spot in 0..<4 {
+                        let sx = CGFloat([-0.3, 0.2, -0.1, 0.4][spot]) * hs
+                        let sy = CGFloat([0.0, -0.2, 0.25, 0.1][spot]) * hs
+                        let sr = CGFloat([0.15, 0.12, 0.1, 0.13][spot]) * hs
+                        var s = Path()
+                        s.addEllipse(in: CGRect(x: sx - sr, y: sy - sr, width: sr * 2, height: sr * 2))
+                        context.fill(s.applying(ht), with: .color(darkGreen.opacity(0.12)))
+                    }
+
+                    // Two bulging eyes — sit ON TOP of head, sticking out
+                    for side in [-1.0, 1.0] {
+                        let eyeLocal = CGPoint(x: hs * 0.15, y: CGFloat(side) * hs * 0.3 - hs * 0.45)
+                        let ep = eyeLocal.applying(ht)
+                        let eyeR: CGFloat = hs * 0.26
+
+                        // Eye socket shadow (paint pooling)
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x - eyeR - 2, y: ep.y - eyeR - 2, width: (eyeR + 2) * 2, height: (eyeR + 2) * 2)),
+                            with: .color(darkGreen.opacity(0.15)))
+
+                        // Eye ball — yellow-green watercolour
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x - eyeR * 1.2, y: ep.y - eyeR * 1.2, width: eyeR * 2.4, height: eyeR * 2.4)),
+                            with: .color(Color(red: 0.72, green: 0.78, blue: 0.38).opacity(0.3)))
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x - eyeR, y: ep.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
+                            with: .color(Color(red: 0.72, green: 0.78, blue: 0.38).opacity(0.7)))
+
+                        // Black pupil — small, slightly off-center
+                        let pupilR = eyeR * 0.35
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x - pupilR + 1, y: ep.y - pupilR - 1, width: pupilR * 2, height: pupilR * 2)),
+                            with: .color(.black))
+                    }
+
+                    // Chin/neck crease lines
+                    var crease1 = Path()
+                    let c1s = CGPoint(x: -hs * 0.4, y: hs * 0.4).applying(ht)
+                    let c1e = CGPoint(x: hs * 0.4, y: hs * 0.35).applying(ht)
+                    crease1.move(to: c1s); crease1.addLine(to: c1e)
+                    context.stroke(crease1, with: .color(darkGreen.opacity(0.25)), lineWidth: 0.8)
+
+                    var crease2 = Path()
+                    let c2s = CGPoint(x: -hs * 0.35, y: hs * 0.48).applying(ht)
+                    let c2e = CGPoint(x: hs * 0.35, y: hs * 0.43).applying(ht)
+                    crease2.move(to: c2s); crease2.addLine(to: c2e)
+                    context.stroke(crease2, with: .color(darkGreen.opacity(0.2)), lineWidth: 0.7)
+
+                    // Wide grin — one big curve across the face, upturn at corners
+                    var mouth = Path()
+                    let mS = CGPoint(x: hs * 0.55, y: -hs * 0.02).applying(ht)
+                    let mMid = CGPoint(x: hs * 0.1, y: hs * 0.25).applying(ht)
+                    let mE = CGPoint(x: -hs * 0.4, y: hs * 0.0).applying(ht)
+                    mouth.move(to: mS)
+                    mouth.addCurve(to: mE,
+                        control1: CGPoint(x: hs * 0.4, y: hs * 0.25).applying(ht),
+                        control2: CGPoint(x: -hs * 0.1, y: hs * 0.28).applying(ht))
+                    context.stroke(mouth, with: .color(Color.black.opacity(0.5)), lineWidth: 1.8)
+                }
+
                 return
             }
 
@@ -2293,6 +2457,7 @@ struct IntroOverlay: View {
     let onStartHardcore: () -> Void
     var onStartLevel4: () -> Void = {}
     @Binding var useRainbowSnake: Bool
+    @Binding var useWormySnake: Bool
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -2388,7 +2553,7 @@ struct IntroOverlay: View {
                         .foregroundColor(.gray)
                     HStack(spacing: 20) {
                         // Candy snake (default) — head drawn with Canvas to match in-game
-                        Button { useRainbowSnake = false } label: {
+                        Button { useRainbowSnake = false; useWormySnake = false } label: {
                             VStack(spacing: 6) {
                                 Canvas { ctx, sz in
                                     let s: CGFloat = 20  // scale
@@ -2459,7 +2624,7 @@ struct IntroOverlay: View {
                             )
                         }
                         // Rainbow snake
-                        Button { useRainbowSnake = true } label: {
+                        Button { useRainbowSnake = true; useWormySnake = false } label: {
                             VStack(spacing: 4) {
                                 Circle()
                                     .fill(LinearGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -2474,6 +2639,29 @@ struct IntroOverlay: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(useRainbowSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useRainbowSnake ? 2 : 1)
+                            )
+                        }
+                        // Wormy snake
+                        Button { useWormySnake = true; useRainbowSnake = false } label: {
+                            VStack(spacing: 4) {
+                                ZStack {
+                                    Circle().fill(Color(red: 0.55, green: 0.75, blue: 0.35)).frame(width: 28, height: 28)
+                                    // Two bulging eyes
+                                    Circle().fill(Color(red: 0.75, green: 0.8, blue: 0.4)).frame(width: 8, height: 8).offset(x: -5, y: -10)
+                                    Circle().fill(Color(red: 0.75, green: 0.8, blue: 0.4)).frame(width: 8, height: 8).offset(x: 5, y: -10)
+                                    Circle().fill(.black).frame(width: 4, height: 4).offset(x: -4, y: -10)
+                                    Circle().fill(.black).frame(width: 4, height: 4).offset(x: 6, y: -10)
+                                }
+                                Text("Wormy")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(8)
+                            .background(useWormySnake ? Color.white.opacity(0.1) : Color.clear)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useWormySnake ? 2 : 1)
                             )
                         }
                     }
@@ -2888,13 +3076,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake)
                         .id(game.updateTrigger)
                 }
 
@@ -3141,7 +3329,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, useRainbowSnake: $game.useRainbowSnake)
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake)
                 }
 
                 // Level transition overlay
