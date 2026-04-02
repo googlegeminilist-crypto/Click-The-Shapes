@@ -2742,16 +2742,16 @@ struct IntroOverlay: View {
                                     .stroke(useRainbowSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useRainbowSnake ? 2 : 1)
                             )
                         }
-                        // Wormy snake
+                        // Wormy snake — actual painting as icon
                         Button { useWormySnake = true; useRainbowSnake = false } label: {
                             VStack(spacing: 4) {
-                                ZStack {
-                                    Circle().fill(Color(red: 0.55, green: 0.75, blue: 0.35)).frame(width: 28, height: 28)
-                                    // Two bulging eyes
-                                    Circle().fill(Color(red: 0.75, green: 0.8, blue: 0.4)).frame(width: 8, height: 8).offset(x: -5, y: -10)
-                                    Circle().fill(Color(red: 0.75, green: 0.8, blue: 0.4)).frame(width: 8, height: 8).offset(x: 5, y: -10)
-                                    Circle().fill(.black).frame(width: 4, height: 4).offset(x: -4, y: -10)
-                                    Circle().fill(.black).frame(width: 4, height: 4).offset(x: 6, y: -10)
+                                if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                    Image(uiImage: wormyImg)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 40, height: 40)
+                                } else {
+                                    Circle().fill(Color(red: 0.55, green: 0.75, blue: 0.35)).frame(width: 30, height: 30)
                                 }
                                 Text("Wormy")
                                     .font(.system(size: 9, design: .monospaced))
