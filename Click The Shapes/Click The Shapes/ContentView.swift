@@ -2653,65 +2653,17 @@ struct IntroOverlay: View {
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
                     HStack(spacing: 20) {
-                        // Candy snake (default) — head drawn with Canvas to match in-game
+                        // Candy snake (default) — actual painting as icon
                         Button { useRainbowSnake = false; useWormySnake = false } label: {
                             VStack(spacing: 6) {
-                                Canvas { ctx, sz in
-                                    let s: CGFloat = 20  // scale
-                                    let cx = sz.width / 2
-                                    let cy = sz.height / 2 - 2
-
-                                    // Watercolour bleed
-                                    ctx.fill(Ellipse().path(in: CGRect(x: cx - 28, y: cy - 20, width: 56, height: 44)), with: .color(Color(red: 0.05, green: 0.55, blue: 0.12).opacity(0.1)))
-
-                                    // Yellow bottom jaw — curvy
-                                    var jaw = Path()
-                                    jaw.move(to: CGPoint(x: cx + s * 1.4, y: cy))
-                                    jaw.addCurve(to: CGPoint(x: cx - s * 0.6, y: cy + s * 0.35), control1: CGPoint(x: cx + s * 0.9, y: cy + s * 0.55), control2: CGPoint(x: cx + s * 0.1, y: cy + s * 0.7))
-                                    jaw.addLine(to: CGPoint(x: cx - s * 0.6, y: cy))
-                                    jaw.addLine(to: CGPoint(x: cx + s * 1.4, y: cy))
-                                    jaw.closeSubpath()
-                                    ctx.fill(jaw, with: .color(Color(red: 0.95, green: 0.82, blue: 0.0)))
-
-                                    // Green top — steep with lump
-                                    var top = Path()
-                                    top.move(to: CGPoint(x: cx + s * 1.4, y: cy))
-                                    top.addLine(to: CGPoint(x: cx - s * 0.6, y: cy))
-                                    top.addCurve(to: CGPoint(x: cx - s * 0.6, y: cy - s * 0.55), control1: CGPoint(x: cx - s * 0.7, y: cy - s * 0.05), control2: CGPoint(x: cx - s * 0.75, y: cy - s * 0.3))
-                                    top.addCurve(to: CGPoint(x: cx + s * 0.2, y: cy - s * 0.75), control1: CGPoint(x: cx - s * 0.3, y: cy - s * 0.7), control2: CGPoint(x: cx, y: cy - s * 0.85))
-                                    top.addCurve(to: CGPoint(x: cx + s * 1.4, y: cy), control1: CGPoint(x: cx + s * 0.5, y: cy - s * 0.65), control2: CGPoint(x: cx + s * 1.1, y: cy - s * 0.25))
-                                    top.closeSubpath()
-                                    ctx.fill(top, with: .color(Color(red: 0.05, green: 0.72, blue: 0.18)))
-
-                                    // Eye — big, sits back on head
-                                    let ex = cx + s * 0.1
-                                    let ey = cy - s * 0.2
-                                    let er: CGFloat = s * 0.32
-                                    ctx.fill(Circle().path(in: CGRect(x: ex - er, y: ey - er, width: er * 2, height: er * 2)), with: .color(.white))
-                                    ctx.fill(Circle().path(in: CGRect(x: ex - er * 0.72, y: ey - er * 0.72, width: er * 1.44, height: er * 1.44)), with: .color(Color(red: 0.0, green: 0.35, blue: 0.65)))
-                                    ctx.fill(Circle().path(in: CGRect(x: ex - er * 0.5, y: ey - er * 0.5, width: er, height: er)), with: .color(.black))
-                                    ctx.fill(Circle().path(in: CGRect(x: ex + 1, y: ey - er * 0.5, width: 3, height: 3)), with: .color(.white))
-
-                                    // Smile
-                                    var smile = Path()
-                                    smile.addArc(center: CGPoint(x: cx + s * 0.5, y: cy + s * 0.15), radius: s * 0.35, startAngle: .degrees(10), endAngle: .degrees(140), clockwise: false)
-                                    ctx.stroke(smile, with: .color(Color.black.opacity(0.5)), lineWidth: 1.2)
-
-                                    // Tongue
-                                    let tx = cx + s * 1.4
-                                    var tongue = Path()
-                                    tongue.move(to: CGPoint(x: tx, y: cy))
-                                    tongue.addLine(to: CGPoint(x: tx + 10, y: cy))
-                                    ctx.stroke(tongue, with: .color(.black), lineWidth: 1.5)
-                                    var lf = Path(); lf.move(to: CGPoint(x: tx + 10, y: cy))
-                                    lf.addLine(to: CGPoint(x: tx + 14, y: cy - 3))
-                                    ctx.stroke(lf, with: .color(.black), lineWidth: 1.2)
-                                    var rf = Path(); rf.move(to: CGPoint(x: tx + 10, y: cy))
-                                    rf.addLine(to: CGPoint(x: tx + 14, y: cy + 3))
-                                    ctx.stroke(rf, with: .color(.black), lineWidth: 1.2)
+                                if let candyImg = UIImage(named: "snake_custom") ?? (Bundle.main.path(forResource: "snake_custom", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                    Image(uiImage: candyImg)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 50, height: 30)
+                                } else {
+                                    Circle().fill(Color(red: 0.3, green: 0.65, blue: 0.15)).frame(width: 30, height: 30)
                                 }
-                                .frame(width: 80, height: 45)
-
                                 Text("Candy")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundColor(!useRainbowSnake && !useWormySnake ? .white : .gray)
