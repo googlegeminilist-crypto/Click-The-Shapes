@@ -2116,9 +2116,8 @@ struct SnakeView: View {
 
             // --- Candy snake (default) — only if not wormy ---
             guard !useWormy else {
-                // Wormy glowing handled below
                 if glowing {
-                    // Glow aura for wormy
+                    // Cyan glow aura behind wormy
                     for i in 0..<maxVisible {
                         let seg = segments[i]
                         let glowSize = snake.segmentSize * 4
@@ -2128,6 +2127,66 @@ struct SnakeView: View {
                         )
                     }
                 }
+                // Draw full wormy snake (same as non-glowing) for both snakes
+                let lightGreenW = Color(red: 0.55, green: 0.75, blue: 0.35)
+                let darkGreenW = Color(red: 0.35, green: 0.55, blue: 0.2)
+                let ssW = snake.segmentSize
+
+                // Body
+                for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                    let seg = segments[i]
+                    let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.5
+                    let bodyW = ssW * 2.2 * taper
+                    let bodyH = ssW * 1.4 * taper
+                    let nextI = min(i + 1, segments.count - 1)
+                    let prevI = max(i - 1, 0)
+                    let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+                    let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                    let perpX = -sin(angle) * wave
+                    let perpY = cos(angle) * wave
+                    let isDarkBand = (i % 4 == 0)
+                    let bodyColor = (isDarkBand ? darkGreenW : lightGreenW).opacity(fade)
+                    let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+
+                    var blur = Path()
+                    blur.addEllipse(in: CGRect(x: -bodyW * 1.3, y: -bodyH * 0.7, width: bodyW * 2.6, height: bodyH * 1.4))
+                    context.fill(blur.applying(oblongT), with: .color(darkGreenW.opacity(fade * 0.12)))
+                    var body = Path()
+                    body.addEllipse(in: CGRect(x: -bodyW, y: -bodyH / 2, width: bodyW * 2, height: bodyH))
+                    context.fill(body.applying(oblongT), with: .color(darkGreenW.opacity(fade * 0.7)))
+                    var tummy = Path()
+                    tummy.addEllipse(in: CGRect(x: -bodyW * 0.7, y: 0, width: bodyW * 1.4, height: bodyH * 0.55))
+                    context.fill(tummy.applying(oblongT), with: .color(lightGreenW.opacity(fade * 0.8)))
+                    var ring = Path()
+                    ring.move(to: CGPoint(x: 0, y: -bodyH * 0.65))
+                    ring.addQuadCurve(to: CGPoint(x: 0, y: bodyH * 0.65), control: CGPoint(x: bodyW * 0.25, y: 0))
+                    context.stroke(ring.applying(oblongT), with: .color(Color.black.opacity(fade * 0.35)), lineWidth: max(0.3, 1.3 * taper))
+                }
+
+                // Head
+                if let head = segments.first, segments.count >= 2 {
+                    let lookI = min(3, segments.count - 1)
+                    let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                    let hs = ssW * 2.8
+                    let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
+
+                    var headShape = Path()
+                    headShape.addEllipse(in: CGRect(x: -hs * 0.55, y: -hs * 0.7, width: hs * 1.1, height: hs * 1.4))
+                    context.fill(headShape.applying(ht), with: .color(lightGreenW.opacity(0.75)))
+
+                    for side in [-1.0, 1.0] {
+                        let eyeLocal = CGPoint(x: hs * 0.15, y: CGFloat(side) * hs * 0.3 - hs * 0.45)
+                        let ep = eyeLocal.applying(ht)
+                        let eyeR: CGFloat = hs * 0.26
+                        context.fill(Circle().path(in: CGRect(x: ep.x - eyeR, y: ep.y - eyeR, width: eyeR * 2, height: eyeR * 2)), with: .color(Color(red: 0.92, green: 0.9, blue: 0.5).opacity(0.8)))
+                        let ringR = eyeR * 0.55
+                        context.fill(Circle().path(in: CGRect(x: ep.x - ringR, y: ep.y - ringR - 1, width: ringR * 2, height: ringR * 2)), with: .color(Color(red: 0.95, green: 0.92, blue: 0.45)))
+                        let pupilR = eyeR * 0.25
+                        context.fill(Circle().path(in: CGRect(x: ep.x - pupilR + 1, y: ep.y - pupilR - 1, width: pupilR * 2, height: pupilR * 2)), with: .color(.black))
+                    }
+                }
+
                 return
             }
 
