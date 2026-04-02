@@ -2009,44 +2009,11 @@ struct SnakeView: View {
                     let hs = ss * 2.8
                     let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
 
-                    // Layer 1 — big soft watercolour bleed (paint soaking into paper)
-                    var bleed1 = Path()
-                    bleed1.addEllipse(in: CGRect(x: -hs * 1.1, y: -hs * 1.1, width: hs * 2.2, height: hs * 2.2))
-                    context.fill(bleed1.applying(ht), with: .color(lightGreen.opacity(0.08)))
-
-                    // Layer 2 — medium bleed
-                    var bleed2 = Path()
-                    bleed2.addEllipse(in: CGRect(x: -hs * 0.9, y: -hs * 0.85, width: hs * 1.8, height: hs * 1.7))
-                    context.fill(bleed2.applying(ht), with: .color(lightGreen.opacity(0.15)))
 
                     // Main head — oval, taller than wide
                     var headShape = Path()
                     headShape.addEllipse(in: CGRect(x: -hs * 0.55, y: -hs * 0.7, width: hs * 1.1, height: hs * 1.4))
                     context.fill(headShape.applying(ht), with: .color(lightGreen.opacity(0.7)))
-
-                    // Darker green edges — paint pooling at edges
-                    var edgeTop = Path()
-                    edgeTop.addEllipse(in: CGRect(x: -hs * 0.65, y: -hs * 0.5, width: hs * 1.3, height: hs * 0.3))
-                    context.fill(edgeTop.applying(ht), with: .color(darkGreen.opacity(0.2)))
-
-                    var edgeBottom = Path()
-                    edgeBottom.addEllipse(in: CGRect(x: -hs * 0.5, y: hs * 0.2, width: hs * 1.0, height: hs * 0.3))
-                    context.fill(edgeBottom.applying(ht), with: .color(darkGreen.opacity(0.18)))
-
-                    // Light patch where paint is thin — watercolour highlight
-                    var highlight = Path()
-                    highlight.addEllipse(in: CGRect(x: -hs * 0.1, y: -hs * 0.35, width: hs * 0.5, height: hs * 0.4))
-                    context.fill(highlight.applying(ht), with: .color(Color(red: 0.7, green: 0.85, blue: 0.5).opacity(0.25)))
-
-                    // Random paint spots — watercolour texture
-                    for spot in 0..<4 {
-                        let sx = CGFloat([-0.3, 0.2, -0.1, 0.4][spot]) * hs
-                        let sy = CGFloat([0.0, -0.2, 0.25, 0.1][spot]) * hs
-                        let sr = CGFloat([0.15, 0.12, 0.1, 0.13][spot]) * hs
-                        var s = Path()
-                        s.addEllipse(in: CGRect(x: sx - sr, y: sy - sr, width: sr * 2, height: sr * 2))
-                        context.fill(s.applying(ht), with: .color(darkGreen.opacity(0.12)))
-                    }
 
                     // Two bulging eyes — sit ON TOP of head, sticking out
                     for side in [-1.0, 1.0] {
