@@ -1999,6 +1999,46 @@ struct SnakeView: View {
                         ring.addArc(center: CGPoint(x: cx, y: cy), radius: radius, startAngle: .degrees(-80), endAngle: .degrees(80), clockwise: false)
                         let lineW = max(0.3, 1.0 - progress * 0.8)
                         context.stroke(ring, with: .color(Color.black.opacity(0.3 - Double(progress) * 0.15)), lineWidth: lineW)
+
+                        // Tiny twinkling colour sparkles on last 4 tail circles
+                        if t >= 4 {
+                            let twinkleSpeed = 7.0 + CGFloat(t) * 3.0
+                            let sparkle = max(0, sin(snake.animPhase * twinkleSpeed + CGFloat(t) * 2.5))
+                            let starSize = ss * (0.3 + sparkle * 0.5)
+
+                            // Colour cycles through rainbow based on time + position
+                            let hue = (Double(snake.animPhase) * 0.8 + Double(t) * 0.3).truncatingRemainder(dividingBy: 1.0)
+                            let starColor = Color(hue: hue, saturation: 0.9, brightness: 1.0)
+
+                            // Tiny coloured glow
+                            let glowR = starSize * 1.5
+                            context.fill(
+                                Circle().path(in: CGRect(x: cx - glowR, y: cy - glowR, width: glowR * 2, height: glowR * 2)),
+                                with: .color(starColor.opacity(Double(sparkle) * 0.3)))
+
+                            // Tiny 4-point star
+                            let longRay = starSize * 1.2
+                            let shortRay = starSize * 0.2
+                            var star = Path()
+                            star.move(to: CGPoint(x: cx, y: cy - longRay))
+                            star.addLine(to: CGPoint(x: cx + shortRay, y: cy))
+                            star.addLine(to: CGPoint(x: cx, y: cy + longRay))
+                            star.addLine(to: CGPoint(x: cx - shortRay, y: cy))
+                            star.closeSubpath()
+                            var star2 = Path()
+                            star2.move(to: CGPoint(x: cx - longRay, y: cy))
+                            star2.addLine(to: CGPoint(x: cx, y: cy + shortRay))
+                            star2.addLine(to: CGPoint(x: cx + longRay, y: cy))
+                            star2.addLine(to: CGPoint(x: cx, y: cy - shortRay))
+                            star2.closeSubpath()
+                            context.fill(star, with: .color(starColor.opacity(Double(sparkle) * 0.8)))
+                            context.fill(star2, with: .color(starColor.opacity(Double(sparkle) * 0.8)))
+
+                            // Tiny white center
+                            context.fill(
+                                Circle().path(in: CGRect(x: cx - 0.8, y: cy - 0.8, width: 1.6, height: 1.6)),
+                                with: .color(.white.opacity(Double(sparkle) * 0.9)))
+                        }
                     }
                 }
 
