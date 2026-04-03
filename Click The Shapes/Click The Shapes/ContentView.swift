@@ -2288,16 +2288,72 @@ struct SnakeView: View {
             // --- Candy snake (default) — only if not wormy ---
             guard !useWormy && !useStar else {
                 if glowing {
-                    // Cyan glow aura behind wormy
+                    // Glow aura
+                    let glowCol: Color = useStar ? Color(red: 0.4, green: 0.3, blue: 0.9) : .cyan
                     for i in 0..<maxVisible {
                         let seg = segments[i]
                         let glowSize = snake.segmentSize * 4
                         context.fill(
                             Circle().path(in: CGRect(x: seg.x - glowSize, y: seg.y - glowSize, width: glowSize * 2, height: glowSize * 2)),
-                            with: .color(Color.cyan.opacity(0.1))
+                            with: .color(glowCol.opacity(0.1))
                         )
                     }
                 }
+
+                // If Star snake selected, draw star snake body + head instead of wormy
+                if useStar {
+                    let ssS = snake.segmentSize
+                    for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                        let seg = segments[i]
+                        let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+                        let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.45
+                        let bodyW = ssS * 2.2 * taper
+                        let bodyH = ssS * 1.4 * taper
+                        let nextI = min(i + 1, segments.count - 1)
+                        let prevI = max(i - 1, 0)
+                        let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+                        let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                        let perpX = -sin(angle) * wave
+                        let perpY = cos(angle) * wave
+                        let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+                        let shimmer = sin(snake.animPhase * 2 + CGFloat(i) * 0.4) * 0.5 + 0.5
+                        let violet = Color(red: 0.35 + shimmer * 0.15, green: 0.2 + shimmer * 0.15, blue: 0.7 + shimmer * 0.15)
+
+                        // Shadow
+                        let shT = CGAffineTransform(translationX: seg.x + perpX + 1.5, y: seg.y + perpY + 3).rotated(by: angle)
+                        var sh = Path(); sh.addEllipse(in: CGRect(x: -bodyW * 1.2, y: -bodyH * 0.6, width: bodyW * 2.4, height: bodyH * 1.2))
+                        context.fill(sh.applying(shT), with: .color(Color.black.opacity(fade * 0.25)))
+                        // Dark bottom
+                        var db = Path(); db.addEllipse(in: CGRect(x: -bodyW, y: bodyH * 0.0, width: bodyW * 2, height: bodyH * 0.6))
+                        context.fill(db.applying(oblongT), with: .color(Color(red: 0.08, green: 0.03, blue: 0.25).opacity(fade * 0.5)))
+                        // Main body
+                        var body = Path(); body.addEllipse(in: CGRect(x: -bodyW, y: -bodyH / 2, width: bodyW * 2, height: bodyH))
+                        context.fill(body.applying(oblongT), with: .color(violet.opacity(fade * 0.7)))
+                        // Highlight
+                        var hl = Path(); hl.addEllipse(in: CGRect(x: -bodyW * 0.5, y: -bodyH * 0.5, width: bodyW, height: bodyH * 0.3))
+                        context.fill(hl.applying(oblongT), with: .color(Color(red: 0.6, green: 0.55, blue: 0.95).opacity(fade * 0.4)))
+                        // Specular
+                        var sp = Path(); sp.addEllipse(in: CGRect(x: -bodyW * 0.12, y: -bodyH * 0.47, width: bodyW * 0.24, height: bodyH * 0.12))
+                        context.fill(sp.applying(oblongT), with: .color(Color.white.opacity(fade * 0.35)))
+                    }
+                    // Star head photo
+                    if let head = segments.first, segments.count >= 2 {
+                        let lookI = min(5, segments.count - 1)
+                        let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                        if let headImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                            let headW: CGFloat = 32
+                            let headH: CGFloat = headW * (headImg.size.height / headImg.size.width)
+                            let resolved = context.resolve(Image(uiImage: headImg))
+                            context.translateBy(x: head.x, y: head.y)
+                            context.rotate(by: Angle(radians: Double(angle)))
+                            context.draw(resolved, in: CGRect(x: -headW * 0.25, y: -headH / 2, width: headW, height: headH))
+                            context.rotate(by: Angle(radians: -Double(angle)))
+                            context.translateBy(x: -head.x, y: -head.y)
+                        }
+                    }
+                    return
+                }
+
                 // Draw full wormy snake (same as non-glowing) for both snakes
                 let lightGreenW = Color(red: 0.55, green: 0.75, blue: 0.35)
                 let darkGreenW = Color(red: 0.35, green: 0.55, blue: 0.2)
