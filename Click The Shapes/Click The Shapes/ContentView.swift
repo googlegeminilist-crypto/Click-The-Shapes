@@ -928,6 +928,7 @@ class GameViewModel: ObservableObject {
     @Published var showIntro = true
     @Published var useRainbowSnake = false
     @Published var useWormySnake = false
+    @Published var useStarSnake = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1878,6 +1879,7 @@ struct SnakeView: View {
     var glowing: Bool = false
     var useRainbow: Bool = false
     var useWormy: Bool = false
+    var useStar: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -1926,6 +1928,183 @@ struct SnakeView: View {
             }
 
             // --- Wormy snake — green watercolour worm with bulging eyes ---
+            // --- Star snake — violet/blue shimmering skin with twinkling stars ---
+            if useStar && !glowing {
+                let ss = snake.segmentSize
+
+                for i in stride(from: maxVisible - 1, through: 1, by: -1) {
+                    let seg = segments[i]
+                    let fade = 1 - (Double(i) / Double(maxVisible)) * 0.2
+                    let taper = 1.0 - CGFloat(i) / CGFloat(maxVisible) * 0.45
+                    let bodyW = ss * 2.2 * taper
+                    let bodyH = ss * 1.4 * taper
+
+                    let nextI = min(i + 1, segments.count - 1)
+                    let prevI = max(i - 1, 0)
+                    let angle = atan2(segments[prevI].y - segments[nextI].y, segments[prevI].x - segments[nextI].x)
+                    let wave = sin(snake.animPhase * 3 + CGFloat(i) * 0.5) * taper * 3.0
+                    let perpX = -sin(angle) * wave
+                    let perpY = cos(angle) * wave
+                    let oblongT = CGAffineTransform(translationX: seg.x + perpX, y: seg.y + perpY).rotated(by: angle)
+
+                    // Violet/blue shimmer — colour shifts along body
+                    let shimmer = sin(snake.animPhase * 2 + CGFloat(i) * 0.4) * 0.5 + 0.5
+                    let violet = Color(red: 0.35 + shimmer * 0.15, green: 0.2 + shimmer * 0.15, blue: 0.7 + shimmer * 0.15)
+                    let lightBlue = Color(red: 0.4 + shimmer * 0.2, green: 0.55 + shimmer * 0.2, blue: 0.85)
+
+                    // Outer glow — soft violet haze
+                    var glow = Path()
+                    glow.addEllipse(in: CGRect(x: -bodyW * 1.4, y: -bodyH * 0.8, width: bodyW * 2.8, height: bodyH * 1.6))
+                    context.fill(glow.applying(oblongT), with: .color(violet.opacity(fade * 0.15)))
+
+                    // Main body — gradient violet to blue
+                    var body = Path()
+                    body.addEllipse(in: CGRect(x: -bodyW, y: -bodyH / 2, width: bodyW * 2, height: bodyH))
+                    context.fill(body.applying(oblongT), with: .color(violet.opacity(fade * 0.8)))
+
+                    // Light belly shimmer
+                    var belly = Path()
+                    belly.addEllipse(in: CGRect(x: -bodyW * 0.6, y: 0, width: bodyW * 1.2, height: bodyH * 0.5))
+                    context.fill(belly.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.5)))
+
+                    // Scale pattern — tiny diamond shapes
+                    if i % 2 == 0 {
+                        var scale = Path()
+                        scale.move(to: CGPoint(x: 0, y: -bodyH * 0.3))
+                        scale.addLine(to: CGPoint(x: bodyW * 0.15, y: 0))
+                        scale.addLine(to: CGPoint(x: 0, y: bodyH * 0.3))
+                        scale.addLine(to: CGPoint(x: -bodyW * 0.15, y: 0))
+                        scale.closeSubpath()
+                        context.fill(scale.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.3)))
+                    }
+
+                    // Twinkling stars on body — random positions, cycle colours
+                    if i % 3 == 0 && taper > 0.2 {
+                        let twinkle = max(0, sin(snake.animPhase * 8 + CGFloat(i) * 2.1))
+                        let starHue = (Double(snake.animPhase) * 0.5 + Double(i) * 0.15).truncatingRemainder(dividingBy: 1.0)
+                        let starColor = Color(hue: starHue, saturation: 0.7, brightness: 1.0)
+                        let starR = bodyW * 0.2 * twinkle
+                        let sx = seg.x + perpX + cos(CGFloat(i) * 1.7) * bodyW * 0.4
+                        let sy = seg.y + perpY + sin(CGFloat(i) * 1.7) * bodyH * 0.3
+
+                        // Star cross
+                        var s1 = Path()
+                        s1.move(to: CGPoint(x: sx, y: sy - starR))
+                        s1.addLine(to: CGPoint(x: sx + starR * 0.2, y: sy))
+                        s1.addLine(to: CGPoint(x: sx, y: sy + starR))
+                        s1.addLine(to: CGPoint(x: sx - starR * 0.2, y: sy))
+                        s1.closeSubpath()
+                        context.fill(s1, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
+                        var s2 = Path()
+                        s2.move(to: CGPoint(x: sx - starR, y: sy))
+                        s2.addLine(to: CGPoint(x: sx, y: sy + starR * 0.2))
+                        s2.addLine(to: CGPoint(x: sx + starR, y: sy))
+                        s2.addLine(to: CGPoint(x: sx, y: sy - starR * 0.2))
+                        s2.closeSubpath()
+                        context.fill(s2, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
+
+                        // White center
+                        context.fill(
+                            Circle().path(in: CGRect(x: sx - 0.8, y: sy - 0.8, width: 1.6, height: 1.6)),
+                            with: .color(.white.opacity(Double(twinkle))))
+                    }
+                }
+
+                // Head — long flat snake head like reference photo
+                if let head = segments.first, segments.count >= 2 {
+                    let lookI = min(4, segments.count - 1)
+                    let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
+                    let cosA = cos(angle)
+                    let sinA = sin(angle)
+                    let hs = ss * 2.5
+                    let hw = hs * 0.55  // narrow
+                    let hl = hs * 1.8   // long
+                    let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
+
+                    // Long flat head — rounded snout, wider jaw at back
+                    var headPath = Path()
+                    headPath.move(to: CGPoint(x: hl * 0.55, y: 0))  // rounded snout tip
+                    // Bottom — smooth curve from snout to wide jaw
+                    headPath.addCurve(
+                        to: CGPoint(x: -hl * 0.45, y: hw * 0.85),
+                        control1: CGPoint(x: hl * 0.4, y: hw * 0.4),
+                        control2: CGPoint(x: 0, y: hw * 0.9))
+                    // Back of head
+                    headPath.addCurve(
+                        to: CGPoint(x: -hl * 0.5, y: 0),
+                        control1: CGPoint(x: -hl * 0.5, y: hw * 0.5),
+                        control2: CGPoint(x: -hl * 0.52, y: hw * 0.15))
+                    headPath.addCurve(
+                        to: CGPoint(x: -hl * 0.45, y: -hw * 0.7),
+                        control1: CGPoint(x: -hl * 0.52, y: -hw * 0.15),
+                        control2: CGPoint(x: -hl * 0.5, y: -hw * 0.45))
+                    // Top — flat, low profile
+                    headPath.addCurve(
+                        to: CGPoint(x: hl * 0.55, y: 0),
+                        control1: CGPoint(x: 0, y: -hw * 0.75),
+                        control2: CGPoint(x: hl * 0.35, y: -hw * 0.3))
+                    headPath.closeSubpath()
+
+                    // Shadow
+                    let shadowT = CGAffineTransform(translationX: head.x + 1, y: head.y + 1).rotated(by: angle)
+                    context.fill(headPath.applying(shadowT), with: .color(Color.black.opacity(0.2)))
+
+                    // Main violet fill
+                    context.fill(headPath.applying(ht), with: .color(Color(red: 0.3, green: 0.2, blue: 0.65)))
+
+                    // Lighter top — flat skull shimmer
+                    var topShimmer = Path()
+                    topShimmer.addEllipse(in: CGRect(x: -hl * 0.2, y: -hw * 0.6, width: hl * 0.6, height: hw * 0.5))
+                    context.fill(topShimmer.applying(ht), with: .color(Color(red: 0.45, green: 0.4, blue: 0.85).opacity(0.35)))
+
+                    // Light blue underside/jaw
+                    var jawLight = Path()
+                    jawLight.addEllipse(in: CGRect(x: -hl * 0.1, y: hw * 0.15, width: hl * 0.5, height: hw * 0.5))
+                    context.fill(jawLight.applying(ht), with: .color(Color(red: 0.5, green: 0.6, blue: 0.88).opacity(0.35)))
+
+                    // Scale texture — rows of tiny arcs on top
+                    for row in 0..<3 {
+                        for col in 0..<4 {
+                            let sx = CGFloat(col) * hl * 0.2 - hl * 0.15
+                            let sy = -hw * 0.4 + CGFloat(row) * hw * 0.2
+                            var sc = Path()
+                            sc.addArc(center: CGPoint(x: sx, y: sy), radius: hl * 0.06, startAngle: .degrees(200), endAngle: .degrees(340), clockwise: false)
+                            context.stroke(sc.applying(ht), with: .color(Color(red: 0.25, green: 0.15, blue: 0.55).opacity(0.2)), lineWidth: 0.5)
+                        }
+                    }
+
+                    // Mouth/lip line — dark line from snout along jaw
+                    var lip = Path()
+                    let lipS = CGPoint(x: hl * 0.5, y: hw * 0.1).applying(ht)
+                    let lipE = CGPoint(x: -hl * 0.35, y: hw * 0.55).applying(ht)
+                    let lipC = CGPoint(x: hl * 0.1, y: hw * 0.45).applying(ht)
+                    lip.move(to: lipS)
+                    lip.addQuadCurve(to: lipE, control: lipC)
+                    context.stroke(lip, with: .color(Color(red: 0.15, green: 0.08, blue: 0.35).opacity(0.5)), lineWidth: 1)
+
+                    // Eye — small, sits far back on side of head, golden with slit
+                    let eyePos = CGPoint(x: -hl * 0.05, y: -hw * 0.25).applying(ht)
+                    let eyeR: CGFloat = hs * 0.18
+                    // Dark ring
+                    context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR - 1, y: eyePos.y - eyeR - 1, width: (eyeR + 1) * 2, height: (eyeR + 1) * 2)), with: .color(Color(red: 0.1, green: 0.05, blue: 0.25).opacity(0.4)))
+                    // Golden iris
+                    context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR, y: eyePos.y - eyeR, width: eyeR * 2, height: eyeR * 2)), with: .color(Color(red: 0.9, green: 0.75, blue: 0.2)))
+                    // Vertical slit pupil
+                    var slit = Path()
+                    slit.addEllipse(in: CGRect(x: -1, y: -eyeR * 0.65, width: 2, height: eyeR * 1.3))
+                    let slitT = CGAffineTransform(translationX: eyePos.x, y: eyePos.y).rotated(by: angle)
+                    context.fill(slit.applying(slitT), with: .color(.black))
+                    // Eye highlight
+                    context.fill(Circle().path(in: CGRect(x: eyePos.x + 1, y: eyePos.y - eyeR * 0.4, width: 1.5, height: 1.5)), with: .color(.white))
+
+                    // Nostril pit
+                    let nostril = CGPoint(x: hl * 0.4, y: -hw * 0.1).applying(ht)
+                    context.fill(Circle().path(in: CGRect(x: nostril.x - 1.2, y: nostril.y - 1.2, width: 2.4, height: 2.4)), with: .color(Color(red: 0.15, green: 0.08, blue: 0.35)))
+                }
+
+                return
+            }
+
             if useWormy && !glowing {
                 let lightGreen = Color(red: 0.55, green: 0.75, blue: 0.35)
                 let darkGreen = Color(red: 0.35, green: 0.55, blue: 0.2)
@@ -2115,7 +2294,7 @@ struct SnakeView: View {
             }
 
             // --- Candy snake (default) — only if not wormy ---
-            guard !useWormy else {
+            guard !useWormy && !useStar else {
                 if glowing {
                     // Cyan glow aura behind wormy
                     for i in 0..<maxVisible {
@@ -2559,6 +2738,7 @@ struct IntroOverlay: View {
     var onStartLevel4: () -> Void = {}
     @Binding var useRainbowSnake: Bool
     @Binding var useWormySnake: Bool
+    @Binding var useStarSnake: Bool
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -2654,7 +2834,7 @@ struct IntroOverlay: View {
                         .foregroundColor(.gray)
                     HStack(spacing: 20) {
                         // Candy snake (default) — actual painting as icon
-                        Button { useRainbowSnake = false; useWormySnake = false } label: {
+                        Button { useRainbowSnake = false; useWormySnake = false; useStarSnake = false } label: {
                             VStack(spacing: 6) {
                                 if let candyImg = UIImage(named: "snake_custom") ?? (Bundle.main.path(forResource: "snake_custom", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
                                     Image(uiImage: candyImg)
@@ -2666,18 +2846,18 @@ struct IntroOverlay: View {
                                 }
                                 Text("Candy")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(!useRainbowSnake && !useWormySnake ? .white : .gray)
+                                    .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake ? .white : .gray)
                             }
                             .padding(8)
-                            .background(Color.white.opacity(!useRainbowSnake && !useWormySnake ? 0.08 : 0))
+                            .background(Color.white.opacity(!useRainbowSnake && !useWormySnake && !useStarSnake ? 0.08 : 0))
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(!useRainbowSnake && !useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: !useRainbowSnake && !useWormySnake ? 2 : 1)
+                                    .stroke(!useRainbowSnake && !useWormySnake && !useStarSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: !useRainbowSnake && !useWormySnake && !useStarSnake ? 2 : 1)
                             )
                         }
                         // Rainbow snake
-                        Button { useRainbowSnake = true; useWormySnake = false } label: {
+                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false } label: {
                             VStack(spacing: 4) {
                                 Circle()
                                     .fill(LinearGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -2695,7 +2875,7 @@ struct IntroOverlay: View {
                             )
                         }
                         // Wormy snake — actual painting as icon
-                        Button { useWormySnake = true; useRainbowSnake = false } label: {
+                        Button { useWormySnake = true; useRainbowSnake = false; useStarSnake = false } label: {
                             VStack(spacing: 4) {
                                 if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
                                     Image(uiImage: wormyImg)
@@ -2715,6 +2895,35 @@ struct IntroOverlay: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useWormySnake ? 2 : 1)
+                            )
+                        }
+                        // Star snake
+                        Button { useStarSnake = true; useRainbowSnake = false; useWormySnake = false } label: {
+                            VStack(spacing: 4) {
+                                ZStack {
+                                    // Violet circle with stars
+                                    Circle()
+                                        .fill(LinearGradient(colors: [Color(red: 0.3, green: 0.15, blue: 0.6), Color(red: 0.4, green: 0.3, blue: 0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 30, height: 30)
+                                    // Tiny twinkling stars
+                                    Circle().fill(.white).frame(width: 2, height: 2).offset(x: -5, y: -6)
+                                    Circle().fill(Color.cyan).frame(width: 2, height: 2).offset(x: 6, y: -3)
+                                    Circle().fill(Color.yellow).frame(width: 1.5, height: 1.5).offset(x: -3, y: 5)
+                                    Circle().fill(.white).frame(width: 1.5, height: 1.5).offset(x: 7, y: 6)
+                                    // Golden eye
+                                    Circle().fill(Color(red: 0.9, green: 0.75, blue: 0.2)).frame(width: 5, height: 5).offset(x: 2, y: -2)
+                                    Circle().fill(.black).frame(width: 2, height: 2).offset(x: 2, y: -2)
+                                }
+                                Text("Star")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(8)
+                            .background(useStarSnake ? Color.white.opacity(0.1) : Color.clear)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useStarSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useStarSnake ? 2 : 1)
                             )
                         }
                     }
@@ -3129,13 +3338,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake)
                         .id(game.updateTrigger)
                 }
 
@@ -3382,7 +3591,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake)
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake)
                 }
 
                 // Level transition overlay
