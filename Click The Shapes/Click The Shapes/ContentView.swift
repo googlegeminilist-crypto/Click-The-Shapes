@@ -1978,35 +1978,52 @@ struct SnakeView: View {
                         context.fill(scale.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.3)))
                     }
 
-                    // Twinkling stars on body — random positions, cycle colours
-                    if i % 3 == 0 && taper > 0.2 {
-                        let twinkle = max(0, sin(snake.animPhase * 8 + CGFloat(i) * 2.1))
-                        let starHue = (Double(snake.animPhase) * 0.5 + Double(i) * 0.15).truncatingRemainder(dividingBy: 1.0)
-                        let starColor = Color(hue: starHue, saturation: 0.7, brightness: 1.0)
-                        let starR = bodyW * 0.2 * twinkle
-                        let sx = seg.x + perpX + cos(CGFloat(i) * 1.7) * bodyW * 0.4
-                        let sy = seg.y + perpY + sin(CGFloat(i) * 1.7) * bodyH * 0.3
+                    // Sparkling blue twinkling stars on body
+                    if i % 2 == 0 && taper > 0.15 {
+                        // Two stars per segment — different positions and phases
+                        for starIdx in 0..<2 {
+                            let phase = snake.animPhase * (7.0 + CGFloat(starIdx) * 3) + CGFloat(i) * (1.8 + CGFloat(starIdx) * 0.7)
+                            let twinkle = max(0, sin(phase))
+                            // Blue/cyan/white colours
+                            let blueColors: [Color] = [
+                                Color(red: 0.3, green: 0.6, blue: 1.0),   // bright blue
+                                Color(red: 0.2, green: 0.8, blue: 1.0),   // cyan
+                                .white,                                      // white
+                                Color(red: 0.5, green: 0.5, blue: 1.0),   // light purple-blue
+                            ]
+                            let starColor = blueColors[(i + starIdx * 2) % blueColors.count]
+                            let starR = bodyW * 0.25 * twinkle
+                            let offsetAngle = CGFloat(i) * 1.7 + CGFloat(starIdx) * 3.14
+                            let sx = seg.x + perpX + cos(offsetAngle) * bodyW * 0.5
+                            let sy = seg.y + perpY + sin(offsetAngle) * bodyH * 0.4
 
-                        // Star cross
-                        var s1 = Path()
-                        s1.move(to: CGPoint(x: sx, y: sy - starR))
-                        s1.addLine(to: CGPoint(x: sx + starR * 0.2, y: sy))
-                        s1.addLine(to: CGPoint(x: sx, y: sy + starR))
-                        s1.addLine(to: CGPoint(x: sx - starR * 0.2, y: sy))
-                        s1.closeSubpath()
-                        context.fill(s1, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
-                        var s2 = Path()
-                        s2.move(to: CGPoint(x: sx - starR, y: sy))
-                        s2.addLine(to: CGPoint(x: sx, y: sy + starR * 0.2))
-                        s2.addLine(to: CGPoint(x: sx + starR, y: sy))
-                        s2.addLine(to: CGPoint(x: sx, y: sy - starR * 0.2))
-                        s2.closeSubpath()
-                        context.fill(s2, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
+                            // Blue glow
+                            let glowR = starR * 2
+                            context.fill(
+                                Circle().path(in: CGRect(x: sx - glowR, y: sy - glowR, width: glowR * 2, height: glowR * 2)),
+                                with: .color(starColor.opacity(Double(twinkle) * 0.2)))
 
-                        // White center
-                        context.fill(
-                            Circle().path(in: CGRect(x: sx - 0.8, y: sy - 0.8, width: 1.6, height: 1.6)),
-                            with: .color(.white.opacity(Double(twinkle))))
+                            // 4-point star
+                            var s1 = Path()
+                            s1.move(to: CGPoint(x: sx, y: sy - starR))
+                            s1.addLine(to: CGPoint(x: sx + starR * 0.2, y: sy))
+                            s1.addLine(to: CGPoint(x: sx, y: sy + starR))
+                            s1.addLine(to: CGPoint(x: sx - starR * 0.2, y: sy))
+                            s1.closeSubpath()
+                            context.fill(s1, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
+                            var s2 = Path()
+                            s2.move(to: CGPoint(x: sx - starR, y: sy))
+                            s2.addLine(to: CGPoint(x: sx, y: sy + starR * 0.2))
+                            s2.addLine(to: CGPoint(x: sx + starR, y: sy))
+                            s2.addLine(to: CGPoint(x: sx, y: sy - starR * 0.2))
+                            s2.closeSubpath()
+                            context.fill(s2, with: .color(starColor.opacity(Double(twinkle) * 0.9)))
+
+                            // White center dot
+                            context.fill(
+                                Circle().path(in: CGRect(x: sx - 0.7, y: sy - 0.7, width: 1.4, height: 1.4)),
+                                with: .color(.white.opacity(Double(twinkle) * 0.8)))
+                        }
                     }
                 }
 
