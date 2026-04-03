@@ -2889,22 +2889,18 @@ struct IntroOverlay: View {
                                     .stroke(useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useWormySnake ? 2 : 1)
                             )
                         }
-                        // Star snake
+                        // Star snake — photo head as icon
                         Button { useStarSnake = true; useRainbowSnake = false; useWormySnake = false } label: {
                             VStack(spacing: 4) {
-                                ZStack {
-                                    // Violet circle with stars
+                                if let starImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                    Image(uiImage: starImg)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 40, height: 30)
+                                } else {
                                     Circle()
                                         .fill(LinearGradient(colors: [Color(red: 0.3, green: 0.15, blue: 0.6), Color(red: 0.4, green: 0.3, blue: 0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
                                         .frame(width: 30, height: 30)
-                                    // Tiny twinkling stars
-                                    Circle().fill(.white).frame(width: 2, height: 2).offset(x: -5, y: -6)
-                                    Circle().fill(Color.cyan).frame(width: 2, height: 2).offset(x: 6, y: -3)
-                                    Circle().fill(Color.yellow).frame(width: 1.5, height: 1.5).offset(x: -3, y: 5)
-                                    Circle().fill(.white).frame(width: 1.5, height: 1.5).offset(x: 7, y: 6)
-                                    // Golden eye
-                                    Circle().fill(Color(red: 0.9, green: 0.75, blue: 0.2)).frame(width: 5, height: 5).offset(x: 2, y: -2)
-                                    Circle().fill(.black).frame(width: 2, height: 2).offset(x: 2, y: -2)
                                 }
                                 Text("Star")
                                     .font(.system(size: 9, design: .monospaced))
