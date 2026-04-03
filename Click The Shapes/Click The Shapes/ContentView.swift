@@ -2069,96 +2069,29 @@ struct SnakeView: View {
                     }
                 }
 
-                // Head — long flat snake head like reference photo
+                // Head — photo of blue snake, always faces forward
                 if let head = segments.first, segments.count >= 2 {
-                    let lookI = min(4, segments.count - 1)
+                    let lookI = min(5, segments.count - 1)
                     let angle = atan2(head.y - segments[lookI].y, head.x - segments[lookI].x)
-                    let cosA = cos(angle)
-                    let sinA = sin(angle)
-                    let hs = ss * 2.5
-                    let hw = hs * 0.55  // narrow
-                    let hl = hs * 1.8   // long
-                    let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
 
-                    // Long flat head — rounded snout, wider jaw at back
-                    var headPath = Path()
-                    headPath.move(to: CGPoint(x: hl * 0.55, y: 0))  // rounded snout tip
-                    // Bottom — smooth curve from snout to wide jaw
-                    headPath.addCurve(
-                        to: CGPoint(x: -hl * 0.45, y: hw * 0.85),
-                        control1: CGPoint(x: hl * 0.4, y: hw * 0.4),
-                        control2: CGPoint(x: 0, y: hw * 0.9))
-                    // Back of head
-                    headPath.addCurve(
-                        to: CGPoint(x: -hl * 0.5, y: 0),
-                        control1: CGPoint(x: -hl * 0.5, y: hw * 0.5),
-                        control2: CGPoint(x: -hl * 0.52, y: hw * 0.15))
-                    headPath.addCurve(
-                        to: CGPoint(x: -hl * 0.45, y: -hw * 0.7),
-                        control1: CGPoint(x: -hl * 0.52, y: -hw * 0.15),
-                        control2: CGPoint(x: -hl * 0.5, y: -hw * 0.45))
-                    // Top — flat, low profile
-                    headPath.addCurve(
-                        to: CGPoint(x: hl * 0.55, y: 0),
-                        control1: CGPoint(x: 0, y: -hw * 0.75),
-                        control2: CGPoint(x: hl * 0.35, y: -hw * 0.3))
-                    headPath.closeSubpath()
+                    if let headImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                        let headW: CGFloat = 32
+                        let headH: CGFloat = headW * (headImg.size.height / headImg.size.width)
+                        let resolved = context.resolve(Image(uiImage: headImg))
 
-                    // Shadow
-                    let shadowT = CGAffineTransform(translationX: head.x + 1, y: head.y + 1).rotated(by: angle)
-                    context.fill(headPath.applying(shadowT), with: .color(Color.black.opacity(0.2)))
+                        // 3D shadow under head
+                        context.fill(
+                            Ellipse().path(in: CGRect(x: head.x - headW * 0.35 + 2, y: head.y - headH * 0.35 + 3, width: headW * 0.7, height: headH * 0.7)),
+                            with: .color(Color.black.opacity(0.3)))
 
-                    // Main violet fill
-                    context.fill(headPath.applying(ht), with: .color(Color(red: 0.3, green: 0.2, blue: 0.65)))
-
-                    // Lighter top — flat skull shimmer
-                    var topShimmer = Path()
-                    topShimmer.addEllipse(in: CGRect(x: -hl * 0.2, y: -hw * 0.6, width: hl * 0.6, height: hw * 0.5))
-                    context.fill(topShimmer.applying(ht), with: .color(Color(red: 0.45, green: 0.4, blue: 0.85).opacity(0.35)))
-
-                    // Light blue underside/jaw
-                    var jawLight = Path()
-                    jawLight.addEllipse(in: CGRect(x: -hl * 0.1, y: hw * 0.15, width: hl * 0.5, height: hw * 0.5))
-                    context.fill(jawLight.applying(ht), with: .color(Color(red: 0.5, green: 0.6, blue: 0.88).opacity(0.35)))
-
-                    // Scale texture — rows of tiny arcs on top
-                    for row in 0..<3 {
-                        for col in 0..<4 {
-                            let sx = CGFloat(col) * hl * 0.2 - hl * 0.15
-                            let sy = -hw * 0.4 + CGFloat(row) * hw * 0.2
-                            var sc = Path()
-                            sc.addArc(center: CGPoint(x: sx, y: sy), radius: hl * 0.06, startAngle: .degrees(200), endAngle: .degrees(340), clockwise: false)
-                            context.stroke(sc.applying(ht), with: .color(Color(red: 0.25, green: 0.15, blue: 0.55).opacity(0.2)), lineWidth: 0.5)
-                        }
+                        // Draw head image — faces right, rotated to movement direction
+                        context.translateBy(x: head.x, y: head.y)
+                        context.rotate(by: Angle(radians: Double(angle)))
+                        // Head tip at front, body connects at back
+                        context.draw(resolved, in: CGRect(x: -headW * 0.25, y: -headH / 2, width: headW, height: headH))
+                        context.rotate(by: Angle(radians: -Double(angle)))
+                        context.translateBy(x: -head.x, y: -head.y)
                     }
-
-                    // Mouth/lip line — dark line from snout along jaw
-                    var lip = Path()
-                    let lipS = CGPoint(x: hl * 0.5, y: hw * 0.1).applying(ht)
-                    let lipE = CGPoint(x: -hl * 0.35, y: hw * 0.55).applying(ht)
-                    let lipC = CGPoint(x: hl * 0.1, y: hw * 0.45).applying(ht)
-                    lip.move(to: lipS)
-                    lip.addQuadCurve(to: lipE, control: lipC)
-                    context.stroke(lip, with: .color(Color(red: 0.15, green: 0.08, blue: 0.35).opacity(0.5)), lineWidth: 1)
-
-                    // Eye — small, sits far back on side of head, golden with slit
-                    let eyePos = CGPoint(x: -hl * 0.05, y: -hw * 0.25).applying(ht)
-                    let eyeR: CGFloat = hs * 0.18
-                    // Dark ring
-                    context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR - 1, y: eyePos.y - eyeR - 1, width: (eyeR + 1) * 2, height: (eyeR + 1) * 2)), with: .color(Color(red: 0.1, green: 0.05, blue: 0.25).opacity(0.4)))
-                    // Golden iris
-                    context.fill(Circle().path(in: CGRect(x: eyePos.x - eyeR, y: eyePos.y - eyeR, width: eyeR * 2, height: eyeR * 2)), with: .color(Color(red: 0.9, green: 0.75, blue: 0.2)))
-                    // Vertical slit pupil
-                    var slit = Path()
-                    slit.addEllipse(in: CGRect(x: -1, y: -eyeR * 0.65, width: 2, height: eyeR * 1.3))
-                    let slitT = CGAffineTransform(translationX: eyePos.x, y: eyePos.y).rotated(by: angle)
-                    context.fill(slit.applying(slitT), with: .color(.black))
-                    // Eye highlight
-                    context.fill(Circle().path(in: CGRect(x: eyePos.x + 1, y: eyePos.y - eyeR * 0.4, width: 1.5, height: 1.5)), with: .color(.white))
-
-                    // Nostril pit
-                    let nostril = CGPoint(x: hl * 0.4, y: -hw * 0.1).applying(ht)
-                    context.fill(Circle().path(in: CGRect(x: nostril.x - 1.2, y: nostril.y - 1.2, width: 2.4, height: 2.4)), with: .color(Color(red: 0.15, green: 0.08, blue: 0.35)))
                 }
 
                 return
