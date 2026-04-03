@@ -1952,20 +1952,52 @@ struct SnakeView: View {
                     let violet = Color(red: 0.35 + shimmer * 0.15, green: 0.2 + shimmer * 0.15, blue: 0.7 + shimmer * 0.15)
                     let lightBlue = Color(red: 0.4 + shimmer * 0.2, green: 0.55 + shimmer * 0.2, blue: 0.85)
 
+                    // 3D DEPTH — large soft ground shadow (far below)
+                    let shadow2T = CGAffineTransform(translationX: seg.x + perpX + 3, y: seg.y + perpY + 5).rotated(by: angle)
+                    var shadow2 = Path()
+                    shadow2.addEllipse(in: CGRect(x: -bodyW * 1.5, y: -bodyH * 0.7, width: bodyW * 3, height: bodyH * 1.4))
+                    context.fill(shadow2.applying(shadow2T), with: .color(Color(red: 0.05, green: 0.0, blue: 0.15).opacity(fade * 0.15)))
+
+                    // 3D DEPTH — close shadow underneath body
+                    let shadowT = CGAffineTransform(translationX: seg.x + perpX + 1.5, y: seg.y + perpY + 3).rotated(by: angle)
+                    var shadow = Path()
+                    shadow.addEllipse(in: CGRect(x: -bodyW * 1.2, y: -bodyH * 0.6, width: bodyW * 2.4, height: bodyH * 1.2))
+                    context.fill(shadow.applying(shadowT), with: .color(Color(red: 0.05, green: 0.0, blue: 0.15).opacity(fade * 0.35)))
+
                     // Outer glow — soft violet haze
                     var glow = Path()
                     glow.addEllipse(in: CGRect(x: -bodyW * 1.4, y: -bodyH * 0.8, width: bodyW * 2.8, height: bodyH * 1.6))
-                    context.fill(glow.applying(oblongT), with: .color(violet.opacity(fade * 0.15)))
+                    context.fill(glow.applying(oblongT), with: .color(violet.opacity(fade * 0.12)))
 
-                    // Main body — gradient violet to blue
+                    // 3D DEPTH — dark underside (bottom of tube — deep shadow)
+                    var darkBottom = Path()
+                    darkBottom.addEllipse(in: CGRect(x: -bodyW * 1.05, y: bodyH * 0.0, width: bodyW * 2.1, height: bodyH * 0.6))
+                    context.fill(darkBottom.applying(oblongT), with: .color(Color(red: 0.08, green: 0.03, blue: 0.25).opacity(fade * 0.6)))
+
+                    // Main body — mid tone violet
                     var body = Path()
                     body.addEllipse(in: CGRect(x: -bodyW, y: -bodyH / 2, width: bodyW * 2, height: bodyH))
-                    context.fill(body.applying(oblongT), with: .color(violet.opacity(fade * 0.8)))
+                    context.fill(body.applying(oblongT), with: .color(violet.opacity(fade * 0.7)))
+
+                    // 3D DEPTH — wide highlight band on top
+                    var highlight = Path()
+                    highlight.addEllipse(in: CGRect(x: -bodyW * 0.6, y: -bodyH * 0.52, width: bodyW * 1.2, height: bodyH * 0.4))
+                    context.fill(highlight.applying(oblongT), with: .color(Color(red: 0.6, green: 0.55, blue: 0.95).opacity(fade * 0.45)))
+
+                    // 3D DEPTH — sharp highlight (bright ridge)
+                    var sharpHL = Path()
+                    sharpHL.addEllipse(in: CGRect(x: -bodyW * 0.35, y: -bodyH * 0.48, width: bodyW * 0.7, height: bodyH * 0.2))
+                    context.fill(sharpHL.applying(oblongT), with: .color(Color(red: 0.75, green: 0.7, blue: 1.0).opacity(fade * 0.4)))
+
+                    // 3D DEPTH — specular hot spot (glossy reflection)
+                    var specular = Path()
+                    specular.addEllipse(in: CGRect(x: -bodyW * 0.12, y: -bodyH * 0.47, width: bodyW * 0.24, height: bodyH * 0.12))
+                    context.fill(specular.applying(oblongT), with: .color(Color.white.opacity(fade * 0.45)))
 
                     // Light belly shimmer
                     var belly = Path()
-                    belly.addEllipse(in: CGRect(x: -bodyW * 0.6, y: 0, width: bodyW * 1.2, height: bodyH * 0.5))
-                    context.fill(belly.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.5)))
+                    belly.addEllipse(in: CGRect(x: -bodyW * 0.6, y: 0, width: bodyW * 1.2, height: bodyH * 0.45))
+                    context.fill(belly.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.35)))
 
                     // Scale pattern — tiny diamond shapes
                     if i % 2 == 0 {
@@ -1975,8 +2007,18 @@ struct SnakeView: View {
                         scale.addLine(to: CGPoint(x: 0, y: bodyH * 0.3))
                         scale.addLine(to: CGPoint(x: -bodyW * 0.15, y: 0))
                         scale.closeSubpath()
-                        context.fill(scale.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.3)))
+                        context.fill(scale.applying(oblongT), with: .color(lightBlue.opacity(fade * 0.25)))
                     }
+
+                    // 3D DEPTH — rim light on top edge (backlight pop)
+                    var rimTop = Path()
+                    rimTop.addEllipse(in: CGRect(x: -bodyW * 0.85, y: -bodyH * 0.57, width: bodyW * 1.7, height: bodyH * 0.12))
+                    context.fill(rimTop.applying(oblongT), with: .color(Color(red: 0.7, green: 0.65, blue: 1.0).opacity(fade * 0.3)))
+
+                    // 3D DEPTH — bottom rim light (reflected light from below)
+                    var rimBot = Path()
+                    rimBot.addEllipse(in: CGRect(x: -bodyW * 0.6, y: bodyH * 0.4, width: bodyW * 1.2, height: bodyH * 0.12))
+                    context.fill(rimBot.applying(oblongT), with: .color(Color(red: 0.4, green: 0.35, blue: 0.8).opacity(fade * 0.12)))
 
                     // Sparkling blue twinkling stars on body
                     if i % 2 == 0 && taper > 0.15 {
