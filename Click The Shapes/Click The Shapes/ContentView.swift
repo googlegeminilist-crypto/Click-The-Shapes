@@ -961,7 +961,8 @@ class GameViewModel: ObservableObject {
     var diamonds: [Diamond] = []
     var diamondTimer: Timer?
     @AppStorage("diamondsCollected") var diamondsCollected = 0
-    var starSnakeUnlocked: Bool { diamondsCollected >= 10 }
+    @AppStorage("starSnakePurchased") var starSnakePurchased = false
+    @AppStorage("candySnakePurchased") var candySnakePurchased = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -2962,19 +2963,44 @@ struct IntroOverlay: View {
                         .foregroundColor(.gray)
                     HStack(spacing: 20) {
                         // Candy snake (default) — actual painting as icon
-                        Button { useRainbowSnake = false; useWormySnake = false; useStarSnake = false } label: {
+                        Button {
+                            let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
+                            if purchased {
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                            } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
+                                // Spend 1000 diamonds to unlock
+                                UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
+                                UserDefaults.standard.set(true, forKey: "candySnakePurchased")
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                            }
+                        } label: {
+                            let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
+                            let dCount = UserDefaults.standard.integer(forKey: "diamondsCollected")
+                            let canBuy = dCount >= 1000
                             VStack(spacing: 6) {
-                                if let candyImg = UIImage(named: "snake_custom") ?? (Bundle.main.path(forResource: "snake_custom", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                    Image(uiImage: candyImg)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 50, height: 30)
-                                } else {
-                                    Circle().fill(Color(red: 0.3, green: 0.65, blue: 0.15)).frame(width: 30, height: 30)
+                                ZStack {
+                                    if let candyImg = UIImage(named: "snake_custom") ?? (Bundle.main.path(forResource: "snake_custom", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                        Image(uiImage: candyImg)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 50, height: 30)
+                                            .opacity(purchased ? 1 : 0.3)
+                                    }
+                                    if !purchased {
+                                        Image(systemName: canBuy ? "lock.open.fill" : "lock.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
+                                    }
                                 }
-                                Text("Candy")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake ? .white : .gray)
+                                if purchased {
+                                    Text("Candy")
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake ? .white : .gray)
+                                } else {
+                                    Text(canBuy ? "Unlock 1000💎" : "\(dCount)/1000 💎")
+                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                                        .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
+                                }
                             }
                             .padding(8)
                             .background(Color.white.opacity(!useRainbowSnake && !useWormySnake && !useStarSnake ? 0.08 : 0))
@@ -3025,14 +3051,20 @@ struct IntroOverlay: View {
                                     .stroke(useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useWormySnake ? 2 : 1)
                             )
                         }
-                        // Star snake — locked until 10 diamonds collected
+                        // Star snake — costs 1000 diamonds to unlock
                         Button {
-                            if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 10 {
+                            let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
+                            if purchased {
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false
+                            } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
+                                UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
+                                UserDefaults.standard.set(true, forKey: "starSnakePurchased")
                                 useStarSnake = true; useRainbowSnake = false; useWormySnake = false
                             }
                         } label: {
-                            let unlocked = UserDefaults.standard.integer(forKey: "diamondsCollected") >= 10
-                            let collected = UserDefaults.standard.integer(forKey: "diamondsCollected")
+                            let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
+                            let dCount = UserDefaults.standard.integer(forKey: "diamondsCollected")
+                            let canBuy = dCount >= 1000
                             VStack(spacing: 4) {
                                 ZStack {
                                     if let starImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
@@ -3040,27 +3072,22 @@ struct IntroOverlay: View {
                                             .resizable()
                                             .aspectRatio(contentMode: .fit)
                                             .frame(width: 40, height: 30)
-                                            .opacity(unlocked ? 1 : 0.3)
+                                            .opacity(purchased ? 1 : 0.3)
                                     }
-                                    if !unlocked {
-                                        Image(systemName: "lock.fill")
+                                    if !purchased {
+                                        Image(systemName: canBuy ? "lock.open.fill" : "lock.fill")
                                             .font(.system(size: 14))
-                                            .foregroundColor(.gray)
+                                            .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
                                     }
                                 }
-                                Text(unlocked ? "Star" : "\(collected)/10 💎")
-                                    .font(.system(size: 8, design: .monospaced))
-                                    .foregroundColor(unlocked ? .white : .gray)
-                                if !unlocked {
-                                    // Diamond icon + count
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "diamond.fill")
-                                            .font(.system(size: 7))
-                                            .foregroundColor(.cyan)
-                                        Text("Collect 10")
-                                            .font(.system(size: 6, design: .monospaced))
-                                            .foregroundColor(.gray)
-                                    }
+                                if purchased {
+                                    Text("Star")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.white)
+                                } else {
+                                    Text(canBuy ? "Unlock 1000💎" : "\(dCount)/1000 💎")
+                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                                        .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
                                 }
                             }
                             .padding(8)
