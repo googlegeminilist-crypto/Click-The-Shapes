@@ -474,6 +474,32 @@ class LightningBolt: Identifiable {
     }
 }
 
+// MARK: - Diamond Collectible
+class Diamond: Identifiable {
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var size: CGFloat = 28
+    var isActive = true
+    var floatPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
+    var sparklePhase: CGFloat = 0
+
+    init(bounds: CGSize) {
+        x = CGFloat.random(in: 60...max(61, bounds.width - 60))
+        y = CGFloat.random(in: 120...max(121, bounds.height - 120))
+    }
+
+    func update() {
+        floatPhase += 0.03
+        sparklePhase += 0.08
+    }
+
+    func isClicked(at point: CGPoint) -> Bool {
+        guard isActive else { return false }
+        return hypot(point.x - x, point.y - y) < size * 1.2
+    }
+}
+
 // MARK: - Power Up Model
 class PowerUp: Identifiable {
     let id = UUID()
@@ -929,6 +955,10 @@ class GameViewModel: ObservableObject {
     @Published var useRainbowSnake = false
     @Published var useWormySnake = false
     @Published var useStarSnake = false
+    var diamonds: [Diamond] = []
+    var diamondTimer: Timer?
+    @AppStorage("diamondsCollected") var diamondsCollected = 0
+    var starSnakeUnlocked: Bool { diamondsCollected >= 10 }
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1012,6 +1042,16 @@ class GameViewModel: ObservableObject {
         }
         SoundManager.shared.playBackgroundMusic()
         AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
+        // Start diamond spawns
+        startDiamondTimer()
+    }
+
+    func startDiamondTimer() {
+        diamondTimer?.invalidate()
+        diamondTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: true) { [weak self] _ in
+            guard let self = self, !self.gameOver, self.diamonds.count < 2 else { return }
+            self.diamonds.append(Diamond(bounds: self.bounds))
+        }
     }
 
     func startGameLoop() {
@@ -1040,6 +1080,8 @@ class GameViewModel: ObservableObject {
         lightningRainTimer?.invalidate()
         lightningRainTimer = nil
         lightningRainActive = false
+        diamondTimer?.invalidate()
+        diamondTimer = nil
     }
 
     func pauseGame() {
@@ -1110,6 +1152,12 @@ class GameViewModel: ObservableObject {
             powerUp = nil
         }
 
+        // Update diamonds
+        for diamond in diamonds {
+            diamond.update()
+        }
+        diamonds.removeAll { !$0.isActive }
+
         // Update nebula dust (Level 4)
         for dust in nebulaDust {
             dust.update(bounds: bounds)
@@ -1167,6 +1215,24 @@ class GameViewModel: ObservableObject {
 
     func handleTap(at point: CGPoint) {
         guard !gameOver, !showIntro, !showLevelTransition else { return }
+
+        // Check diamonds — collect them
+        for diamond in diamonds {
+            if diamond.isClicked(at: point) {
+                diamond.isActive = false
+                diamondsCollected += 1
+                if tapSoundEnabled { SoundManager.shared.playExplosion() }
+                // Sparkle particles
+                for _ in 0..<10 {
+                    let p = Particle(x: diamond.x, y: diamond.y)
+                    let colors: [Color] = [.cyan, .white, Color(red: 0.8, green: 0.6, blue: 1), .yellow]
+                    p.color = colors.randomElement()!
+                    p.size = CGFloat.random(in: 2...5)
+                    particles.append(p)
+                }
+                return
+            }
+        }
 
         // Check lightning bolts (Level 4) — 50 points
         for bolt in lightningBolts {
@@ -1548,6 +1614,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        diamonds.removeAll()
         nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
@@ -1576,6 +1643,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        diamonds.removeAll()
         nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
@@ -1607,6 +1675,7 @@ class GameViewModel: ObservableObject {
         particles.removeAll()
         fireballs.removeAll()
         lightningBolts.removeAll()
+        diamonds.removeAll()
         nebulaDust.removeAll()
         shapeSequence.removeAll()
         sequenceProgress = 0
@@ -2945,22 +3014,43 @@ struct IntroOverlay: View {
                                     .stroke(useWormySnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useWormySnake ? 2 : 1)
                             )
                         }
-                        // Star snake — photo head as icon
-                        Button { useStarSnake = true; useRainbowSnake = false; useWormySnake = false } label: {
+                        // Star snake — locked until 10 diamonds collected
+                        Button {
+                            if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 10 {
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false
+                            }
+                        } label: {
+                            let unlocked = UserDefaults.standard.integer(forKey: "diamondsCollected") >= 10
+                            let collected = UserDefaults.standard.integer(forKey: "diamondsCollected")
                             VStack(spacing: 4) {
-                                if let starImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                    Image(uiImage: starImg)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 40, height: 30)
-                                } else {
-                                    Circle()
-                                        .fill(LinearGradient(colors: [Color(red: 0.3, green: 0.15, blue: 0.6), Color(red: 0.4, green: 0.3, blue: 0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                        .frame(width: 30, height: 30)
+                                ZStack {
+                                    if let starImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                        Image(uiImage: starImg)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 40, height: 30)
+                                            .opacity(unlocked ? 1 : 0.3)
+                                    }
+                                    if !unlocked {
+                                        Image(systemName: "lock.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.gray)
+                                    }
                                 }
-                                Text("Star")
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(.white)
+                                Text(unlocked ? "Star" : "Star \(collected)/10")
+                                    .font(.system(size: 8, design: .monospaced))
+                                    .foregroundColor(unlocked ? .white : .gray)
+                                if !unlocked {
+                                    // Diamond icon + count
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "diamond.fill")
+                                            .font(.system(size: 7))
+                                            .foregroundColor(.cyan)
+                                        Text("Collect 10")
+                                            .font(.system(size: 6, design: .monospaced))
+                                            .foregroundColor(.gray)
+                                    }
+                                }
                             }
                             .padding(8)
                             .background(useStarSnake ? Color.white.opacity(0.1) : Color.clear)
@@ -3398,6 +3488,43 @@ struct ContentView: View {
                         .id(game.updateTrigger)
                 }
 
+                // Diamonds — 3D depth of field
+                ForEach(game.diamonds) { diamond in
+                    if diamond.isActive {
+                        let floatY = sin(diamond.floatPhase) * 4
+                        let sparkle = (sin(diamond.sparklePhase) + 1) / 2
+
+                        ZStack {
+                            // 3D shadow on ground
+                            Ellipse()
+                                .fill(Color.black.opacity(0.25))
+                                .frame(width: diamond.size * 0.8, height: diamond.size * 0.3)
+                                .offset(y: diamond.size * 0.7)
+
+                            // Diamond image
+                            if let dImg = UIImage(named: "diamond") ?? (Bundle.main.path(forResource: "diamond", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                Image(uiImage: dImg)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: diamond.size, height: diamond.size)
+                            }
+
+                            // 3D sparkle highlight
+                            Circle()
+                                .fill(Color.white.opacity(sparkle * 0.6))
+                                .frame(width: diamond.size * 0.2, height: diamond.size * 0.2)
+                                .offset(x: -diamond.size * 0.15, y: -diamond.size * 0.2)
+
+                            // Colour glow
+                            Circle()
+                                .fill(Color.cyan.opacity(sparkle * 0.2))
+                                .frame(width: diamond.size * 1.5, height: diamond.size * 1.5)
+                        }
+                        .position(x: diamond.x, y: diamond.y + floatY)
+                        .id("\(diamond.id)-\(game.updateTrigger)")
+                    }
+                }
+
                 // Lightning bolts (Level 4)
                 ForEach(game.lightningBolts) { bolt in
                     if bolt.isActive {
@@ -3533,6 +3660,24 @@ struct ContentView: View {
 
                     Spacer()
                         .allowsHitTesting(false)
+
+                    // Diamond counter
+                    if !game.diamonds.isEmpty || game.diamondsCollected < 10 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "diamond.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.cyan)
+                            Text("\(game.diamondsCollected)/10")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundColor(.cyan)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(8)
+                        .allowsHitTesting(false)
+                        .padding(.bottom, 4)
+                    }
 
                     // Level 4 sequence challenge display
                     if game.currentLevel >= 4, !game.shapeSequence.isEmpty {
