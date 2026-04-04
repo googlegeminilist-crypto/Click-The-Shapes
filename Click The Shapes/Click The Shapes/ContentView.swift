@@ -3620,83 +3620,119 @@ struct ContentView: View {
                     }
                     .padding(.top, 50)
 
-                    HStack {
-                        // Snake score (left) + sound toggle below
-                        VStack(alignment: .leading, spacing: 6) {
-                            VStack(alignment: .leading) {
-                                Text("Snake")
-                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
-                                Text("\(game.snakeScore)")
-                                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                            }
-                            .foregroundColor(GameColors.neonPink)
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(GameColors.neonPink, lineWidth: 2)
-                            )
-                            .allowsHitTesting(false)
-
-                            // Tap sound toggle
-                            Button(action: {
-                                game.tapSoundEnabled.toggle()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: game.tapSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                                        .font(.system(size: 12))
-                                    Text(game.tapSoundEnabled ? "Sound On" : "Sound Off")
-                                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    if game.currentLevel >= 4 {
+                        // Level 4 — compact score bar all in one row
+                        VStack(spacing: 4) {
+                            HStack(spacing: 10) {
+                                // Snake score — pink box
+                                VStack(spacing: 2) {
+                                    Text("SNAKES")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonPink.opacity(0.7))
+                                    Text("\(game.snakeScore)")
+                                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonPink)
                                 }
-                                .foregroundColor(game.tapSoundEnabled ? GameColors.neonCyan : .gray)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(Color.black.opacity(0.7))
-                                .cornerRadius(6)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(game.tapSoundEnabled ? GameColors.neonCyan : .gray, lineWidth: 1)
-                                )
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(GameColors.neonPink, lineWidth: 1.5))
+
+                                // Target — yellow
+                                VStack(spacing: 2) {
+                                    Text("TARGET")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonYellow.opacity(0.7))
+                                    Text("\(game.winningScore)")
+                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonYellow)
+                                }
+
+                                // Player score — green box
+                                VStack(spacing: 2) {
+                                    Text("YOU")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonGreen.opacity(0.7))
+                                    Text("\(game.score)")
+                                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonGreen)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(GameColors.neonGreen, lineWidth: 1.5))
+                            }
+                            .allowsHitTesting(false)
+
+                            // Sound toggle
+                            Button(action: { game.tapSoundEnabled.toggle() }) {
+                                Image(systemName: game.tapSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(game.tapSoundEnabled ? GameColors.neonCyan : .gray)
+                                    .padding(4)
+                                    .background(Color.black.opacity(0.6))
+                                    .cornerRadius(4)
                             }
                         }
+                        .padding(.top, 5)
+                    } else {
+                        // Levels 1-3 — normal layout
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                VStack(alignment: .leading) {
+                                    Text("Snake")
+                                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    Text("\(game.snakeScore)")
+                                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                                }
+                                .foregroundColor(GameColors.neonPink)
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(GameColors.neonPink, lineWidth: 2))
+                                .allowsHitTesting(false)
 
-                        Spacer()
+                                Button(action: { game.tapSoundEnabled.toggle() }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: game.tapSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                            .font(.system(size: 12))
+                                        Text(game.tapSoundEnabled ? "Sound On" : "Sound Off")
+                                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    }
+                                    .foregroundColor(game.tapSoundEnabled ? GameColors.neonCyan : .gray)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.black.opacity(0.7))
+                                    .cornerRadius(6)
+                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(game.tapSoundEnabled ? GameColors.neonCyan : .gray, lineWidth: 1))
+                                }
+                            }
+
+                            Spacer().allowsHitTesting(false)
+
+                            VStack {
+                                Text("Target").font(.system(size: 10, design: .monospaced)).foregroundColor(.gray)
+                                Text("\(game.winningScore)").font(.system(size: 16, weight: .bold, design: .monospaced)).foregroundColor(GameColors.neonYellow)
+                            }.allowsHitTesting(false)
+
+                            Spacer().allowsHitTesting(false)
+
+                            VStack(alignment: .trailing) {
+                                Text("You").font(.system(size: 14, weight: .medium, design: .monospaced))
+                                Text("\(game.score)").font(.system(size: 28, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(GameColors.neonGreen)
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(GameColors.neonGreen, lineWidth: 2))
                             .allowsHitTesting(false)
-
-                        // Target score
-                        VStack {
-                            Text("Target")
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(.gray)
-                            Text("\(game.winningScore)")
-                                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                                .foregroundColor(GameColors.neonYellow)
                         }
-                        .allowsHitTesting(false)
-
-                        Spacer()
-                            .allowsHitTesting(false)
-
-                        // Player score (right)
-                        VStack(alignment: .trailing) {
-                            Text("You")
-                                .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            Text("\(game.score)")
-                                .font(.system(size: 28, weight: .bold, design: .monospaced))
-                        }
-                        .foregroundColor(GameColors.neonGreen)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(GameColors.neonGreen, lineWidth: 2)
-                        )
-                        .allowsHitTesting(false)
+                        .padding(.horizontal)
+                        .padding(.top, 5)
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 5)
 
                     Spacer()
                         .allowsHitTesting(false)
