@@ -1052,8 +1052,11 @@ class GameViewModel: ObservableObject {
     func startDiamondTimer() {
         diamondTimer?.invalidate()
         diamondTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            guard let self = self, !self.gameOver, self.diamonds.count < 5 else { return }
-            self.diamonds.append(Diamond(bounds: self.bounds))
+            guard let self = self, !self.gameOver else { return }
+            // Spawn up to 5 at once
+            while self.diamonds.count < 5 {
+                self.diamonds.append(Diamond(bounds: self.bounds))
+            }
         }
     }
 
@@ -3045,7 +3048,7 @@ struct IntroOverlay: View {
                                             .foregroundColor(.gray)
                                     }
                                 }
-                                Text(unlocked ? "Star" : "Star \(collected)/10")
+                                Text(unlocked ? "Star" : "\(collected)/10 💎")
                                     .font(.system(size: 8, design: .monospaced))
                                     .foregroundColor(unlocked ? .white : .gray)
                                 if !unlocked {
@@ -3672,12 +3675,12 @@ struct ContentView: View {
                         .allowsHitTesting(false)
 
                     // Diamond counter
-                    if !game.diamonds.isEmpty || game.diamondsCollected < 10 {
+                    if true {
                         HStack(spacing: 4) {
                             Image(systemName: "diamond.fill")
                                 .font(.system(size: 12))
                                 .foregroundColor(.cyan)
-                            Text("\(game.diamondsCollected)/10")
+                            Text(game.diamondsCollected >= 1000 ? "\(game.diamondsCollected / 1000)K" : "\(game.diamondsCollected)")
                                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                                 .foregroundColor(.cyan)
                         }
