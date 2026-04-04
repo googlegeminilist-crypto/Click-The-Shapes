@@ -483,6 +483,7 @@ class Diamond: Identifiable {
     var isActive = true
     var floatPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
     var sparklePhase: CGFloat = 0
+    var life: CGFloat = 1.0  // fades out over time
 
     init(bounds: CGSize) {
         x = CGFloat.random(in: 60...max(61, bounds.width - 60))
@@ -490,8 +491,10 @@ class Diamond: Identifiable {
     }
 
     func update() {
-        floatPhase += 0.03
-        sparklePhase += 0.08
+        floatPhase += 0.05
+        sparklePhase += 0.12
+        life -= 0.007  // disappears after ~2.5 seconds
+        if life <= 0 { isActive = false }
     }
 
     func isClicked(at point: CGPoint) -> Bool {
@@ -1048,8 +1051,8 @@ class GameViewModel: ObservableObject {
 
     func startDiamondTimer() {
         diamondTimer?.invalidate()
-        diamondTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: true) { [weak self] _ in
-            guard let self = self, !self.gameOver, self.diamonds.count < 2 else { return }
+        diamondTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            guard let self = self, !self.gameOver, self.diamonds.count < 5 else { return }
             self.diamonds.append(Diamond(bounds: self.bounds))
         }
     }
@@ -1109,6 +1112,9 @@ class GameViewModel: ObservableObject {
             }
             if currentLevel >= 2 {
                 startTrapBoxTimer()
+            }
+            if diamondTimer == nil {
+                startDiamondTimer()
             }
         }
     }
@@ -1665,6 +1671,7 @@ class GameViewModel: ObservableObject {
         snake2 = nil
         startGameLoop()
         SoundManager.shared.playBackgroundMusic()
+        startDiamondTimer()
     }
 
     func restartCurrentLevel() {
@@ -1736,6 +1743,7 @@ class GameViewModel: ObservableObject {
         }
 
         startGameLoop()
+        startDiamondTimer()
         if currentLevel >= 4 {
             SoundManager.shared.playLevel4Music()
             startLightningTimer()
@@ -3520,6 +3528,8 @@ struct ContentView: View {
                                 .fill(Color.cyan.opacity(sparkle * 0.2))
                                 .frame(width: diamond.size * 1.5, height: diamond.size * 1.5)
                         }
+                        .opacity(Double(diamond.life))
+                        .scaleEffect(diamond.life < 0.3 ? CGFloat(diamond.life / 0.3) : 1.0)
                         .position(x: diamond.x, y: diamond.y + floatY)
                         .id("\(diamond.id)-\(game.updateTrigger)")
                     }
