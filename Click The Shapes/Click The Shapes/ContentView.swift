@@ -959,6 +959,8 @@ class GameViewModel: ObservableObject {
     @Published var useWormySnake = false
     @Published var useStarSnake = false
     @Published var useBlazeSnake = false
+    @Published var useNebulaSnake = false
+    @Published var snakeSpeedMultiplier: CGFloat = 1.0
     var diamonds: [Diamond] = []
     var diamondTimer: Timer?
     @AppStorage("diamondsCollected") var diamondsCollected = 0
@@ -1035,6 +1037,7 @@ class GameViewModel: ObservableObject {
 
         // Create snake
         snake = Snake(bounds: bounds)
+        snake?.speed = 4.5 * snakeSpeedMultiplier
 
         // Start game loop
         startGameLoop()
@@ -1426,7 +1429,7 @@ class GameViewModel: ObservableObject {
 
         // Reset snake — Level 2 speed
         snake = Snake(bounds: bounds)
-        snake?.speed = 8.0
+        snake?.speed = 8.0 * snakeSpeedMultiplier
 
         // Start trap box timer (will only activate shapes once transition is done)
         startTrapBoxTimer()
@@ -1455,7 +1458,7 @@ class GameViewModel: ObservableObject {
 
         // Reset snake (faster in Level 3)
         snake = Snake(bounds: bounds)
-        snake?.speed = 6.5
+        snake?.speed = 6.5 * snakeSpeedMultiplier
 
         // Reset all shapes with Level 3 properties (fast + shrinking)
         for shape in shapes {
@@ -1495,11 +1498,11 @@ class GameViewModel: ObservableObject {
 
         // First snake — fast
         snake = Snake(bounds: bounds)
-        snake?.speed = 8.0
+        snake?.speed = 8.0 * snakeSpeedMultiplier
 
         // Second snake — spawns from opposite side, also fast
         snake2 = Snake(bounds: bounds)
-        snake2?.speed = 7.0
+        snake2?.speed = 7.0 * snakeSpeedMultiplier
 
         // Reset shapes with Level 3+ properties (fast + shrinking)
         for shape in shapes {
@@ -1640,6 +1643,7 @@ class GameViewModel: ObservableObject {
             shape.trapBoxTimer = nil
         }
         snake = Snake(bounds: bounds)
+        snake?.speed = 4.5 * snakeSpeedMultiplier
         snake2 = nil
     }
 
@@ -1673,6 +1677,7 @@ class GameViewModel: ObservableObject {
         }
 
         snake = Snake(bounds: bounds)
+        snake?.speed = 4.5 * snakeSpeedMultiplier
         snake2 = nil
         startGameLoop()
         SoundManager.shared.playBackgroundMusic()
@@ -1732,15 +1737,17 @@ class GameViewModel: ObservableObject {
 
         snake = Snake(bounds: bounds)
         if level >= 4 {
-            snake?.speed = 8.0
+            snake?.speed = 8.0 * snakeSpeedMultiplier
         } else if level >= 3 {
-            snake?.speed = 6.5
+            snake?.speed = 6.5 * snakeSpeedMultiplier
         } else if level >= 2 {
-            snake?.speed = 8.0
+            snake?.speed = 8.0 * snakeSpeedMultiplier
+        } else {
+            snake?.speed = 4.5 * snakeSpeedMultiplier
         }
         if level >= 4 {
             snake2 = Snake(bounds: bounds)
-            snake2?.speed = 7.0
+            snake2?.speed = 7.0 * snakeSpeedMultiplier
             nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
         } else {
             snake2 = nil
@@ -3039,6 +3046,7 @@ struct IntroOverlay: View {
     @Binding var useWormySnake: Bool
     @Binding var useStarSnake: Bool
     @Binding var useBlazeSnake: Bool
+    @Binding var snakeSpeedMultiplier: CGFloat
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -3305,6 +3313,25 @@ struct IntroOverlay: View {
                             )
                         }
                     }
+                }
+
+                // Snake speed slider
+                VStack(spacing: 4) {
+                    Text("SNAKE SPEED")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(.gray)
+                    HStack(spacing: 8) {
+                        Text("🐌")
+                            .font(.system(size: 12))
+                        Slider(value: $snakeSpeedMultiplier, in: 0.3...1.0, step: 0.1)
+                            .accentColor(GameColors.neonGreen)
+                            .frame(width: 150)
+                        Text("🐇")
+                            .font(.system(size: 12))
+                    }
+                    Text("\(Int(snakeSpeedMultiplier * 100))%")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(snakeSpeedMultiplier < 0.5 ? GameColors.neonGreen : snakeSpeedMultiplier < 0.8 ? GameColors.neonYellow : GameColors.neonPink)
                 }
 
                 Button(action: onStart) {
@@ -4062,7 +4089,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake)
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
                 }
 
                 // Level transition overlay
