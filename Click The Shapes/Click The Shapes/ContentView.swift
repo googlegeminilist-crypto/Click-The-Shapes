@@ -966,6 +966,9 @@ class GameViewModel: ObservableObject {
     @AppStorage("diamondsCollected") var diamondsCollected = 0
     @AppStorage("starSnakePurchased") var starSnakePurchased = false
     @AppStorage("candySnakePurchased") var candySnakePurchased = false
+    @AppStorage("wormySnakePurchased") var wormySnakePurchased = false
+    @AppStorage("blazeSnakePurchased") var blazeSnakePurchased = false
+    @AppStorage("nebulaSnakePurchased") var nebulaSnakePurchased = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1978,6 +1981,15 @@ struct SnakeView: View {
         Canvas { context, size in
             guard maxVisible > 0 else { return }
 
+            // Glow aura for Level 4 second snake (any skin)
+            if glowing {
+                for i in 0..<maxVisible {
+                    let seg = segments[i]
+                    let gs = snake.segmentSize * 4
+                    context.fill(Circle().path(in: CGRect(x: seg.x - gs, y: seg.y - gs, width: gs * 2, height: gs * 2)), with: .color(Color.cyan.opacity(0.08)))
+                }
+            }
+
             if useRainbow && !glowing {
                 // --- Rainbow snake (original) ---
                 for i in 0..<maxVisible {
@@ -2020,7 +2032,7 @@ struct SnakeView: View {
             // --- Wormy snake — green watercolour worm with bulging eyes ---
             // --- Star snake — violet/blue shimmering skin with twinkling stars ---
             // --- Blaze snake — blue and red shining skin like candy style ---
-            if useBlaze && !glowing {
+            if useBlaze {
                 for i in 0..<maxVisible {
                     let segment = segments[i]
                     let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.35
@@ -2074,7 +2086,7 @@ struct SnakeView: View {
                 return
             }
 
-            if useStar && !glowing {
+            if useStar {
                 // Half blue / half yellow rainbow style with sparkles
                 for i in 0..<maxVisible {
                     let segment = segments[i]
@@ -2321,7 +2333,7 @@ struct SnakeView: View {
                 return
             }
 
-            if useWormy && !glowing {
+            if useWormy {
                 // Universe snake — deep space body with twinkling stars
                 for i in 0..<maxVisible {
                     let segment = segments[i]
@@ -3137,9 +3149,12 @@ struct IntroOverlay: View {
                 Button {
                     UserDefaults.standard.set(true, forKey: "candySnakePurchased")
                     UserDefaults.standard.set(true, forKey: "starSnakePurchased")
-                    UserDefaults.standard.set(2000, forKey: "diamondsCollected")
+                    UserDefaults.standard.set(true, forKey: "wormySnakePurchased")
+                    UserDefaults.standard.set(true, forKey: "blazeSnakePurchased")
+                    UserDefaults.standard.set(true, forKey: "nebulaSnakePurchased")
+                    UserDefaults.standard.set(10000, forKey: "diamondsCollected")
                 } label: {
-                    Text("DEBUG: Unlock Candy + Star")
+                    Text("DEBUG: Unlock All Snakes")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
                         .padding(.horizontal, 16)
@@ -3222,19 +3237,27 @@ struct IntroOverlay: View {
                             )
                         }
                         // Wormy snake — actual painting as icon
-                        Button { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false } label: {
+                        Button {
+                            let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
+                            if p { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false }
+                            else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
+                                UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
+                                UserDefaults.standard.set(true, forKey: "wormySnakePurchased")
+                                useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false
+                            }
+                        } label: {
+                            let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
+                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
                             VStack(spacing: 4) {
-                                if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                    Image(uiImage: wormyImg)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 40, height: 40)
-                                } else {
-                                    Circle().fill(Color(red: 0.55, green: 0.75, blue: 0.35)).frame(width: 30, height: 30)
+                                ZStack {
+                                    if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
+                                        Image(uiImage: wormyImg).resizable().aspectRatio(contentMode: .fit).frame(width: 40, height: 40).opacity(p ? 1 : 0.3)
+                                    }
+                                    if !p { Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill").font(.system(size: 12)).foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray) }
                                 }
-                                Text("Wormy")
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(.white)
+                                Text(p ? "Wormy" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1000💎"))
+                                    .font(.system(size: p ? 9 : 7, design: .monospaced))
+                                    .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
                             .background(useWormySnake ? Color.white.opacity(0.1) : Color.clear)
@@ -3292,17 +3315,30 @@ struct IntroOverlay: View {
                             )
                         }
                         // Blaze snake
-                        Button { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false } label: {
+                        Button {
+                            let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
+                            if p { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false }
+                            else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
+                                UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
+                                UserDefaults.standard.set(true, forKey: "blazeSnakePurchased")
+                                useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                            }
+                        } label: {
+                            let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
+                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
                             VStack(spacing: 4) {
-                                HStack(spacing: 1) {
-                                    Circle().fill(Color.blue).frame(width: 8, height: 8)
-                                    Circle().fill(Color.red).frame(width: 8, height: 8)
-                                    Circle().fill(Color.blue).frame(width: 8, height: 8)
-                                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                                ZStack {
+                                    HStack(spacing: 1) {
+                                        Circle().fill(Color.blue).frame(width: 8, height: 8)
+                                        Circle().fill(Color.red).frame(width: 8, height: 8)
+                                        Circle().fill(Color.blue).frame(width: 8, height: 8)
+                                        Circle().fill(Color.red).frame(width: 8, height: 8)
+                                    }.opacity(p ? 1 : 0.3)
+                                    if !p { Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill").font(.system(size: 12)).foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray) }
                                 }
-                                Text("Blaze")
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(.white)
+                                Text(p ? "Blaze" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1000💎"))
+                                    .font(.system(size: p ? 9 : 7, design: .monospaced))
+                                    .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
                             .background(useBlazeSnake ? Color.white.opacity(0.1) : Color.clear)
