@@ -2179,8 +2179,8 @@ struct SnakeView: View {
             }
 
             if useWormy && !glowing {
-                let lightGreen = Color(red: 0.55, green: 0.75, blue: 0.35)
-                let darkGreen = Color(red: 0.35, green: 0.55, blue: 0.2)
+                let lightGreen = Color(red: 0.7, green: 0.82, blue: 0.55)
+                let darkGreen = Color(red: 0.5, green: 0.65, blue: 0.35)
                 let ss = snake.segmentSize
 
                 // Body segments — green with darker band stripes
@@ -2302,65 +2302,55 @@ struct SnakeView: View {
                     let ht = CGAffineTransform(translationX: head.x, y: head.y).rotated(by: angle)
 
 
-                    // Main head — oval, taller than wide
+                    // Big round head — like the painting
                     var headShape = Path()
-                    headShape.addEllipse(in: CGRect(x: -hs * 0.55, y: -hs * 0.7, width: hs * 1.1, height: hs * 1.4))
-                    context.fill(headShape.applying(ht), with: .color(lightGreen.opacity(0.7)))
+                    headShape.addEllipse(in: CGRect(x: -hs * 0.6, y: -hs * 0.6, width: hs * 1.2, height: hs * 1.2))
+                    context.fill(headShape.applying(ht), with: .color(lightGreen.opacity(0.75)))
 
-                    // Two bulging eyes — sit ON TOP of head, sticking out
+                    // Big round bulging googly eyes — sit on top of head, sticking out
                     for side in [-1.0, 1.0] {
-                        let eyeLocal = CGPoint(x: hs * 0.15, y: CGFloat(side) * hs * 0.3 - hs * 0.45)
+                        let eyeLocal = CGPoint(x: hs * 0.1, y: CGFloat(side) * hs * 0.28 - hs * 0.5)
                         let ep = eyeLocal.applying(ht)
-                        let eyeR: CGFloat = hs * 0.26
+                        let eyeR: CGFloat = hs * 0.3
 
-                        // Eye socket shadow (paint pooling)
+                        // Dark outline ring
                         context.fill(
                             Circle().path(in: CGRect(x: ep.x - eyeR - 2, y: ep.y - eyeR - 2, width: (eyeR + 2) * 2, height: (eyeR + 2) * 2)),
-                            with: .color(darkGreen.opacity(0.15)))
+                            with: .color(darkGreen.opacity(0.3)))
 
-                        // Eye ball — bright yellow watercolour
-                        context.fill(
-                            Circle().path(in: CGRect(x: ep.x - eyeR * 1.2, y: ep.y - eyeR * 1.2, width: eyeR * 2.4, height: eyeR * 2.4)),
-                            with: .color(Color(red: 0.9, green: 0.88, blue: 0.5).opacity(0.3)))
+                        // Big white eyeball
                         context.fill(
                             Circle().path(in: CGRect(x: ep.x - eyeR, y: ep.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
-                            with: .color(Color(red: 0.92, green: 0.9, blue: 0.5).opacity(0.8)))
+                            with: .color(Color(red: 0.95, green: 0.95, blue: 0.9)))
 
-                        // Yellow ring around pupil
-                        let ringR = eyeR * 0.55
+                        // Big black pupil — round googly style
+                        let pupilR = eyeR * 0.45
                         context.fill(
-                            Circle().path(in: CGRect(x: ep.x - ringR, y: ep.y - ringR - 1, width: ringR * 2, height: ringR * 2)),
-                            with: .color(Color(red: 0.95, green: 0.92, blue: 0.45)))
-
-                        // Black pupil — small dot
-                        let pupilR = eyeR * 0.25
-                        context.fill(
-                            Circle().path(in: CGRect(x: ep.x - pupilR + 1, y: ep.y - pupilR - 1, width: pupilR * 2, height: pupilR * 2)),
+                            Circle().path(in: CGRect(x: ep.x - pupilR + 2, y: ep.y - pupilR, width: pupilR * 2, height: pupilR * 2)),
                             with: .color(.black))
+
+                        // White highlight dot
+                        let hlR = eyeR * 0.18
+                        context.fill(
+                            Circle().path(in: CGRect(x: ep.x + pupilR * 0.3, y: ep.y - pupilR * 0.6, width: hlR * 2, height: hlR * 2)),
+                            with: .color(.white))
                     }
 
-                    // Chin/neck crease lines
-                    var crease1 = Path()
-                    let c1s = CGPoint(x: -hs * 0.4, y: hs * 0.4).applying(ht)
-                    let c1e = CGPoint(x: hs * 0.4, y: hs * 0.35).applying(ht)
-                    crease1.move(to: c1s); crease1.addLine(to: c1e)
-                    context.stroke(crease1, with: .color(darkGreen.opacity(0.25)), lineWidth: 0.8)
-
-                    var crease2 = Path()
-                    let c2s = CGPoint(x: -hs * 0.35, y: hs * 0.48).applying(ht)
-                    let c2e = CGPoint(x: hs * 0.35, y: hs * 0.43).applying(ht)
-                    crease2.move(to: c2s); crease2.addLine(to: c2e)
-                    context.stroke(crease2, with: .color(darkGreen.opacity(0.2)), lineWidth: 0.7)
-
-                    // Wide grin — lower on face, away from eyes
+                    // Cute wide smile — big happy upturned grin
                     var mouth = Path()
-                    let mS = CGPoint(x: hs * 0.45, y: hs * 0.2).applying(ht)
-                    let mE = CGPoint(x: -hs * 0.35, y: hs * 0.22).applying(ht)
+                    let mS = CGPoint(x: hs * 0.4, y: hs * 0.0).applying(ht)
+                    let mE = CGPoint(x: -hs * 0.35, y: hs * 0.02).applying(ht)
                     mouth.move(to: mS)
                     mouth.addCurve(to: mE,
-                        control1: CGPoint(x: hs * 0.3, y: hs * 0.45).applying(ht),
-                        control2: CGPoint(x: -hs * 0.1, y: hs * 0.48).applying(ht))
-                    context.stroke(mouth, with: .color(Color.black.opacity(0.5)), lineWidth: 1.8)
+                        control1: CGPoint(x: hs * 0.25, y: hs * 0.35).applying(ht),
+                        control2: CGPoint(x: -hs * 0.15, y: hs * 0.38).applying(ht))
+                    context.stroke(mouth, with: .color(Color.black.opacity(0.5)), lineWidth: 2)
+
+                    // Rosy cheeks
+                    let cheek1 = CGPoint(x: hs * 0.35, y: hs * 0.15).applying(ht)
+                    let cheek2 = CGPoint(x: -hs * 0.3, y: hs * 0.17).applying(ht)
+                    context.fill(Circle().path(in: CGRect(x: cheek1.x - 3, y: cheek1.y - 3, width: 6, height: 6)), with: .color(Color(red: 0.9, green: 0.5, blue: 0.5).opacity(0.2)))
+                    context.fill(Circle().path(in: CGRect(x: cheek2.x - 3, y: cheek2.y - 3, width: 6, height: 6)), with: .color(Color(red: 0.9, green: 0.5, blue: 0.5).opacity(0.2)))
                 }
 
                 return
