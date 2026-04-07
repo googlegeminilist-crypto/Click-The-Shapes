@@ -958,6 +958,7 @@ class GameViewModel: ObservableObject {
     @Published var useRainbowSnake = false
     @Published var useWormySnake = false
     @Published var useStarSnake = false
+    @Published var useBlazeSnake = false
     var diamonds: [Diamond] = []
     var diamondTimer: Timer?
     @AppStorage("diamondsCollected") var diamondsCollected = 0
@@ -1961,6 +1962,7 @@ struct SnakeView: View {
     var useRainbow: Bool = false
     var useWormy: Bool = false
     var useStar: Bool = false
+    var useBlaze: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -2010,6 +2012,61 @@ struct SnakeView: View {
 
             // --- Wormy snake — green watercolour worm with bulging eyes ---
             // --- Star snake — violet/blue shimmering skin with twinkling stars ---
+            // --- Blaze snake — blue and red shining skin like candy style ---
+            if useBlaze && !glowing {
+                for i in 0..<maxVisible {
+                    let segment = segments[i]
+                    let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.35
+                    let shimmer = sin(Double(snake.animPhase) * 4 + Double(i) * 0.5) * 0.5 + 0.5
+
+                    // Alternating blue and red with shimmer
+                    let isBlue = (i / 2) % 2 == 0
+                    let color: Color
+                    if isBlue {
+                        color = Color(red: 0.1 + shimmer * 0.15, green: 0.2 + shimmer * 0.2, blue: 0.8 + shimmer * 0.2).opacity(brightness)
+                    } else {
+                        color = Color(red: 0.85 + shimmer * 0.15, green: 0.1 + shimmer * 0.1, blue: 0.1 + shimmer * 0.15).opacity(brightness)
+                    }
+
+                    // Shining glow
+                    context.fill(
+                        Circle().path(in: CGRect(x: segment.x - snake.segmentSize * 2, y: segment.y - snake.segmentSize * 2, width: snake.segmentSize * 4, height: snake.segmentSize * 4)),
+                        with: .color(color.opacity(0.12)))
+
+                    // Segment
+                    context.fill(
+                        Circle().path(in: CGRect(x: segment.x - snake.segmentSize, y: segment.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                        with: .color(color))
+
+                    // Connecting line
+                    if i < maxVisible - 1 {
+                        let next = segments[i + 1]
+                        var path = Path()
+                        path.move(to: CGPoint(x: segment.x, y: segment.y))
+                        path.addLine(to: CGPoint(x: next.x, y: next.y))
+                        context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                    }
+
+                    // Shine highlight on each segment
+                    let shine = max(0, sin(snake.animPhase * 6 + CGFloat(i) * 1.2))
+                    context.fill(
+                        Circle().path(in: CGRect(x: segment.x - snake.segmentSize * 0.3, y: segment.y - snake.segmentSize * 0.8, width: snake.segmentSize * 0.6, height: snake.segmentSize * 0.4)),
+                        with: .color(.white.opacity(Double(shine) * 0.35)))
+                }
+
+                // Head — shimmering purple (blue + red mix)
+                if let head = segments.first {
+                    let headShimmer = sin(Double(snake.animPhase) * 3) * 0.5 + 0.5
+                    let headColor = Color(red: 0.5 + headShimmer * 0.3, green: 0.1, blue: 0.5 + headShimmer * 0.3)
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - snake.segmentSize, y: head.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                        with: .color(headColor))
+                    context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)), with: .color(.white))
+                    context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)), with: .color(.white))
+                }
+                return
+            }
+
             if useStar && !glowing {
                 // Half blue / half yellow rainbow style with sparkles
                 for i in 0..<maxVisible {
@@ -2480,7 +2537,7 @@ struct SnakeView: View {
             }
 
             // --- Candy snake (default) — only if not wormy ---
-            guard !useWormy && !useStar else {
+            guard !useWormy && !useStar && !useBlaze else {
                 if glowing {
                     // Glow aura
                     let glowCol: Color = useStar ? Color(red: 0.4, green: 0.3, blue: 0.9) : .cyan
@@ -2981,6 +3038,7 @@ struct IntroOverlay: View {
     @Binding var useRainbowSnake: Bool
     @Binding var useWormySnake: Bool
     @Binding var useStarSnake: Bool
+    @Binding var useBlazeSnake: Bool
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
     @State private var showLeaderboard = false
@@ -3093,12 +3151,12 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
                             if purchased {
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 // Spend 1000 diamonds to unlock
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "candySnakePurchased")
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
@@ -3122,7 +3180,7 @@ struct IntroOverlay: View {
                                 if purchased {
                                     Text("Candy")
                                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                        .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake ? .white : .gray)
+                                        .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? .white : .gray)
                                 } else {
                                     Text(canBuy ? "Unlock 1000💎" : "\(dCount)/1000 💎")
                                         .font(.system(size: 7, weight: .bold, design: .monospaced))
@@ -3130,15 +3188,15 @@ struct IntroOverlay: View {
                                 }
                             }
                             .padding(8)
-                            .background(Color.white.opacity(!useRainbowSnake && !useWormySnake && !useStarSnake ? 0.08 : 0))
+                            .background(Color.white.opacity(!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? 0.08 : 0))
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(!useRainbowSnake && !useWormySnake && !useStarSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: !useRainbowSnake && !useWormySnake && !useStarSnake ? 2 : 1)
+                                    .stroke(!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: !useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? 2 : 1)
                             )
                         }
                         // Rainbow snake
-                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false } label: {
+                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false } label: {
                             VStack(spacing: 4) {
                                 Circle()
                                     .fill(LinearGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -3156,7 +3214,7 @@ struct IntroOverlay: View {
                             )
                         }
                         // Wormy snake — actual painting as icon
-                        Button { useWormySnake = true; useRainbowSnake = false; useStarSnake = false } label: {
+                        Button { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false } label: {
                             VStack(spacing: 4) {
                                 if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
                                     Image(uiImage: wormyImg)
@@ -3182,11 +3240,11 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
                             if purchased {
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "starSnakePurchased")
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
@@ -3223,6 +3281,27 @@ struct IntroOverlay: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(useStarSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useStarSnake ? 2 : 1)
+                            )
+                        }
+                        // Blaze snake
+                        Button { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false } label: {
+                            VStack(spacing: 4) {
+                                HStack(spacing: 1) {
+                                    Circle().fill(Color.blue).frame(width: 8, height: 8)
+                                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                                    Circle().fill(Color.blue).frame(width: 8, height: 8)
+                                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                                }
+                                Text("Blaze")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(8)
+                            .background(useBlazeSnake ? Color.white.opacity(0.1) : Color.clear)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useBlazeSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useBlazeSnake ? 2 : 1)
                             )
                         }
                     }
@@ -3637,13 +3716,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake)
                         .id(game.updateTrigger)
                 }
 
@@ -3983,7 +4062,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake)
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake)
                 }
 
                 // Level transition overlay
