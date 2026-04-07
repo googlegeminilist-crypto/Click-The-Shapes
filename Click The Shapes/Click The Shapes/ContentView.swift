@@ -1596,6 +1596,10 @@ class GameViewModel: ObservableObject {
 
         if snakeWon {
             snakeWins += 1
+            // Hardcore mode — lose ALL diamonds when snake wins
+            if hardcoreMode {
+                diamondsCollected = 0
+            }
         } else {
             userWins += 1
             LeaderboardManager.shared.recordWin(totalWins: userWins)
@@ -2778,6 +2782,24 @@ struct IntroOverlay: View {
                     .font(.system(size: 32, weight: .bold, design: .monospaced))
                     .foregroundColor(GameColors.neonGreen)
                     .shadow(color: GameColors.neonGreen, radius: 10)
+
+                // Diamond count
+                HStack(spacing: 6) {
+                    Image(systemName: "diamond.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.cyan)
+                    Text(UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 ? "\(UserDefaults.standard.integer(forKey: "diamondsCollected") / 1000)K" : "\(UserDefaults.standard.integer(forKey: "diamondsCollected"))")
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundColor(.cyan)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Color.black.opacity(0.5))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.cyan.opacity(0.4), lineWidth: 1)
+                )
 
                 VStack(alignment: .leading, spacing: 15) {
                     RuleRow(icon: "target", text: "Tap shapes to earn 10 points", color: .yellow)
