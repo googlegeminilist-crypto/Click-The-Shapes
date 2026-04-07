@@ -2011,7 +2011,86 @@ struct SnakeView: View {
             // --- Wormy snake — green watercolour worm with bulging eyes ---
             // --- Star snake — violet/blue shimmering skin with twinkling stars ---
             if useStar && !glowing {
-                let ss = snake.segmentSize
+                // Half blue / half yellow rainbow style with sparkles
+                for i in 0..<maxVisible {
+                    let segment = segments[i]
+                    let brightness = 1 - (Double(i) / Double(maxVisible)) * 0.4
+
+                    // Half blue, half yellow — splits at midpoint
+                    let halfPoint = maxVisible / 2
+                    let shimmer = sin(Double(snake.animPhase) * 3 + Double(i) * 0.4) * 0.15
+                    let color: Color
+                    if i < halfPoint {
+                        // Blue half — shifts between deep blue and sky blue
+                        color = Color(red: 0.1 + shimmer, green: 0.3 + shimmer, blue: 0.85 + shimmer).opacity(brightness)
+                    } else {
+                        // Yellow half — shifts between gold and bright yellow
+                        color = Color(red: 0.95 + shimmer, green: 0.8 + shimmer, blue: 0.1 + shimmer).opacity(brightness)
+                    }
+
+                    // Glow
+                    context.fill(
+                        Circle().path(in: CGRect(x: segment.x - snake.segmentSize * 2, y: segment.y - snake.segmentSize * 2, width: snake.segmentSize * 4, height: snake.segmentSize * 4)),
+                        with: .color(color.opacity(0.15)))
+
+                    // Segment
+                    context.fill(
+                        Circle().path(in: CGRect(x: segment.x - snake.segmentSize, y: segment.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                        with: .color(color))
+
+                    // Connecting line
+                    if i < maxVisible - 1 {
+                        let next = segments[i + 1]
+                        var path = Path()
+                        path.move(to: CGPoint(x: segment.x, y: segment.y))
+                        path.addLine(to: CGPoint(x: next.x, y: next.y))
+                        context.stroke(path, with: .color(color), lineWidth: snake.segmentSize * 1.5)
+                    }
+
+                    // Sparkles on every 2nd segment
+                    if i % 2 == 0 {
+                        let twinkle = max(0, sin(snake.animPhase * 7 + CGFloat(i) * 1.8))
+                        let starR = snake.segmentSize * 0.35 * twinkle
+                        if starR > 0.3 {
+                            let ox = cos(CGFloat(i) * 2.3) * snake.segmentSize * 0.4
+                            let oy = sin(CGFloat(i) * 2.3) * snake.segmentSize * 0.4
+                            let sx = segment.x + ox
+                            let sy = segment.y + oy
+                            // 4-point star
+                            var s1 = Path()
+                            s1.move(to: CGPoint(x: sx, y: sy - starR))
+                            s1.addLine(to: CGPoint(x: sx + starR * 0.2, y: sy))
+                            s1.addLine(to: CGPoint(x: sx, y: sy + starR))
+                            s1.addLine(to: CGPoint(x: sx - starR * 0.2, y: sy))
+                            s1.closeSubpath()
+                            var s2 = Path()
+                            s2.move(to: CGPoint(x: sx - starR, y: sy))
+                            s2.addLine(to: CGPoint(x: sx, y: sy + starR * 0.2))
+                            s2.addLine(to: CGPoint(x: sx + starR, y: sy))
+                            s2.addLine(to: CGPoint(x: sx, y: sy - starR * 0.2))
+                            s2.closeSubpath()
+                            context.fill(s1, with: .color(.white.opacity(Double(twinkle) * 0.9)))
+                            context.fill(s2, with: .color(.white.opacity(Double(twinkle) * 0.9)))
+                        }
+                    }
+                }
+
+                // Head — blue/yellow split
+                if let head = segments.first {
+                    let headShimmer = sin(Double(snake.animPhase) * 3) * 0.5 + 0.5
+                    let headColor = Color(red: 0.1 + headShimmer * 0.85, green: 0.3 + headShimmer * 0.5, blue: 0.85 - headShimmer * 0.75)
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - snake.segmentSize, y: head.y - snake.segmentSize, width: snake.segmentSize * 2, height: snake.segmentSize * 2)),
+                        with: .color(headColor))
+                    context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 4, height: 4)), with: .color(.white))
+                    context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)), with: .color(.white))
+                }
+
+                return
+            }
+
+            // OLD STAR CODE REMOVED
+            if false { let ss = snake.segmentSize; _ = ss
 
                 for i in stride(from: maxVisible - 1, through: 1, by: -1) {
                     let seg = segments[i]
@@ -2981,6 +3060,20 @@ struct IntroOverlay: View {
                     onStartLevel4()
                 } label: {
                     Text("DEBUG: Skip to Level 4")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
+                }
+
+                Button {
+                    UserDefaults.standard.set(true, forKey: "candySnakePurchased")
+                    UserDefaults.standard.set(true, forKey: "starSnakePurchased")
+                    UserDefaults.standard.set(2000, forKey: "diamondsCollected")
+                } label: {
+                    Text("DEBUG: Unlock Candy + Star")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundColor(.black)
                         .padding(.horizontal, 16)
