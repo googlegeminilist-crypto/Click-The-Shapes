@@ -3169,7 +3169,8 @@ struct IntroOverlay: View {
                     Text("CHOOSE SNAKE")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.gray)
-                    HStack(spacing: 20) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
                         // Candy snake (default) — actual painting as icon
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
@@ -3187,28 +3188,39 @@ struct IntroOverlay: View {
                             let canBuy = dCount >= 1000
                             VStack(spacing: 6) {
                                 ZStack {
-                                    if let candyImg = UIImage(named: "snake_custom") ?? (Bundle.main.path(forResource: "snake_custom", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                        Image(uiImage: candyImg)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fit)
-                                            .frame(width: 50, height: 30)
-                                            .opacity(purchased ? 1 : 0.3)
-                                    }
+                                    Canvas { ctx, sz in
+                                        let green = Color(red: 0.1, green: 0.7, blue: 0.15)
+                                        let yellow = Color(red: 0.95, green: 0.8, blue: 0)
+                                        for i in 0..<7 {
+                                            let x = CGFloat(i) * 7 + 4
+                                            let y = sz.height / 2 + sin(CGFloat(i) * 0.7) * 3
+                                            let s: CGFloat = i == 6 ? 5 : 3.5
+                                            let c = (i / 2) % 2 == 0 ? yellow : green
+                                            // Soft watercolour blur
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s * 1.4, y: y - s * 1.4, width: s * 2.8, height: s * 2.8)), with: .color(c.opacity(0.2)))
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)), with: .color(c.opacity(0.75)))
+                                            if i < 6 {
+                                                let nx = CGFloat(i + 1) * 7 + 4
+                                                let ny = sz.height / 2 + sin(CGFloat(i + 1) * 0.7) * 3
+                                                var p = Path(); p.move(to: CGPoint(x: x, y: y)); p.addLine(to: CGPoint(x: nx, y: ny))
+                                                ctx.stroke(p, with: .color(c.opacity(0.7)), lineWidth: 3)
+                                            }
+                                        }
+                                        // Head with eye
+                                        let hx: CGFloat = 46; let hy = sz.height / 2 + sin(6 * 0.7) * 3
+                                        ctx.fill(Circle().path(in: CGRect(x: hx - 5, y: hy - 5, width: 10, height: 10)), with: .color(green))
+                                        ctx.fill(Circle().path(in: CGRect(x: hx - 3, y: hy - 4, width: 2, height: 2)), with: .color(.white))
+                                        ctx.fill(Circle().path(in: CGRect(x: hx + 1, y: hy - 4, width: 2, height: 2)), with: .color(.white))
+                                    }.frame(width: 42, height: 22).opacity(purchased ? 1 : 0.3)
                                     if !purchased {
                                         Image(systemName: canBuy ? "lock.open.fill" : "lock.fill")
-                                            .font(.system(size: 14))
+                                            .font(.system(size: 12))
                                             .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
                                     }
                                 }
-                                if purchased {
-                                    Text("Candy")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                        .foregroundColor(!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? .white : .gray)
-                                } else {
-                                    Text(canBuy ? "Unlock 1000💎" : "\(dCount)/1000 💎")
-                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
-                                        .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
-                                }
+                                Text(purchased ? "Candy" : (canBuy ? "Unlock 1K💎" : "\(dCount)/1K💎"))
+                                    .font(.system(size: purchased ? 8 : 7, weight: .bold, design: .monospaced))
+                                    .foregroundColor(purchased ? (!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? .white : .gray) : (canBuy ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
                             .background(Color.white.opacity(!useRainbowSnake && !useWormySnake && !useStarSnake && !useBlazeSnake ? 0.08 : 0))
@@ -3221,11 +3233,30 @@ struct IntroOverlay: View {
                         // Rainbow snake
                         Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false } label: {
                             VStack(spacing: 4) {
-                                Circle()
-                                    .fill(LinearGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                    .frame(width: 30, height: 30)
+                                Canvas { ctx, sz in
+                                    let w = sz.width
+                                    for i in 0..<7 {
+                                        let x = CGFloat(i) * 7 + 4
+                                        let y = sz.height / 2 + sin(CGFloat(i) * 0.8) * 3
+                                        let s: CGFloat = i == 6 ? 5 : 3.5
+                                        let hue = Double(i * 10).truncatingRemainder(dividingBy: 360) / 360
+                                        let c = Color(hue: hue, saturation: 1, brightness: 1 - Double(i) * 0.05)
+                                        ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)), with: .color(c))
+                                        if i < 6 {
+                                            let nx = CGFloat(i + 1) * 7 + 4
+                                            let ny = sz.height / 2 + sin(CGFloat(i + 1) * 0.8) * 3
+                                            var p = Path(); p.move(to: CGPoint(x: x, y: y)); p.addLine(to: CGPoint(x: nx, y: ny))
+                                            ctx.stroke(p, with: .color(c), lineWidth: 3)
+                                        }
+                                    }
+                                    // Eyes
+                                    let hx = CGFloat(6) * 7 + 4
+                                    let hy = sz.height / 2 + sin(6 * 0.8) * 3
+                                    ctx.fill(Circle().path(in: CGRect(x: hx - 3, y: hy - 4, width: 2, height: 2)), with: .color(.white))
+                                    ctx.fill(Circle().path(in: CGRect(x: hx + 1, y: hy - 4, width: 2, height: 2)), with: .color(.white))
+                                }.frame(width: 42, height: 22)
                                 Text("Rainbow")
-                                    .font(.system(size: 9, design: .monospaced))
+                                    .font(.system(size: 8, design: .monospaced))
                                     .foregroundColor(.white)
                             }
                             .padding(8)
@@ -3250,13 +3281,27 @@ struct IntroOverlay: View {
                             let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
                             VStack(spacing: 4) {
                                 ZStack {
-                                    if let wormyImg = UIImage(named: "snake_wormy") ?? (Bundle.main.path(forResource: "snake_wormy", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                        Image(uiImage: wormyImg).resizable().aspectRatio(contentMode: .fit).frame(width: 40, height: 40).opacity(p ? 1 : 0.3)
-                                    }
+                                    Canvas { ctx, sz in
+                                        for i in 0..<7 {
+                                            let x = CGFloat(i) * 7 + 4
+                                            let y = sz.height / 2 + sin(CGFloat(i) * 0.7) * 3
+                                            let s: CGFloat = i == 6 ? 5 : 3.5
+                                            let c = Color(red: 0.08 + Double(i) * 0.01, green: 0.02, blue: 0.2 + Double(i) * 0.02)
+                                            // Nebula glow
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s * 1.5, y: y - s * 1.5, width: s * 3, height: s * 3)), with: .color(Color(red: 0.3, green: 0.1, blue: 0.5).opacity(0.15)))
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)), with: .color(c))
+                                            // Stars
+                                            if i % 2 == 0 {
+                                                ctx.fill(Circle().path(in: CGRect(x: x + 2, y: y - 3, width: 1.5, height: 1.5)), with: .color(.white.opacity(0.8)))
+                                            }
+                                        }
+                                        ctx.fill(Circle().path(in: CGRect(x: 46, y: 8, width: 2, height: 2)), with: .color(.white))
+                                        ctx.fill(Circle().path(in: CGRect(x: 48, y: 12, width: 2, height: 2)), with: .color(.white))
+                                    }.frame(width: 42, height: 22).opacity(p ? 1 : 0.3)
                                     if !p { Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill").font(.system(size: 12)).foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray) }
                                 }
-                                Text(p ? "Wormy" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1000💎"))
-                                    .font(.system(size: p ? 9 : 7, design: .monospaced))
+                                Text(p ? "Wormy" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
+                                    .font(.system(size: p ? 8 : 7, design: .monospaced))
                                     .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
@@ -3283,28 +3328,37 @@ struct IntroOverlay: View {
                             let canBuy = dCount >= 1000
                             VStack(spacing: 4) {
                                 ZStack {
-                                    if let starImg = UIImage(named: "star_snake_head") ?? (Bundle.main.path(forResource: "star_snake_head", ofType: "png").flatMap { UIImage(contentsOfFile: $0) }) {
-                                        Image(uiImage: starImg)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fit)
-                                            .frame(width: 40, height: 30)
-                                            .opacity(purchased ? 1 : 0.3)
-                                    }
+                                    Canvas { ctx, sz in
+                                        for i in 0..<7 {
+                                            let x = CGFloat(i) * 7 + 4
+                                            let y = sz.height / 2 + sin(CGFloat(i) * 0.8) * 3
+                                            let s: CGFloat = i == 6 ? 5 : 3.5
+                                            let isBlue = i < 3
+                                            let c = isBlue ? Color(red: 0.1, green: 0.3, blue: 0.85) : Color(red: 0.95, green: 0.8, blue: 0.1)
+                                            // Glow
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s * 1.5, y: y - s * 1.5, width: s * 3, height: s * 3)), with: .color(c.opacity(0.15)))
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)), with: .color(c))
+                                            if i < 6 {
+                                                let nx = CGFloat(i + 1) * 7 + 4
+                                                let ny = sz.height / 2 + sin(CGFloat(i + 1) * 0.8) * 3
+                                                var p = Path(); p.move(to: CGPoint(x: x, y: y)); p.addLine(to: CGPoint(x: nx, y: ny))
+                                                ctx.stroke(p, with: .color(c), lineWidth: 3)
+                                            }
+                                            // Sparkle
+                                            if i % 2 == 0 { ctx.fill(Circle().path(in: CGRect(x: x, y: y - 4, width: 1.5, height: 1.5)), with: .color(.white)) }
+                                        }
+                                        ctx.fill(Circle().path(in: CGRect(x: 46, y: 8, width: 2, height: 2)), with: .color(.white))
+                                        ctx.fill(Circle().path(in: CGRect(x: 48, y: 12, width: 2, height: 2)), with: .color(.white))
+                                    }.frame(width: 42, height: 22).opacity(purchased ? 1 : 0.3)
                                     if !purchased {
                                         Image(systemName: canBuy ? "lock.open.fill" : "lock.fill")
-                                            .font(.system(size: 14))
+                                            .font(.system(size: 12))
                                             .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
                                     }
                                 }
-                                if purchased {
-                                    Text("Star")
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.white)
-                                } else {
-                                    Text(canBuy ? "Unlock 1000💎" : "\(dCount)/1000 💎")
-                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
-                                        .foregroundColor(canBuy ? GameColors.neonYellow : .gray)
-                                }
+                                Text(purchased ? "Star" : (canBuy ? "Unlock 1K💎" : "\(dCount)/1K💎"))
+                                    .font(.system(size: purchased ? 8 : 7, weight: .bold, design: .monospaced))
+                                    .foregroundColor(purchased ? .white : (canBuy ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
                             .background(useStarSnake ? Color.white.opacity(0.1) : Color.clear)
@@ -3328,16 +3382,34 @@ struct IntroOverlay: View {
                             let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
                             VStack(spacing: 4) {
                                 ZStack {
-                                    HStack(spacing: 1) {
-                                        Circle().fill(Color.blue).frame(width: 8, height: 8)
-                                        Circle().fill(Color.red).frame(width: 8, height: 8)
-                                        Circle().fill(Color.blue).frame(width: 8, height: 8)
-                                        Circle().fill(Color.red).frame(width: 8, height: 8)
-                                    }.opacity(p ? 1 : 0.3)
+                                    Canvas { ctx, sz in
+                                        for i in 0..<7 {
+                                            let x = CGFloat(i) * 7 + 4
+                                            let y = sz.height / 2 + sin(CGFloat(i) * 0.8) * 3
+                                            let s: CGFloat = i == 6 ? 5 : 3.5
+                                            let isBlue = (i / 2) % 2 == 0
+                                            let c = isBlue ? Color(red: 0.1, green: 0.2, blue: 0.9) : Color(red: 0.9, green: 0.1, blue: 0.1)
+                                            // Glow
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s * 1.5, y: y - s * 1.5, width: s * 3, height: s * 3)), with: .color(c.opacity(0.12)))
+                                            ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)), with: .color(c))
+                                            // Shine highlight
+                                            ctx.fill(Circle().path(in: CGRect(x: x - 1, y: y - s * 0.7, width: 2, height: 1.5)), with: .color(.white.opacity(0.3)))
+                                            if i < 6 {
+                                                let nx = CGFloat(i + 1) * 7 + 4
+                                                let ny = sz.height / 2 + sin(CGFloat(i + 1) * 0.8) * 3
+                                                var p = Path(); p.move(to: CGPoint(x: x, y: y)); p.addLine(to: CGPoint(x: nx, y: ny))
+                                                ctx.stroke(p, with: .color(c), lineWidth: 3)
+                                            }
+                                        }
+                                        // Purple head
+                                        ctx.fill(Circle().path(in: CGRect(x: 42, y: 7, width: 10, height: 10)), with: .color(Color(red: 0.5, green: 0.1, blue: 0.5)))
+                                        ctx.fill(Circle().path(in: CGRect(x: 44, y: 9, width: 2, height: 2)), with: .color(.white))
+                                        ctx.fill(Circle().path(in: CGRect(x: 48, y: 9, width: 2, height: 2)), with: .color(.white))
+                                    }.frame(width: 42, height: 22).opacity(p ? 1 : 0.3)
                                     if !p { Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill").font(.system(size: 12)).foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray) }
                                 }
-                                Text(p ? "Blaze" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1000💎"))
-                                    .font(.system(size: p ? 9 : 7, design: .monospaced))
+                                Text(p ? "Blaze" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
+                                    .font(.system(size: p ? 8 : 7, design: .monospaced))
                                     .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
                             }
                             .padding(8)
@@ -3349,6 +3421,7 @@ struct IntroOverlay: View {
                             )
                         }
                     }
+                    } // ScrollView
                 }
 
                 // Snake speed slider
