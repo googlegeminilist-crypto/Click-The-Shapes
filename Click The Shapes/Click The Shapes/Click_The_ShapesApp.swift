@@ -21,10 +21,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #endif
         UserDefaults.standard.removeObject(forKey: "lossCountSinceLastAd")
         #if canImport(GoogleMobileAds)
-        MobileAds.shared.start { status in
-            print("[Ads] MobileAds started. Adapters: \(status.adapterStatusesByClassName.keys.joined(separator: ", "))")
-            Task { @MainActor in
-                _ = InterstitialAdManager.shared
+        DispatchQueue.global(qos: .utility).async {
+            MobileAds.shared.start { status in
+                print("[Ads] MobileAds started. Adapters: \(status.adapterStatusesByClassName.keys.joined(separator: ", "))")
+                Task { @MainActor in
+                    _ = InterstitialAdManager.shared
+                }
             }
         }
         #endif
