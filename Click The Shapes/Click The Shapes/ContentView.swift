@@ -954,6 +954,9 @@ class GameViewModel: ObservableObject {
     @Published var snakeScore = 0
     @Published var gameOver = false
     var lossCountSinceLastAd: Int = 0
+    /// Snapshot of diamond count taken right before a hardcore-mode loss zeroed it,
+    /// so the rewarded-ad continue can restore them.
+    var hardcoreDiamondsBeforeLoss: Int = 0
     @Published var gameStarted = false
     @Published var showIntro = true
     @Published var useRainbowSnake = false
@@ -1597,8 +1600,10 @@ class GameViewModel: ObservableObject {
 
         if snakeWon {
             snakeWins += 1
-            // Hardcore mode — lose ALL diamonds when snake wins
+            // Hardcore mode — lose ALL diamonds when snake wins.
+            // Remember the pre-loss count so the rewarded-ad continue can restore them.
             if hardcoreMode {
+                hardcoreDiamondsBeforeLoss = diamondsCollected
                 diamondsCollected = 0
             }
             lossCountSinceLastAd += 1
@@ -1709,6 +1714,15 @@ class GameViewModel: ObservableObject {
         if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
         restartCurrentLevel()
         score = savedScore
+    }
+
+    /// Hardcore-mode reward-ad continuation: restores the diamonds the player
+    /// had before the loss but still sends them back to Level 1.
+    func restoreHardcoreDiamondsAndRestart() {
+        if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
+        diamondsCollected = hardcoreDiamondsBeforeLoss
+        hardcoreDiamondsBeforeLoss = 0
+        restartGame()
     }
 
     func restartCurrentLevel() {
@@ -3306,7 +3320,7 @@ struct WinOverlay: View {
                                     .font(.system(size: 18, weight: .bold))
                                 Text("WATCH AD")
                                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                                Text("KEEP SCORE")
+                                Text(hardcoreMode ? "KEEP 💎" : "KEEP SCORE")
                                     .font(.system(size: 8, weight: .bold, design: .monospaced))
                             }
                             .foregroundColor(.black)
@@ -3942,7 +3956,11 @@ struct ContentView: View {
                         },
                         onContinueWithAd: {
                             RewardedAdManager.shared.show {
-                                game.continueWithSameScore()
+                                if game.hardcoreMode {
+                                    game.restoreHardcoreDiamondsAndRestart()
+                                } else {
+                                    game.continueWithSameScore()
+                                }
                             }
                         }
                     )
