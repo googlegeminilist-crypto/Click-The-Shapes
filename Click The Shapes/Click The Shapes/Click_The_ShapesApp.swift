@@ -17,7 +17,8 @@ import GoogleMobileAds
 final class LaunchGate: ObservableObject {
     @Published var adsReady = false
     @Published var firstFrameReady = false
-    var ready: Bool { adsReady && firstFrameReady }
+    @Published var introReady = false
+    var ready: Bool { adsReady && firstFrameReady && introReady }
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -42,10 +43,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #else
         AppDelegate.launchGate.adsReady = true
         #endif
-        // Hard safety: never keep the splash up longer than 4s no matter what.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+        // Hard safety: never keep the splash up longer than 6s no matter what.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
             AppDelegate.launchGate.adsReady = true
             AppDelegate.launchGate.firstFrameReady = true
+            AppDelegate.launchGate.introReady = true
         }
         return true
     }
