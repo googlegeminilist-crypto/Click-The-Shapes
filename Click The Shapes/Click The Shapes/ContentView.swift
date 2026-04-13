@@ -953,6 +953,7 @@ class GameViewModel: ObservableObject {
     @Published var score = 0
     @Published var snakeScore = 0
     @Published var gameOver = false
+    var lossCountSinceLastAd: Int = 0
     @Published var gameStarted = false
     @Published var showIntro = true
     @Published var useRainbowSnake = false
@@ -1599,6 +1600,15 @@ class GameViewModel: ObservableObject {
             // Hardcore mode — lose ALL diamonds when snake wins
             if hardcoreMode {
                 diamondsCollected = 0
+            }
+            lossCountSinceLastAd += 1
+            print("[Ads] Loss count: \(lossCountSinceLastAd)")
+            if lossCountSinceLastAd >= 4 {
+                lossCountSinceLastAd = 0
+                print("[Ads] Threshold hit — requesting interstitial")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    InterstitialAdManager.shared.showIfReady()
+                }
             }
         } else {
             userWins += 1
