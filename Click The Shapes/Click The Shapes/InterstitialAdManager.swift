@@ -16,8 +16,13 @@ import GoogleMobileAds
 final class InterstitialAdManager: NSObject {
     static let shared = InterstitialAdManager()
 
-    // Google-provided test interstitial ID. Replace with your real unit ID for release.
+    #if DEBUG
+    // Google-provided test interstitial unit. Safe to click; never serves live ads.
     private let adUnitID = "ca-app-pub-3940256099942544/4411468910"
+    #else
+    // TODO: replace with your real AdMob interstitial unit ID before release.
+    private let adUnitID = "ca-app-pub-3653784707595102/8072256270"
+    #endif
 
     #if canImport(GoogleMobileAds)
     private var interstitial: InterstitialAd?

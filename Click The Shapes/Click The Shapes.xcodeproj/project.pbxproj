@@ -422,6 +422,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = J4TPUS33G9;
 				ENABLE_PREVIEWS = YES;
+				GAD_APP_ID = "ca-app-pub-3940256099942544~1458002511";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Click-The-Shapes-Info.plist";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
@@ -457,6 +458,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = J4TPUS33G9;
 				ENABLE_PREVIEWS = YES;
+				GAD_APP_ID = "ca-app-pub-3653784707595102~9684932870";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Click-The-Shapes-Info.plist";
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
