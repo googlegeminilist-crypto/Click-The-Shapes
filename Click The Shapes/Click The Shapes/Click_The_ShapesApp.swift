@@ -36,6 +36,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 print("[Ads] MobileAds started. Adapters: \(status.adapterStatusesByClassName.keys.joined(separator: ", "))")
                 Task { @MainActor in
                     _ = InterstitialAdManager.shared
+                    _ = RewardedAdManager.shared
                     AppDelegate.launchGate.adsReady = true
                 }
             }

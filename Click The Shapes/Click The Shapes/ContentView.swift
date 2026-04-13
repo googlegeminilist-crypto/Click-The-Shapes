@@ -1701,6 +1701,16 @@ class GameViewModel: ObservableObject {
         startDiamondTimer()
     }
 
+    /// Reward-ad continuation: clears the loss state but preserves the player's
+    /// current score so they can pick up roughly where they left off.
+    func continueWithSameScore() {
+        let savedScore = score
+        // Don't double-count the upcoming restart against the ad threshold.
+        if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
+        restartCurrentLevel()
+        score = savedScore
+    }
+
     func restartCurrentLevel() {
         let level = currentLevel
         gameOver = false
@@ -3267,11 +3277,14 @@ struct WinOverlay: View {
     let color: Color
     let levelText: String
     let hardcoreMode: Bool
+    let snakeWon: Bool
     let onRestart: () -> Void
     let onRestartLevel: () -> Void
+    let onContinueWithAd: () -> Void
 
     @State private var titleScale: CGFloat = 1.0
     @State private var buttonGlow: CGFloat = 8.0
+    @State private var goldPulse: CGFloat = 8.0
 
     var body: some View {
         ZStack {
@@ -3279,19 +3292,52 @@ struct WinOverlay: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 25) {
-                Text(message)
-                    .font(.system(size: 40, weight: .bold, design: .monospaced))
-                    .foregroundColor(color)
-                    .shadow(color: color, radius: 15)
-                    .scaleEffect(titleScale)
-                    .onAppear {
-                        withAnimation(.easeInOut(duration: 0.5).repeatForever()) {
-                            titleScale = 1.1
-                        }
-                        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                            buttonGlow = 20.0
+                HStack(spacing: 14) {
+                    Text(message)
+                        .font(.system(size: 40, weight: .bold, design: .monospaced))
+                        .foregroundColor(color)
+                        .shadow(color: color, radius: 15)
+                        .scaleEffect(titleScale)
+
+                    if snakeWon {
+                        Button(action: onContinueWithAd) {
+                            VStack(spacing: 2) {
+                                Image(systemName: "play.rectangle.fill")
+                                    .font(.system(size: 18, weight: .bold))
+                                Text("WATCH AD")
+                                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                Text("KEEP SCORE")
+                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(red: 1.0, green: 0.92, blue: 0.4), Color(red: 0.95, green: 0.75, blue: 0.0)],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: Color(red: 1.0, green: 0.85, blue: 0.2), radius: goldPulse)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(red: 1.0, green: 0.95, blue: 0.5), lineWidth: 2)
+                            )
                         }
                     }
+                }
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.5).repeatForever()) {
+                        titleScale = 1.1
+                    }
+                    withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                        buttonGlow = 20.0
+                    }
+                    withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                        goldPulse = 22.0
+                    }
+                }
 
                 if !hardcoreMode {
                     // Restart Level button - glowing pulsing green (hidden in hardcore mode)
@@ -3887,11 +3933,17 @@ struct ContentView: View {
                         color: game.winColor,
                         levelText: "LEVEL \(game.currentLevel)",
                         hardcoreMode: game.hardcoreMode,
+                        snakeWon: game.winMessage.uppercased().contains("SNAKE WINS"),
                         onRestart: {
                             game.restartGame()
                         },
                         onRestartLevel: {
                             game.restartCurrentLevel()
+                        },
+                        onContinueWithAd: {
+                            RewardedAdManager.shared.show {
+                                game.continueWithSameScore()
+                            }
                         }
                     )
                 }
