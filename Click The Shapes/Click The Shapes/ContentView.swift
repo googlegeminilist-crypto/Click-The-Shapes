@@ -3825,6 +3825,13 @@ struct ContentView: View {
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
                     }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
+                    .onAppear {
+                        // Wait one extra runloop so all the snake-icon Canvases have
+                        // finished their first render before dismissing the splash.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            AppDelegate.launchGate.introReady = true
+                        }
+                    }
                 }
 
                 // Level transition overlay
