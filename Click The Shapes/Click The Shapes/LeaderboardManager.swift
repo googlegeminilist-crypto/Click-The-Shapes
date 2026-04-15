@@ -11,6 +11,69 @@ struct LeaderboardEntry: Identifiable, Codable {
     var lastUpdated: Date
 }
 
+/// Very basic client-side profanity filter for display names. Catches common
+/// variants via normalization (leetspeak, repeated chars, diacritics) but is
+/// not exhaustive — determined users will still find ways through. Pair with
+/// a server-side Cloud Function review if you need stronger guarantees.
+enum DisplayNameFilter {
+    /// Substrings that should reject the name if present after normalization.
+    /// Kept compact: common English-language slurs, sexual terms, and vulgarities.
+    /// Using substring (not word-boundary) match keeps the implementation simple
+    /// at the cost of some false positives (classic Scunthorpe problem).
+    private static let blocklist: Set<String> = [
+        // Sexual / explicit
+        "fuck", "shit", "cock", "dick", "pussy", "cunt", "bitch", "bastard",
+        "asshole", "arsehole", "wanker", "twat", "boob", "tit", "nipple",
+        "penis", "vagina", "sex", "porn", "nude", "naked", "orgasm", "masturbat",
+        "jizz", "cum", "horny", "slut", "whore", "hooker", "milf", "dildo",
+        "anal", "rape", "incest", "pedo", "pedophile", "paedophile", "loli",
+        // Racial / ethnic slurs (abbreviated list — add more if required)
+        "nigger", "nigga", "chink", "spic", "kike", "gook", "wetback", "paki",
+        "tranny", "faggot", "fag", "dyke", "homo",
+        // Violence / self-harm
+        "kill", "murder", "suicide", "nazi", "hitler", "terrorist",
+        // Drugs
+        "cocaine", "heroin", "meth",
+        // Generic vulgar
+        "piss", "crap", "damn", "hell"
+    ]
+
+    /// Returns true if the name should be rejected.
+    static func isLikelyProfane(_ name: String) -> Bool {
+        let normalized = normalize(name)
+        if normalized.isEmpty { return false }
+        return blocklist.contains { normalized.contains($0) }
+    }
+
+    /// Normalize: lowercase, strip diacritics, remove non-alphanumerics,
+    /// collapse runs of the same letter, map common leetspeak to letters.
+    private static func normalize(_ s: String) -> String {
+        let folded = s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+        var out = ""
+        var lastChar: Character?
+        for ch in folded {
+            let mapped: Character?
+            switch ch {
+            case "0": mapped = "o"
+            case "1", "!", "|": mapped = "i"
+            case "3": mapped = "e"
+            case "4", "@": mapped = "a"
+            case "5", "$": mapped = "s"
+            case "7": mapped = "t"
+            case "8": mapped = "b"
+            case "9": mapped = "g"
+            default:
+                mapped = ch.isLetter ? ch : nil
+            }
+            guard let m = mapped else { continue }
+            if m == lastChar { continue } // collapse repeats: "fuuuck" -> "fuck"
+            out.append(m)
+            lastChar = m
+        }
+        return out
+    }
+}
+
 class LeaderboardManager: ObservableObject {
     static let shared = LeaderboardManager()
 

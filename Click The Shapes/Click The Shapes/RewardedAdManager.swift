@@ -21,8 +21,7 @@ final class RewardedAdManager: NSObject {
     // Google test rewarded unit — never serves live ads.
     private let adUnitID = "ca-app-pub-3940256099942544/1712485313"
     #else
-    // TODO: replace with your real AdMob rewarded unit ID before release.
-    private let adUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+    private let adUnitID = "ca-app-pub-3653784707595102/9872748267"
     #endif
 
     #if canImport(GoogleMobileAds)

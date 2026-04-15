@@ -808,9 +808,12 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 class StoreManager: ObservableObject {
     static let shared = StoreManager()
     static let fullGameProductID = "krakastan3_icloud.com.Click_The_Shapes.fullgame"
+    static let diamonds1000ProductID = "krakastan3_icloud.com.Click_The_Shapes.diamonds1000"
+    static let diamondsGrantPerPack = 1000
 
     @Published var fullGamePurchased: Bool = false
     @Published var fullGameProduct: Product?
+    @Published var diamonds1000Product: Product?
     @Published var isPurchasing = false
 
     private var transactionListener: Task<Void, Error>?
@@ -851,9 +854,18 @@ class StoreManager: ObservableObject {
     @MainActor
     func loadProducts() async {
         do {
-            let products = try await Product.products(for: [StoreManager.fullGameProductID])
-            fullGameProduct = products.first
-            debugLog("Loaded product: \(fullGameProduct?.displayName ?? "none")")
+            let products = try await Product.products(for: [
+                StoreManager.fullGameProductID,
+                StoreManager.diamonds1000ProductID
+            ])
+            for p in products {
+                switch p.id {
+                case StoreManager.fullGameProductID: fullGameProduct = p
+                case StoreManager.diamonds1000ProductID: diamonds1000Product = p
+                default: break
+                }
+            }
+            debugLog("Loaded products: full=\(fullGameProduct?.displayName ?? "none"), diamonds=\(diamonds1000Product?.displayName ?? "none")")
         } catch {
             debugLog("Failed to load products: \(error)")
         }
@@ -870,6 +882,17 @@ class StoreManager: ObservableObject {
                 }
             } catch {
                 debugLog("Entitlement check failed: \(error)")
+            }
+        }
+        // Consumables don't appear in currentEntitlements. Drain any unfinished
+        // transactions so paid-but-not-delivered packs are granted on next launch.
+        for await result in StoreKit.Transaction.unfinished {
+            do {
+                let transaction = try checkVerified(result)
+                await updatePurchaseStatus(transaction)
+                await transaction.finish()
+            } catch {
+                debugLog("Unfinished txn check failed: \(error)")
             }
         }
     }
@@ -906,6 +929,37 @@ class StoreManager: ObservableObject {
     }
 
     @MainActor
+    func purchaseDiamonds1000() async {
+        guard let product = diamonds1000Product else {
+            debugLog("Diamonds product not loaded yet")
+            return
+        }
+
+        isPurchasing = true
+        AnalyticsHelper.log("purchase_diamonds_1000_started", parameters: nil)
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                let transaction = try checkVerified(verification)
+                await updatePurchaseStatus(transaction)
+                await transaction.finish()
+                AnalyticsHelper.log("purchase_diamonds_1000_completed", parameters: nil)
+            case .userCancelled:
+                AnalyticsHelper.log("purchase_diamonds_1000_cancelled", parameters: nil)
+                debugLog("User cancelled diamonds purchase")
+            case .pending:
+                debugLog("Diamonds purchase pending")
+            @unknown default:
+                break
+            }
+        } catch {
+            debugLog("Diamonds purchase failed: \(error)")
+        }
+        isPurchasing = false
+    }
+
+    @MainActor
     func restorePurchases() async {
         AnalyticsHelper.log("restore_purchases", parameters: nil)
         do {
@@ -925,12 +979,50 @@ class StoreManager: ObservableObject {
         }
     }
 
+    private static let processedTxnsKey = "processedTransactionIDs"
+
+    /// Idempotency guard for consumables. StoreKit 2 will replay any transaction
+    /// whose `finish()` didn't complete (e.g. crash between persist and finish),
+    /// so we record every transaction ID we've fully handled and refuse to
+    /// double-grant if we see it again.
+    private func hasProcessed(_ transaction: StoreKit.Transaction) -> Bool {
+        let processed = UserDefaults.standard.array(forKey: Self.processedTxnsKey) as? [String] ?? []
+        return processed.contains(String(transaction.id))
+    }
+
+    private func markProcessed(_ transaction: StoreKit.Transaction) {
+        var processed = UserDefaults.standard.array(forKey: Self.processedTxnsKey) as? [String] ?? []
+        let id = String(transaction.id)
+        guard !processed.contains(id) else { return }
+        processed.append(id)
+        // Cap the list so it can't grow without bound for very heavy users.
+        if processed.count > 500 { processed.removeFirst(processed.count - 500) }
+        UserDefaults.standard.set(processed, forKey: Self.processedTxnsKey)
+    }
+
     @MainActor
     private func updatePurchaseStatus(_ transaction: StoreKit.Transaction) async {
         if transaction.productID == StoreManager.fullGameProductID {
+            // Non-consumable: idempotent by nature — setting the bool twice is harmless.
             fullGamePurchased = true
             UserDefaults.standard.set(true, forKey: "fullGamePurchased")
             AnalyticsHelper.setProperty("true", forName: "full_game_purchased")
+        } else if transaction.productID == StoreManager.diamonds1000ProductID {
+            // Consumable: must be idempotent. If we've already granted this exact
+            // transaction (replay after crash), skip the grant — the caller will
+            // still finish() it so StoreKit stops replaying.
+            guard !hasProcessed(transaction) else {
+                debugLog("Diamonds transaction \(transaction.id) already processed; skipping grant.")
+                return
+            }
+            let current = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            UserDefaults.standard.set(current + StoreManager.diamondsGrantPerPack, forKey: "diamondsCollected")
+            // Mark processed BEFORE returning so a crash here-or-later still
+            // prevents a double-grant on replay (the diamonds are persisted; if
+            // the mark write also crashes, worst case a single re-grant happens).
+            markProcessed(transaction)
+            AnalyticsHelper.log("diamonds_granted", parameters: ["amount": StoreManager.diamondsGrantPerPack])
+            debugLog("Granted \(StoreManager.diamondsGrantPerPack) diamonds. New total: \(current + StoreManager.diamondsGrantPerPack)")
         }
     }
 
@@ -2808,6 +2900,7 @@ struct IntroOverlay: View {
     @State private var showLeaderboard = false
     @State private var showNamePrompt = false
     @State private var nameInput = ""
+    @State private var showNameRejected = false
 
     var body: some View {
         ZStack {
@@ -2925,6 +3018,45 @@ struct IntroOverlay: View {
                         .cornerRadius(8)
                 }
                 #endif
+
+                // Buy diamonds (1000 pack)
+                Button {
+                    Task { await store.purchaseDiamonds1000() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("💎")
+                            .font(.system(size: 18))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("BUY 1000 DIAMONDS")
+                                .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            Text(store.diamonds1000Product?.displayPrice ?? "—")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .opacity(0.85)
+                        }
+                        if store.isPurchasing {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.black)
+                                .scaleEffect(0.7)
+                        }
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.6, green: 0.95, blue: 1.0), Color(red: 0.3, green: 0.7, blue: 1.0)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                    )
+                }
+                .disabled(store.isPurchasing || store.diamonds1000Product == nil)
+                .opacity(store.diamonds1000Product == nil ? 0.5 : 1)
 
                 // Snake skin chooser
                 VStack(spacing: 6) {
@@ -3231,6 +3363,10 @@ struct IntroOverlay: View {
                             Text("You can't restart at any point")
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(.black.opacity(0.7))
+                            Text("Risk of losing diamonds – watch ad to keep them!")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(.black.opacity(0.85))
+                                .multilineTextAlignment(.center)
                         }
                         .padding(.horizontal, 30)
                         .padding(.vertical, 12)
@@ -3257,13 +3393,23 @@ struct IntroOverlay: View {
             TextField("Display name", text: $nameInput)
             Button("Save") {
                 let trimmed = nameInput.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty {
+                guard !trimmed.isEmpty else { return }
+                if DisplayNameFilter.isLikelyProfane(trimmed) {
+                    nameInput = ""
+                    showNameRejected = true
+                } else {
                     leaderboard.playerName = trimmed
                 }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This name will appear on the global leaderboard.")
+        }
+        .alert("Name Not Allowed", isPresented: $showNameRejected) {
+            Button("Try Again") { showNamePrompt = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please choose a different display name.")
         }
         .fullScreenCover(isPresented: $showLeaderboard) {
             LeaderboardView()

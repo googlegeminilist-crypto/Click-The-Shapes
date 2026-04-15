@@ -1,0 +1,48 @@
+{
+  "identifier" : "39A8B5C2-CTS-2026-PRODUCTS",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "ASC_FULLGAME_001",
+      "localizations" : [
+        {
+          "description" : "Unlock the full game.",
+          "displayName" : "Click The Shapes — Full Game",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "krakastan3_icloud.com.Click_The_Shapes.fullgame",
+      "referenceName" : "Full Game",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "ASC_DIAMONDS_1000_001",
+      "localizations" : [
+        {
+          "description" : "Top up with 1,000 diamonds instantly.",
+          "displayName" : "1,000 Diamonds",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "krakastan3_icloud.com.Click_The_Shapes.diamonds1000",
+      "referenceName" : "1000 Diamonds Pack",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+    ]
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

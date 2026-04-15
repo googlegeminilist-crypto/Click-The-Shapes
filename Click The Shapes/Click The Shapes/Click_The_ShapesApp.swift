@@ -13,6 +13,12 @@ import FirebaseCore
 #if canImport(GoogleMobileAds)
 import GoogleMobileAds
 #endif
+#if canImport(UserMessagingPlatform)
+import UserMessagingPlatform
+#endif
+#if canImport(AppTrackingTransparency)
+import AppTrackingTransparency
+#endif
 
 final class LaunchGate: ObservableObject {
     @Published var adsReady = false
@@ -30,6 +36,70 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
         #endif
         UserDefaults.standard.removeObject(forKey: "lossCountSinceLastAd")
+
+        // Consent (UMP) must run before MobileAds.start. Also required before ATT.
+        requestConsentThenStartAds()
+
+        // Hard safety: never keep the splash up longer than 8s no matter what.
+        // (Raised from 6s because the consent form, if shown, takes a few seconds.)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+            AppDelegate.launchGate.adsReady = true
+            AppDelegate.launchGate.firstFrameReady = true
+            AppDelegate.launchGate.introReady = true
+        }
+        return true
+    }
+
+    private func requestConsentThenStartAds() {
+        #if canImport(UserMessagingPlatform)
+        let params = RequestParameters()
+        // In Debug, treat the simulator as in the EEA so we can exercise the form.
+        #if DEBUG
+        let debugSettings = DebugSettings()
+        debugSettings.geography = .EEA
+        params.debugSettings = debugSettings
+        #endif
+        ConsentInformation.shared.requestConsentInfoUpdate(with: params) { [weak self] error in
+            if let error = error {
+                print("[UMP] Consent info update error: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                ConsentForm.loadAndPresentIfRequired(from: nil) { formError in
+                    if let formError = formError {
+                        print("[UMP] Form present error: \(formError.localizedDescription)")
+                    }
+                    self?.afterConsentResolved()
+                }
+            }
+        }
+        #else
+        afterConsentResolved()
+        #endif
+    }
+
+    private func afterConsentResolved() {
+        // ATT must come AFTER UMP resolves (Google's guidance).
+        requestTrackingAuthorization { [weak self] in
+            self?.startAdsSDK()
+        }
+    }
+
+    private func requestTrackingAuthorization(completion: @escaping () -> Void) {
+        #if canImport(AppTrackingTransparency)
+        if #available(iOS 14.5, *) {
+            ATTrackingManager.requestTrackingAuthorization { status in
+                print("[ATT] Authorization status: \(status.rawValue)")
+                DispatchQueue.main.async { completion() }
+            }
+        } else {
+            completion()
+        }
+        #else
+        completion()
+        #endif
+    }
+
+    private func startAdsSDK() {
         #if canImport(GoogleMobileAds)
         DispatchQueue.global(qos: .utility).async {
             MobileAds.shared.start { status in
@@ -44,13 +114,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #else
         AppDelegate.launchGate.adsReady = true
         #endif
-        // Hard safety: never keep the splash up longer than 6s no matter what.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-            AppDelegate.launchGate.adsReady = true
-            AppDelegate.launchGate.firstFrameReady = true
-            AppDelegate.launchGate.introReady = true
-        }
-        return true
     }
 }
 
