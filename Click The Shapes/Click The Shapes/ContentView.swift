@@ -1605,6 +1605,7 @@ class GameViewModel: ObservableObject {
             if hardcoreMode {
                 hardcoreDiamondsBeforeLoss = diamondsCollected
                 diamondsCollected = 0
+                print("[Hardcore] Snapshot saved: \(hardcoreDiamondsBeforeLoss). Diamonds zeroed.")
             }
             lossCountSinceLastAd += 1
             print("[Ads] Loss count: \(lossCountSinceLastAd)")
@@ -1720,9 +1721,12 @@ class GameViewModel: ObservableObject {
     /// had before the loss but still sends them back to Level 1.
     func restoreHardcoreDiamondsAndRestart() {
         if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
-        diamondsCollected = hardcoreDiamondsBeforeLoss
+        let toRestore = hardcoreDiamondsBeforeLoss
+        diamondsCollected = toRestore
         hardcoreDiamondsBeforeLoss = 0
+        print("[Hardcore] Restored \(toRestore) diamonds. diamondsCollected now \(diamondsCollected).")
         restartGame()
+        print("[Hardcore] After restartGame, diamondsCollected = \(diamondsCollected).")
     }
 
     func restartCurrentLevel() {
@@ -3955,7 +3959,9 @@ struct ContentView: View {
                             game.restartCurrentLevel()
                         },
                         onContinueWithAd: {
+                            print("[Hardcore] Gold button tapped. hardcoreMode=\(game.hardcoreMode), snapshot=\(game.hardcoreDiamondsBeforeLoss), current diamonds=\(game.diamondsCollected)")
                             RewardedAdManager.shared.show {
+                                print("[Hardcore] Reward callback fired. hardcoreMode=\(game.hardcoreMode)")
                                 if game.hardcoreMode {
                                     game.restoreHardcoreDiamondsAndRestart()
                                 } else {
