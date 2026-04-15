@@ -3062,7 +3062,7 @@ struct IntroOverlay: View {
                                     }.frame(width: 42, height: 22).opacity(p ? 1 : 0.3)
                                     if !p { Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill").font(.system(size: 12)).foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray) }
                                 }
-                                Text(p ? "Wormy" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
+                                Text(p ? "Glow" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
                                     .font(.system(size: p ? 8 : 7, design: .monospaced))
                                     .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
                             }
