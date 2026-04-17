@@ -24,12 +24,17 @@ final class RewardedAdManager: NSObject {
     private let adUnitID = "ca-app-pub-3653784707595102/9872748267"
     #endif
 
+    // Max time we'll wait for an ad to load after the user taps the button
+    // before falling back to granting the reward. Keeps the UI responsive
+    // on slow networks or when AdMob can't fill the request.
+    private let loadTimeout: TimeInterval = 4.0
+
     #if canImport(GoogleMobileAds)
     private var rewarded: RewardedAd?
     private var isLoading = false
     #endif
 
-    private var pendingReward: (() -> Void)?
+    private var completion: ((Bool) -> Void)?
     private var rewardEarned = false
 
     private override init() {
@@ -66,22 +71,72 @@ final class RewardedAdManager: NSObject {
         #endif
     }
 
-    /// Presents the rewarded ad. `onReward` fires only if the user earns the reward.
-    func show(onReward: @escaping () -> Void) {
+    /// Presents the rewarded ad. `onComplete(true)` fires if the user earned
+    /// the reward OR if the ad couldn't be loaded in time (graceful fallback
+    /// so the UI is never stuck). `onComplete(false)` fires if the user
+    /// dismissed the ad without earning, or the ad failed to present.
+    func show(onComplete: @escaping (_ earned: Bool) -> Void) {
         #if canImport(GoogleMobileAds)
-        guard let ad = rewarded, let root = Self.topViewController() else {
-            print("[Ads] Rewarded not ready — triggering load.")
-            loadAd()
+        guard completion == nil else {
+            // A previous presentation is still in flight — ignore re-entry.
             return
         }
-        pendingReward = onReward
-        rewardEarned = false
-        ad.present(from: root) { [weak self] in
-            // User earned reward
-            self?.rewardEarned = true
+        guard let root = Self.topViewController() else {
+            onComplete(false)
+            return
         }
+        if let ad = rewarded {
+            presentAd(ad, from: root, onComplete: onComplete)
+            return
+        }
+        // Ad not ready — kick off a load and poll briefly before falling back.
+        print("[Ads] Rewarded not ready — loading with \(loadTimeout)s timeout.")
+        loadAd()
+        waitForAd(deadline: Date().addingTimeInterval(loadTimeout),
+                  root: root,
+                  onComplete: onComplete)
+        #else
+        onComplete(true)
         #endif
     }
+
+    #if canImport(GoogleMobileAds)
+    private func waitForAd(deadline: Date,
+                           root: UIViewController,
+                           onComplete: @escaping (Bool) -> Void) {
+        if let ad = rewarded {
+            presentAd(ad, from: root, onComplete: onComplete)
+            return
+        }
+        if Date() >= deadline {
+            print("[Ads] Rewarded load timed out — granting reward as fallback.")
+            onComplete(true)
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self = self else { return }
+            self.waitForAd(deadline: deadline, root: root, onComplete: onComplete)
+        }
+    }
+
+    private func presentAd(_ ad: RewardedAd,
+                           from root: UIViewController,
+                           onComplete: @escaping (Bool) -> Void) {
+        completion = onComplete
+        rewardEarned = false
+        ad.present(from: root) { [weak self] in
+            self?.rewardEarned = true
+        }
+    }
+
+    private func finish(earned: Bool) {
+        let cb = completion
+        completion = nil
+        rewarded = nil
+        loadAd()
+        cb?(earned)
+    }
+    #endif
 
     private static func topViewController(base: UIViewController? = nil) -> UIViewController? {
         let root = base ?? UIApplication.shared.connectedScenes
@@ -100,20 +155,13 @@ extension RewardedAdManager: FullScreenContentDelegate {
     nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         print("[Ads] Rewarded failed to present: \(error.localizedDescription)")
         Task { @MainActor in
-            self.rewarded = nil
-            self.pendingReward = nil
-            self.loadAd()
+            self.finish(earned: false)
         }
     }
 
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         Task { @MainActor in
-            let earned = self.rewardEarned
-            let cb = self.pendingReward
-            self.pendingReward = nil
-            self.rewarded = nil
-            self.loadAd()
-            if earned { cb?() }
+            self.finish(earned: self.rewardEarned)
         }
     }
 }

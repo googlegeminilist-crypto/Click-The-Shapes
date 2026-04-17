@@ -1141,6 +1141,28 @@ class GameViewModel: ObservableObject {
         startGameLoop()
     }
 
+    // Call when the device rotates so the game uses the new canvas size.
+    // Entities self-clamp each frame, so we just refresh the stored bounds
+    // and nudge obviously-out-of-bounds positions inward.
+    func updateBounds(_ newBounds: CGSize) {
+        guard newBounds.width > 0, newBounds.height > 0 else { return }
+        self.bounds = newBounds
+        guard isSetup else { return }
+
+        for shape in shapes {
+            shape.x = min(max(80, shape.x), max(81, newBounds.width - 80))
+            shape.y = min(max(150, shape.y), max(151, newBounds.height - 150))
+        }
+        if let s = snake, !s.segments.isEmpty {
+            s.segments[0].x = min(max(0, s.segments[0].x), newBounds.width)
+            s.segments[0].y = min(max(0, s.segments[0].y), newBounds.height)
+        }
+        if let s = snake2, !s.segments.isEmpty {
+            s.segments[0].x = min(max(0, s.segments[0].x), newBounds.width)
+            s.segments[0].y = min(max(0, s.segments[0].y), newBounds.height)
+        }
+    }
+
     func startGame() {
         showIntro = false
         if displayLink == nil {
@@ -3444,11 +3466,12 @@ struct WinOverlay: View {
     let snakeWon: Bool
     let onRestart: () -> Void
     let onRestartLevel: () -> Void
-    let onContinueWithAd: () -> Void
+    let onContinueWithAd: (@escaping (Bool) -> Void) -> Void
 
     @State private var titleScale: CGFloat = 1.0
     @State private var buttonGlow: CGFloat = 8.0
     @State private var goldPulse: CGFloat = 8.0
+    @State private var isLoadingAd: Bool = false
 
     var body: some View {
         ZStack {
@@ -3464,14 +3487,28 @@ struct WinOverlay: View {
                         .scaleEffect(titleScale)
 
                     if snakeWon {
-                        Button(action: onContinueWithAd) {
-                            VStack(spacing: 2) {
-                                Image(systemName: "play.rectangle.fill")
-                                    .font(.system(size: 18, weight: .bold))
-                                Text("WATCH AD")
-                                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                                Text(hardcoreMode ? "KEEP 💎" : "KEEP SCORE")
-                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        Button(action: {
+                            guard !isLoadingAd else { return }
+                            isLoadingAd = true
+                            onContinueWithAd { _ in
+                                isLoadingAd = false
+                            }
+                        }) {
+                            ZStack {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "play.rectangle.fill")
+                                        .font(.system(size: 18, weight: .bold))
+                                    Text("WATCH AD")
+                                        .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                    Text(hardcoreMode ? "KEEP 💎" : "KEEP SCORE")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                }
+                                .opacity(isLoadingAd ? 0 : 1)
+
+                                if isLoadingAd {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                }
                             }
                             .foregroundColor(.black)
                             .padding(.horizontal, 12)
@@ -3489,6 +3526,7 @@ struct WinOverlay: View {
                                     .stroke(Color(red: 1.0, green: 0.95, blue: 0.5), lineWidth: 2)
                             )
                         }
+                        .disabled(isLoadingAd)
                     }
                 }
                 .onAppear {
@@ -4104,15 +4142,18 @@ struct ContentView: View {
                         onRestartLevel: {
                             game.restartCurrentLevel()
                         },
-                        onContinueWithAd: {
+                        onContinueWithAd: { completion in
                             print("[Hardcore] Gold button tapped. hardcoreMode=\(game.hardcoreMode), snapshot=\(game.hardcoreDiamondsBeforeLoss), current diamonds=\(game.diamondsCollected)")
-                            RewardedAdManager.shared.show {
-                                print("[Hardcore] Reward callback fired. hardcoreMode=\(game.hardcoreMode)")
-                                if game.hardcoreMode {
-                                    game.restoreHardcoreDiamondsAndRestart()
-                                } else {
-                                    game.continueWithSameScore()
+                            RewardedAdManager.shared.show { earned in
+                                print("[Hardcore] Reward callback fired. earned=\(earned), hardcoreMode=\(game.hardcoreMode)")
+                                if earned {
+                                    if game.hardcoreMode {
+                                        game.restoreHardcoreDiamondsAndRestart()
+                                    } else {
+                                        game.continueWithSameScore()
+                                    }
                                 }
+                                completion(earned)
                             }
                         }
                     )
@@ -4120,6 +4161,9 @@ struct ContentView: View {
             }
             .onAppear {
                 game.setupGame(bounds: geometry.size)
+            }
+            .onChange(of: geometry.size) { newSize in
+                game.updateBounds(newSize)
             }
         }
         .ignoresSafeArea()

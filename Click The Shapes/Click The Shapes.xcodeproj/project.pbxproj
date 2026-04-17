@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E28C21C02F8FBB9900C4BA9B /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = E28C21BF2F8FBB9900C4BA9B /* FirebaseAI */; };
-		E28C21C22F8FBB9900C4BA9B /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = E28C21C12F8FBB9900C4BA9B /* FirebaseAILogic */; };
 		E28C21C42F8FBB9900C4BA9B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = E28C21C32F8FBB9900C4BA9B /* FirebaseAnalytics */; };
 		E28C21C62F8FBB9900C4BA9B /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = E28C21C52F8FBB9900C4BA9B /* FirebaseAnalyticsCore */; };
 		E28C21C82F8FBB9900C4BA9B /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = E28C21C72F8FBB9900C4BA9B /* FirebaseAnalyticsIdentitySupport */; };
@@ -104,7 +102,6 @@
 				E28C21E82F8FBB9900C4BA9B /* FirebasePerformance in Frameworks */,
 				E28C21D62F8FBB9900C4BA9B /* FirebaseDatabase in Frameworks */,
 				E28C21DE2F8FBB9900C4BA9B /* FirebaseFunctionsCombine-Community in Frameworks */,
-				E28C21C22F8FBB9900C4BA9B /* FirebaseAILogic in Frameworks */,
 				E2C6D32A2F8D1EAF00D43191 /* GoogleMobileAds in Frameworks */,
 				E28C21EC2F8FBB9900C4BA9B /* FirebaseStorage in Frameworks */,
 				E28C21DA2F8FBB9900C4BA9B /* FirebaseFirestoreCombine-Community in Frameworks */,
@@ -118,7 +115,6 @@
 				E28C21C42F8FBB9900C4BA9B /* FirebaseAnalytics in Frameworks */,
 				E28C21E42F8FBB9900C4BA9B /* FirebaseMessaging in Frameworks */,
 				E28C21E02F8FBB9900C4BA9B /* FirebaseInAppMessaging-Beta in Frameworks */,
-				E28C21C02F8FBB9900C4BA9B /* FirebaseAI in Frameworks */,
 				E28C21DC2F8FBB9900C4BA9B /* FirebaseFunctions in Frameworks */,
 				E28C21EA2F8FBB9900C4BA9B /* FirebaseRemoteConfig in Frameworks */,
 				E28C21D42F8FBB9900C4BA9B /* FirebaseCrashlytics in Frameworks */,
@@ -486,6 +482,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
@@ -522,6 +519,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
@@ -687,16 +685,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E28C21BF2F8FBB9900C4BA9B /* FirebaseAI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E28C21852F8FB79300C4BA9B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAI;
-		};
-		E28C21C12F8FBB9900C4BA9B /* FirebaseAILogic */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E28C21852F8FB79300C4BA9B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAILogic;
-		};
 		E28C21C32F8FBB9900C4BA9B /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E28C21852F8FB79300C4BA9B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
