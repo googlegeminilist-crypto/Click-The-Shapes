@@ -778,13 +778,15 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 class StoreManager: ObservableObject {
     static let shared = StoreManager()
     static let fullGameProductID = "krakastan3_icloud.com.Click_The_Shapes.fullgame"
-    static let diamonds1000ProductID = "krakastan3_icloud.com.Click_The_Shapes.diamonds1000"
+    static let diamonds1000ProductID = "rakastan3_icloud.com.Click_The_Shapes.diamonds1000"
     static let diamondsGrantPerPack = 1000
 
     @Published var fullGamePurchased: Bool = false
     @Published var fullGameProduct: Product?
     @Published var diamonds1000Product: Product?
     @Published var isPurchasing = false
+    @Published var isLoadingProducts = false
+    @Published var lastPurchaseError: String?
 
     private var transactionListener: Task<Void, Error>?
 
@@ -821,6 +823,9 @@ class StoreManager: ObservableObject {
 
     @MainActor
     func loadProducts() async {
+        guard !isLoadingProducts else { return }
+        isLoadingProducts = true
+        defer { isLoadingProducts = false }
         do {
             let products = try await Product.products(for: [
                 StoreManager.fullGameProductID,
@@ -833,7 +838,12 @@ class StoreManager: ObservableObject {
                 default: break
                 }
             }
-        } catch {}
+            if diamonds1000Product == nil {
+                lastPurchaseError = "In-app purchases aren't available right now. Check your connection and try again."
+            }
+        } catch {
+            lastPurchaseError = "Couldn't reach the App Store. Check your connection and try again."
+        }
     }
 
     @MainActor
@@ -888,6 +898,8 @@ class StoreManager: ObservableObject {
     @MainActor
     func purchaseDiamonds1000() async {
         guard let product = diamonds1000Product else {
+            lastPurchaseError = "Still loading the Store. Try again in a moment."
+            await loadProducts()
             return
         }
 
@@ -904,11 +916,13 @@ class StoreManager: ObservableObject {
             case .userCancelled:
                 AnalyticsHelper.log("purchase_diamonds_1000_cancelled", parameters: nil)
             case .pending:
-                break
+                lastPurchaseError = "Purchase is pending approval (e.g. Ask to Buy). Your diamonds will be granted once approved."
             @unknown default:
                 break
             }
-        } catch {}
+        } catch {
+            lastPurchaseError = "Purchase failed: \(error.localizedDescription)"
+        }
         isPurchasing = false
     }
 
@@ -2950,9 +2964,18 @@ struct IntroOverlay: View {
                     }
                 }
 
-                // Buy diamonds (1000 pack)
+                // Buy diamonds (1000 pack) — always tappable; retries product load if not ready.
                 Button {
-                    Task { await store.purchaseDiamonds1000() }
+                    Task {
+                        if store.diamonds1000Product == nil {
+                            await store.loadProducts()
+                            if store.diamonds1000Product != nil {
+                                await store.purchaseDiamonds1000()
+                            }
+                        } else {
+                            await store.purchaseDiamonds1000()
+                        }
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         Text("💎")
@@ -2960,11 +2983,17 @@ struct IntroOverlay: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("BUY 1000 DIAMONDS")
                                 .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                            Text(store.diamonds1000Product?.displayPrice ?? "—")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .opacity(0.85)
+                            if store.isLoadingProducts && store.diamonds1000Product == nil {
+                                Text("LOADING…")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .opacity(0.85)
+                            } else {
+                                Text(store.diamonds1000Product?.displayPrice ?? "TAP TO RETRY")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .opacity(0.85)
+                            }
                         }
-                        if store.isPurchasing {
+                        if store.isPurchasing || store.isLoadingProducts {
                             ProgressView()
                                 .progressViewStyle(.circular)
                                 .tint(.black)
@@ -2986,8 +3015,7 @@ struct IntroOverlay: View {
                             .stroke(Color.white.opacity(0.6), lineWidth: 1)
                     )
                 }
-                .disabled(store.isPurchasing || store.diamonds1000Product == nil)
-                .opacity(store.diamonds1000Product == nil ? 0.5 : 1)
+                .disabled(store.isPurchasing || store.isLoadingProducts)
 
                 // Snake skin chooser
                 VStack(spacing: 6) {
@@ -3319,6 +3347,20 @@ struct IntroOverlay: View {
             if !leaderboard.hasSetName {
                 showNamePrompt = true
             }
+            if store.diamonds1000Product == nil {
+                Task { await store.loadProducts() }
+            }
+        }
+        .alert(
+            "In-App Purchase",
+            isPresented: Binding(
+                get: { store.lastPurchaseError != nil },
+                set: { if !$0 { store.lastPurchaseError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { store.lastPurchaseError = nil }
+        } message: {
+            Text(store.lastPurchaseError ?? "")
         }
         .alert("Enter Your Name", isPresented: $showNamePrompt) {
             TextField("Display name", text: $nameInput)
