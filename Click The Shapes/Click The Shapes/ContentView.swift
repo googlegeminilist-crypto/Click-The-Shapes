@@ -1771,10 +1771,15 @@ class GameViewModel: ObservableObject {
     /// current score so they can pick up roughly where they left off.
     func continueWithSameScore() {
         let savedScore = score
+        let savedSnakeScore = snakeScore
         // Don't double-count the upcoming restart against the ad threshold.
         if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
         restartCurrentLevel()
         score = savedScore
+        snakeScore = savedSnakeScore
+        // Resume play immediately after the ad — user just watched ~20s,
+        // don't make them tap a shape to un-freeze the snake.
+        gameStarted = true
     }
 
     /// Hardcore-mode reward-ad continuation: restores the diamonds the player

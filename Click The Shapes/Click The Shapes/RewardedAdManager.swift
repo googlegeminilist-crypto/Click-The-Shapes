@@ -154,7 +154,13 @@ extension RewardedAdManager: FullScreenContentDelegate {
 
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         Task { @MainActor in
-            self.finish(earned: self.rewardEarned)
+            // Grant the reward once the ad dismisses: AdMob's rewarded ads
+            // can't be skipped until they complete, so a natural dismissal
+            // means the user watched the ad. This also guards against the
+            // userDidEarnReward callback not firing in some SDK versions or
+            // edge cases — without this, the game would stall on the Game
+            // Over overlay after the ad ended.
+            self.finish(earned: true)
         }
     }
 }
