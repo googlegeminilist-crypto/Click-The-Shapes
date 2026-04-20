@@ -53,21 +53,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func requestConsentThenStartAds() {
         #if canImport(UserMessagingPlatform)
         let params = RequestParameters()
-        // In Debug, treat the simulator as in the EEA so we can exercise the form.
-        #if DEBUG
-        let debugSettings = DebugSettings()
-        debugSettings.geography = .EEA
-        params.debugSettings = debugSettings
-        #endif
-        ConsentInformation.shared.requestConsentInfoUpdate(with: params) { [weak self] error in
-            if let error = error {
-                print("[UMP] Consent info update error: \(error.localizedDescription)")
-            }
+        ConsentInformation.shared.requestConsentInfoUpdate(with: params) { [weak self] _ in
             DispatchQueue.main.async {
-                ConsentForm.loadAndPresentIfRequired(from: nil) { formError in
-                    if let formError = formError {
-                        print("[UMP] Form present error: \(formError.localizedDescription)")
-                    }
+                ConsentForm.loadAndPresentIfRequired(from: nil) { _ in
                     self?.afterConsentResolved()
                 }
             }
@@ -87,8 +75,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func requestTrackingAuthorization(completion: @escaping () -> Void) {
         #if canImport(AppTrackingTransparency)
         if #available(iOS 14.5, *) {
-            ATTrackingManager.requestTrackingAuthorization { status in
-                print("[ATT] Authorization status: \(status.rawValue)")
+            ATTrackingManager.requestTrackingAuthorization { _ in
                 DispatchQueue.main.async { completion() }
             }
         } else {
@@ -102,8 +89,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func startAdsSDK() {
         #if canImport(GoogleMobileAds)
         DispatchQueue.global(qos: .utility).async {
-            MobileAds.shared.start { status in
-                print("[Ads] MobileAds started. Adapters: \(status.adapterStatusesByClassName.keys.joined(separator: ", "))")
+            MobileAds.shared.start { _ in
                 Task { @MainActor in
                     _ = InterstitialAdManager.shared
                     _ = RewardedAdManager.shared

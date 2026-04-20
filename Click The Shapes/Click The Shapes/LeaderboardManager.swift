@@ -145,7 +145,6 @@ class LeaderboardManager: ObservableObject {
             }
             isLoading = false
         } catch {
-            debugLog("Leaderboard fetch failed: \(error)")
             isLoading = false
         }
         #else

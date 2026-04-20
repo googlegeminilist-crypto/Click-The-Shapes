@@ -43,13 +43,9 @@ final class InterstitialAdManager: NSObject {
             guard let self = self else { return }
             Task { @MainActor in
                 self.isLoading = false
-                if let error = error {
-                    print("[Ads] Interstitial failed to load: \(error.localizedDescription)")
-                    return
-                }
+                guard error == nil else { return }
                 self.interstitial = ad
                 self.interstitial?.fullScreenContentDelegate = self
-                print("[Ads] Interstitial loaded and ready.")
             }
         }
         #endif
@@ -58,15 +54,12 @@ final class InterstitialAdManager: NSObject {
     func showIfReady() {
         #if canImport(GoogleMobileAds)
         guard let ad = interstitial else {
-            print("[Ads] showIfReady: no ad loaded yet — triggering load.")
             loadAd()
             return
         }
         guard let root = Self.topViewController() else {
-            print("[Ads] showIfReady: no root VC found.")
             return
         }
-        print("[Ads] Presenting interstitial.")
         ad.present(from: root)
         #endif
     }
@@ -86,7 +79,6 @@ final class InterstitialAdManager: NSObject {
 #if canImport(GoogleMobileAds)
 extension InterstitialAdManager: FullScreenContentDelegate {
     nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        print("[Ads] Interstitial failed to present: \(error.localizedDescription)")
         Task { @MainActor in
             self.interstitial = nil
             self.loadAd()

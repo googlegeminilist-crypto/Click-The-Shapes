@@ -51,13 +51,9 @@ final class RewardedAdManager: NSObject {
             guard let self = self else { return }
             Task { @MainActor in
                 self.isLoading = false
-                if let error = error {
-                    print("[Ads] Rewarded failed to load: \(error.localizedDescription)")
-                    return
-                }
+                guard error == nil else { return }
                 self.rewarded = ad
                 self.rewarded?.fullScreenContentDelegate = self
-                print("[Ads] Rewarded loaded and ready.")
             }
         }
         #endif
@@ -90,7 +86,6 @@ final class RewardedAdManager: NSObject {
             return
         }
         // Ad not ready — kick off a load and poll briefly before falling back.
-        print("[Ads] Rewarded not ready — loading with \(loadTimeout)s timeout.")
         loadAd()
         waitForAd(deadline: Date().addingTimeInterval(loadTimeout),
                   root: root,
@@ -109,7 +104,6 @@ final class RewardedAdManager: NSObject {
             return
         }
         if Date() >= deadline {
-            print("[Ads] Rewarded load timed out — granting reward as fallback.")
             onComplete(true)
             return
         }
@@ -153,7 +147,6 @@ final class RewardedAdManager: NSObject {
 #if canImport(GoogleMobileAds)
 extension RewardedAdManager: FullScreenContentDelegate {
     nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        print("[Ads] Rewarded failed to present: \(error.localizedDescription)")
         Task { @MainActor in
             self.finish(earned: false)
         }

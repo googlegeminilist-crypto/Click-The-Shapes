@@ -27,14 +27,6 @@ enum AnalyticsHelper {
     }
 }
 
-// MARK: - Debug Logging
-@inline(__always)
-nonisolated func debugLog(_ message: @autoclosure () -> String) {
-    #if DEBUG
-    print(message())
-    #endif
-}
-
 // MARK: - Game Constants (optimized for older phones like iPhone XS Max)
 struct GameConstants {
     static let level1WinScore = 500
@@ -691,12 +683,8 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 
     private func setupAudioSession() {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            debugLog("Audio session error: \(error)")
-        }
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     private func setupBackgroundMusic() {
@@ -708,17 +696,9 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
         // Try bundle first
         if let bundleURL = Bundle.main.url(forResource: "Untitled", withExtension: "wav") {
             url = bundleURL
-            debugLog("Found audio in bundle: \(bundleURL)")
         }
 
-        guard let audioURL = url else {
-            debugLog("Background music file 'Untitled.wav' not found in bundle")
-            debugLog("Bundle path: \(Bundle.main.bundlePath)")
-            if let resources = Bundle.main.urls(forResourcesWithExtension: "wav", subdirectory: nil) {
-                debugLog("WAV files in bundle: \(resources)")
-            }
-            return
-        }
+        guard let audioURL = url else { return }
 
         do {
             backgroundMusicPlayer = try AVAudioPlayer(contentsOf: audioURL)
@@ -727,19 +707,14 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             backgroundMusicPlayer?.volume = 0.5
             backgroundMusicPlayer?.prepareToPlay()
             isSetup = true
-            debugLog("Background music loaded successfully")
-        } catch {
-            debugLog("Error loading background music: \(error)")
-        }
+        } catch {}
     }
 
     func playBackgroundMusic() {
         setupAudioSession()
         setupBackgroundMusic()
         if backgroundMusicPlayer?.play() == true {
-            debugLog("Music started playing")
         } else {
-            debugLog("Music failed to play")
         }
     }
 
@@ -759,7 +734,6 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     func playLevel4Music() {
         setupAudioSession()
         guard let url = Bundle.main.url(forResource: "Untitled 8", withExtension: "mp3") else {
-            debugLog("Level 4 music 'Untitled 8.mp3' not found in bundle")
             return
         }
         do {
@@ -770,9 +744,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
             backgroundMusicPlayer?.volume = 0.85
             backgroundMusicPlayer?.prepareToPlay()
             backgroundMusicPlayer?.play()
-        } catch {
-            debugLog("Error loading level 4 music: \(error)")
-        }
+        } catch {}
     }
 
     func stopAllShapeTapSounds() {
@@ -796,11 +768,9 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        debugLog("Audio finished: \(flag)")
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        debugLog("Audio decode error: \(error?.localizedDescription ?? "unknown")")
     }
 }
 
@@ -844,9 +814,7 @@ class StoreManager: ObservableObject {
                     let transaction = try self.checkVerified(result)
                     await self.updatePurchaseStatus(transaction)
                     await transaction.finish()
-                } catch {
-                    debugLog("Transaction verification failed: \(error)")
-                }
+                } catch {}
             }
         }
     }
@@ -865,10 +833,7 @@ class StoreManager: ObservableObject {
                 default: break
                 }
             }
-            debugLog("Loaded products: full=\(fullGameProduct?.displayName ?? "none"), diamonds=\(diamonds1000Product?.displayName ?? "none")")
-        } catch {
-            debugLog("Failed to load products: \(error)")
-        }
+        } catch {}
     }
 
     @MainActor
@@ -880,9 +845,7 @@ class StoreManager: ObservableObject {
                     fullGamePurchased = true
                     UserDefaults.standard.set(true, forKey: "fullGamePurchased")
                 }
-            } catch {
-                debugLog("Entitlement check failed: \(error)")
-            }
+            } catch {}
         }
         // Consumables don't appear in currentEntitlements. Drain any unfinished
         // transactions so paid-but-not-delivered packs are granted on next launch.
@@ -891,16 +854,13 @@ class StoreManager: ObservableObject {
                 let transaction = try checkVerified(result)
                 await updatePurchaseStatus(transaction)
                 await transaction.finish()
-            } catch {
-                debugLog("Unfinished txn check failed: \(error)")
-            }
+            } catch {}
         }
     }
 
     @MainActor
     func purchaseFullGame() async {
         guard let product = fullGameProduct else {
-            debugLog("Product not loaded yet")
             return
         }
 
@@ -916,22 +876,18 @@ class StoreManager: ObservableObject {
                 AnalyticsHelper.log("purchase_completed", parameters: nil)
             case .userCancelled:
                 AnalyticsHelper.log("purchase_cancelled", parameters: nil)
-                debugLog("User cancelled purchase")
             case .pending:
-                debugLog("Purchase pending")
+                break
             @unknown default:
                 break
             }
-        } catch {
-            debugLog("Purchase failed: \(error)")
-        }
+        } catch {}
         isPurchasing = false
     }
 
     @MainActor
     func purchaseDiamonds1000() async {
         guard let product = diamonds1000Product else {
-            debugLog("Diamonds product not loaded yet")
             return
         }
 
@@ -947,15 +903,12 @@ class StoreManager: ObservableObject {
                 AnalyticsHelper.log("purchase_diamonds_1000_completed", parameters: nil)
             case .userCancelled:
                 AnalyticsHelper.log("purchase_diamonds_1000_cancelled", parameters: nil)
-                debugLog("User cancelled diamonds purchase")
             case .pending:
-                debugLog("Diamonds purchase pending")
+                break
             @unknown default:
                 break
             }
-        } catch {
-            debugLog("Diamonds purchase failed: \(error)")
-        }
+        } catch {}
         isPurchasing = false
     }
 
@@ -965,9 +918,7 @@ class StoreManager: ObservableObject {
         do {
             try await AppStore.sync()
             await checkCurrentEntitlements()
-        } catch {
-            debugLog("Restore failed: \(error)")
-        }
+        } catch {}
     }
 
     private func checkVerified<T>(_ result: StoreKit.VerificationResult<T>) throws -> T {
@@ -1012,7 +963,6 @@ class StoreManager: ObservableObject {
             // transaction (replay after crash), skip the grant — the caller will
             // still finish() it so StoreKit stops replaying.
             guard !hasProcessed(transaction) else {
-                debugLog("Diamonds transaction \(transaction.id) already processed; skipping grant.")
                 return
             }
             let current = UserDefaults.standard.integer(forKey: "diamondsCollected")
@@ -1022,7 +972,6 @@ class StoreManager: ObservableObject {
             // the mark write also crashes, worst case a single re-grant happens).
             markProcessed(transaction)
             AnalyticsHelper.log("diamonds_granted", parameters: ["amount": StoreManager.diamondsGrantPerPack])
-            debugLog("Granted \(StoreManager.diamondsGrantPerPack) diamonds. New total: \(current + StoreManager.diamondsGrantPerPack)")
         }
     }
 
@@ -1719,13 +1668,10 @@ class GameViewModel: ObservableObject {
             if hardcoreMode {
                 hardcoreDiamondsBeforeLoss = diamondsCollected
                 diamondsCollected = 0
-                print("[Hardcore] Snapshot saved: \(hardcoreDiamondsBeforeLoss). Diamonds zeroed.")
             }
             lossCountSinceLastAd += 1
-            print("[Ads] Loss count: \(lossCountSinceLastAd)")
             if lossCountSinceLastAd >= 4 {
                 lossCountSinceLastAd = 0
-                print("[Ads] Threshold hit — requesting interstitial")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     InterstitialAdManager.shared.showIfReady()
                 }
@@ -1838,9 +1784,7 @@ class GameViewModel: ObservableObject {
         let toRestore = hardcoreDiamondsBeforeLoss
         diamondsCollected = toRestore
         hardcoreDiamondsBeforeLoss = 0
-        print("[Hardcore] Restored \(toRestore) diamonds. diamondsCollected now \(diamondsCollected).")
         restartGame()
-        print("[Hardcore] After restartGame, diamondsCollected = \(diamondsCollected).")
     }
 
     func restartCurrentLevel() {
@@ -2995,52 +2939,6 @@ struct IntroOverlay: View {
                     }
                 }
 
-                #if DEBUG
-                Button {
-                    store.fullGamePurchased.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: store.fullGamePurchased ? "lock.open.fill" : "lock.fill")
-                        Text(store.fullGamePurchased ? "DEBUG: Locked" : "DEBUG: Unlock Full Game")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.red.opacity(0.8))
-                    .cornerRadius(8)
-                }
-
-                Button {
-                    onStartLevel4()
-                } label: {
-                    Text("DEBUG: Skip to Level 4")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(8)
-                }
-
-                Button {
-                    UserDefaults.standard.set(true, forKey: "candySnakePurchased")
-                    UserDefaults.standard.set(true, forKey: "starSnakePurchased")
-                    UserDefaults.standard.set(true, forKey: "wormySnakePurchased")
-                    UserDefaults.standard.set(true, forKey: "blazeSnakePurchased")
-                    UserDefaults.standard.set(true, forKey: "nebulaSnakePurchased")
-                    UserDefaults.standard.set(10000, forKey: "diamondsCollected")
-                } label: {
-                    Text("DEBUG: Unlock All Snakes")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(8)
-                }
-                #endif
-
                 // Buy diamonds (1000 pack)
                 Button {
                     Task { await store.purchaseDiamonds1000() }
@@ -4143,9 +4041,7 @@ struct ContentView: View {
                             game.restartCurrentLevel()
                         },
                         onContinueWithAd: { completion in
-                            print("[Hardcore] Gold button tapped. hardcoreMode=\(game.hardcoreMode), snapshot=\(game.hardcoreDiamondsBeforeLoss), current diamonds=\(game.diamondsCollected)")
                             RewardedAdManager.shared.show { earned in
-                                print("[Hardcore] Reward callback fired. earned=\(earned), hardcoreMode=\(game.hardcoreMode)")
                                 if earned {
                                     if game.hardcoreMode {
                                         game.restoreHardcoreDiamondsAndRestart()
