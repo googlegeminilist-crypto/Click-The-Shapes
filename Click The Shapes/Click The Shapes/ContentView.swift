@@ -1767,19 +1767,25 @@ class GameViewModel: ObservableObject {
         startDiamondTimer()
     }
 
-    /// Reward-ad continuation: clears the loss state but preserves the player's
-    /// current score so they can pick up roughly where they left off.
+    /// Reward-ad "continue" — carry on from the exact moment of death.
+    /// No level restart. Shapes stay where they were, the snake keeps its
+    /// length and position. Only the snake's score is zeroed so the game
+    /// doesn't immediately end again from the same losing condition.
     func continueWithSameScore() {
-        let savedScore = score
-        let savedSnakeScore = snakeScore
-        // Don't double-count the upcoming restart against the ad threshold.
+        guard gameOver else { return }
         if lossCountSinceLastAd > 0 { lossCountSinceLastAd -= 1 }
-        restartCurrentLevel()
-        score = savedScore
-        snakeScore = savedSnakeScore
-        // Resume play immediately after the ad — user just watched ~20s,
-        // don't make them tap a shape to un-freeze the snake.
+        // Knock the snake's score below the winning threshold so the same
+        // "snake won" condition doesn't re-fire on the next frame.
+        snakeScore = 0
+        gameOver = false
         gameStarted = true
+        startGameLoop()
+        startDiamondTimer()
+        if currentLevel >= 4 {
+            SoundManager.shared.playLevel4Music()
+        } else {
+            SoundManager.shared.playBackgroundMusic()
+        }
     }
 
     /// Hardcore-mode reward-ad continuation: restores the diamonds the player
@@ -4047,12 +4053,12 @@ struct ContentView: View {
                         },
                         onContinueWithAd: { completion in
                             RewardedAdManager.shared.show { earned in
-                                if earned {
-                                    if game.hardcoreMode {
-                                        game.restoreHardcoreDiamondsAndRestart()
-                                    } else {
-                                        game.continueWithSameScore()
-                                    }
+                                // Always resume gameplay once the user has
+                                // tapped Watch Ad — they committed, honor it.
+                                if game.hardcoreMode {
+                                    game.restoreHardcoreDiamondsAndRestart()
+                                } else {
+                                    game.continueWithSameScore()
                                 }
                                 completion(earned)
                             }

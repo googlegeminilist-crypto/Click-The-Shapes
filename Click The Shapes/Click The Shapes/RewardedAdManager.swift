@@ -73,12 +73,18 @@ final class RewardedAdManager: NSObject {
     /// dismissed the ad without earning, or the ad failed to present.
     func show(onComplete: @escaping (_ earned: Bool) -> Void) {
         #if canImport(GoogleMobileAds)
-        guard completion == nil else {
-            // A previous presentation is still in flight — ignore re-entry.
-            return
+        // If a previous presentation's completion wasn't fired (e.g. SDK
+        // swallowed a delegate callback last time), settle it now so the
+        // state is clean. We pass `true` so the previous caller isn't
+        // penalised either.
+        if let stale = completion {
+            completion = nil
+            stale(true)
         }
         guard let root = Self.topViewController() else {
-            onComplete(false)
+            // No root VC to present on — user already tapped the button, so
+            // honor that intent and grant the reward anyway.
+            onComplete(true)
             return
         }
         if let ad = rewarded {
@@ -118,8 +124,22 @@ final class RewardedAdManager: NSObject {
                            onComplete: @escaping (Bool) -> Void) {
         completion = onComplete
         rewardEarned = false
-        ad.present(from: root) { [weak self] in
-            self?.rewardEarned = true
+        ad.present(from: root) { [weak self, weak root] in
+            guard let self = self else { return }
+            self.rewardEarned = true
+            // Grant the reward and resume gameplay immediately — don't wait
+            // for the ad to dismiss. Some ads show a post-roll / CTA page
+            // that doesn't auto-close; by firing completion now we unstick
+            // the game. The adDidDismissFullScreenContent delegate can fire
+            // afterwards — finish() guards against double-calling by nil'ing
+            // completion after the first invocation.
+            self.finish(earned: true)
+            // Also try to auto-dismiss the ad view so the user visually
+            // returns to the game. If the SDK has already started its own
+            // dismissal this is a harmless no-op.
+            DispatchQueue.main.async {
+                root?.presentedViewController?.dismiss(animated: true)
+            }
         }
     }
 
@@ -148,7 +168,10 @@ final class RewardedAdManager: NSObject {
 extension RewardedAdManager: FullScreenContentDelegate {
     nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         Task { @MainActor in
-            self.finish(earned: false)
+            // Grant the reward even if the ad couldn't present — the user
+            // already committed to the "Watch Ad to Keep Score" flow. No
+            // point punishing them for AdMob being unable to serve an ad.
+            self.finish(earned: true)
         }
     }
 
