@@ -778,7 +778,7 @@ class SoundManager: NSObject, AVAudioPlayerDelegate {
 class StoreManager: ObservableObject {
     static let shared = StoreManager()
     static let fullGameProductID = "krakastan3_icloud.com.Click_The_Shapes.fullgame"
-    static let diamonds1000ProductID = "rakastan3_icloud.com.Click_The_Shapes.diamonds1000"
+    static let diamonds1000ProductID = "krakastan3_icloud.com.Click_The_Shapes.diamonds1000"
     static let diamondsGrantPerPack = 1000
 
     @Published var fullGamePurchased: Bool = false
@@ -2964,59 +2964,6 @@ struct IntroOverlay: View {
                     }
                 }
 
-                // Buy diamonds (1000 pack) — always tappable; retries product load if not ready.
-                Button {
-                    Task {
-                        if store.diamonds1000Product == nil {
-                            await store.loadProducts()
-                            if store.diamonds1000Product != nil {
-                                await store.purchaseDiamonds1000()
-                            }
-                        } else {
-                            await store.purchaseDiamonds1000()
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("💎")
-                            .font(.system(size: 18))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("BUY 1000 DIAMONDS")
-                                .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                            if store.isLoadingProducts && store.diamonds1000Product == nil {
-                                Text("LOADING…")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .opacity(0.85)
-                            } else {
-                                Text(store.diamonds1000Product?.displayPrice ?? "TAP TO RETRY")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .opacity(0.85)
-                            }
-                        }
-                        if store.isPurchasing || store.isLoadingProducts {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .tint(.black)
-                                .scaleEffect(0.7)
-                        }
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(
-                            colors: [Color(red: 0.6, green: 0.95, blue: 1.0), Color(red: 0.3, green: 0.7, blue: 1.0)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.white.opacity(0.6), lineWidth: 1)
-                    )
-                }
-                .disabled(store.isPurchasing || store.isLoadingProducts)
-
                 // Snake skin chooser
                 VStack(spacing: 6) {
                     Text("CHOOSE SNAKE")
@@ -3347,20 +3294,6 @@ struct IntroOverlay: View {
             if !leaderboard.hasSetName {
                 showNamePrompt = true
             }
-            if store.diamonds1000Product == nil {
-                Task { await store.loadProducts() }
-            }
-        }
-        .alert(
-            "In-App Purchase",
-            isPresented: Binding(
-                get: { store.lastPurchaseError != nil },
-                set: { if !$0 { store.lastPurchaseError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) { store.lastPurchaseError = nil }
-        } message: {
-            Text(store.lastPurchaseError ?? "")
         }
         .alert("Enter Your Name", isPresented: $showNamePrompt) {
             TextField("Display name", text: $nameInput)
