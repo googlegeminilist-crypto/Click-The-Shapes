@@ -1029,6 +1029,8 @@ class GameViewModel: ObservableObject {
     @AppStorage("wormySnakePurchased") var wormySnakePurchased = false
     @AppStorage("blazeSnakePurchased") var blazeSnakePurchased = false
     @AppStorage("nebulaSnakePurchased") var nebulaSnakePurchased = false
+    @AppStorage("dnaSnakePurchased") var dnaSnakePurchased = false
+    @AppStorage("rewardedAdsWatched") var rewardedAdsWatched = 0
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1136,17 +1138,6 @@ class GameViewModel: ObservableObject {
         AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
         // Start diamond spawns
         startDiamondTimer()
-    }
-
-    /// DEBUG-only — equip the Cosmos snake skin and start the game.
-    func debugTestCosmosSnake() {
-        useRainbowSnake = false
-        useWormySnake = false
-        useStarSnake = false
-        useBlazeSnake = false
-        useNebulaSnake = false
-        useCosmosSnake = true
-        startGame()
     }
 
     func startDiamondTimer() {
@@ -3031,11 +3022,11 @@ struct IntroOverlay: View {
     let onStart: () -> Void
     let onStartHardcore: () -> Void
     var onStartLevel4: () -> Void = {}
-    var onDebugTestCosmos: () -> Void = {}
     @Binding var useRainbowSnake: Bool
     @Binding var useWormySnake: Bool
     @Binding var useStarSnake: Bool
     @Binding var useBlazeSnake: Bool
+    @Binding var useCosmosSnake: Bool
     @Binding var snakeSpeedMultiplier: CGFloat
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
@@ -3126,12 +3117,12 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
                             if purchased {
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 // Spend 1000 diamonds to unlock
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "candySnakePurchased")
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
@@ -3182,7 +3173,7 @@ struct IntroOverlay: View {
                             )
                         }
                         // Rainbow snake
-                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false } label: {
+                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false } label: {
                             VStack(spacing: 4) {
                                 Canvas { ctx, sz in
                                     let w = sz.width
@@ -3221,11 +3212,11 @@ struct IntroOverlay: View {
                         // Wormy snake — actual painting as icon
                         Button {
                             let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
-                            if p { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false }
+                            if p { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false }
                             else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "wormySnakePurchased")
-                                useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false
+                                useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
                             }
                         } label: {
                             let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
@@ -3267,11 +3258,11 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
                             if purchased {
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "starSnakePurchased")
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
@@ -3322,11 +3313,11 @@ struct IntroOverlay: View {
                         // Blaze snake
                         Button {
                             let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
-                            if p { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false }
+                            if p { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false }
                             else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "blazeSnakePurchased")
-                                useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false
+                                useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false
                             }
                         } label: {
                             let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
@@ -3369,6 +3360,87 @@ struct IntroOverlay: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(useBlazeSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useBlazeSnake ? 2 : 1)
+                            )
+                        }
+
+                        // DNA snake — cosmic skin. Unlock requires 5,000 diamonds
+                        // AND 10 rewarded ads watched.
+                        Button {
+                            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
+                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+                            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+                            if p {
+                                useCosmosSnake = true
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
+                            } else if d >= 5000 && a >= 10 {
+                                UserDefaults.standard.set(d - 5000, forKey: "diamondsCollected")
+                                UserDefaults.standard.set(true, forKey: "dnaSnakePurchased")
+                                useCosmosSnake = true
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
+                            }
+                        } label: {
+                            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
+                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+                            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+                            let ready = d >= 5000 && a >= 10
+                            VStack(spacing: 4) {
+                                ZStack {
+                                    // Mini cosmic-cluster icon — coloured points + cross spikes.
+                                    Canvas { ctx, sz in
+                                        let palette: [Color] = [
+                                            Color(red: 0.85, green: 0.95, blue: 1.0),
+                                            Color(red: 1.0, green: 0.45, blue: 0.85),
+                                            Color(red: 1.0, green: 0.85, blue: 0.30),
+                                            Color(red: 0.30, green: 1.0, blue: 0.85),
+                                            Color(red: 0.85, green: 0.50, blue: 1.0),
+                                        ]
+                                        let positions: [(CGFloat, CGFloat)] = [
+                                            (8, 11), (16, 7), (22, 13), (30, 8),
+                                            (35, 14), (12, 16), (26, 17)
+                                        ]
+                                        for (idx, pos) in positions.enumerated() {
+                                            let c = palette[idx % palette.count]
+                                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 2.5, y: pos.1 - 2.5, width: 5, height: 5)),
+                                                     with: .color(c.opacity(0.35)))
+                                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 1, y: pos.1 - 1, width: 2, height: 2)),
+                                                     with: .color(c))
+                                            var spike = Path()
+                                            spike.move(to: CGPoint(x: pos.0 - 4, y: pos.1))
+                                            spike.addLine(to: CGPoint(x: pos.0 + 4, y: pos.1))
+                                            spike.move(to: CGPoint(x: pos.0, y: pos.1 - 4))
+                                            spike.addLine(to: CGPoint(x: pos.0, y: pos.1 + 4))
+                                            ctx.stroke(spike, with: .color(c.opacity(0.7)), lineWidth: 0.4)
+                                        }
+                                    }.frame(width: 42, height: 22).opacity(p ? 1 : 0.3)
+                                    if !p {
+                                        Image(systemName: ready ? "lock.open.fill" : "lock.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(ready ? GameColors.neonYellow : .gray)
+                                    }
+                                }
+                                if p {
+                                    Text("DNA")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.white)
+                                } else if ready {
+                                    Text("Unlock 5K💎")
+                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                                        .foregroundColor(GameColors.neonYellow)
+                                } else {
+                                    Text("\(d)/5K💎")
+                                        .font(.system(size: 7, design: .monospaced))
+                                        .foregroundColor(.gray)
+                                    Text("\(a)/10📺")
+                                        .font(.system(size: 7, design: .monospaced))
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            .padding(8)
+                            .background(useCosmosSnake ? Color.white.opacity(0.1) : Color.clear)
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(useCosmosSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useCosmosSnake ? 2 : 1)
                             )
                         }
                     }
@@ -3438,17 +3510,6 @@ struct IntroOverlay: View {
                         .shadow(color: GameColors.neonPink, radius: 8)
                     }
 
-                #if DEBUG
-                Button(action: onDebugTestCosmos) {
-                    Text("DEBUG: Test Cosmos Snake")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color(red: 0.25, green: 0.05, blue: 0.45))
-                        .cornerRadius(8)
-                }
-                #endif
             }
             .padding(30)
             }
@@ -4119,9 +4180,7 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, onDebugTestCosmos: {
-                        game.debugTestCosmosSnake()
-                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, useCosmosSnake: $game.useCosmosSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
                     .onAppear {
                         // Wait one extra runloop so all the snake-icon Canvases have
                         // finished their first render before dismissing the splash.

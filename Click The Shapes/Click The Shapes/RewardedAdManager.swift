@@ -127,6 +127,10 @@ final class RewardedAdManager: NSObject {
         ad.present(from: root) { [weak self, weak root] in
             guard let self = self else { return }
             self.rewardEarned = true
+            // Track total rewarded-ads watched. Used for unlock progress on
+            // the DNA snake skin (10 ads + 5,000 diamonds).
+            let watched = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+            UserDefaults.standard.set(watched + 1, forKey: "rewardedAdsWatched")
             // Grant the reward and resume gameplay immediately — don't wait
             // for the ad to dismiss. Some ads show a post-roll / CTA page
             // that doesn't auto-close; by firing completion now we unstick
