@@ -126,12 +126,13 @@ class LeaderboardManager: ObservableObject {
         isLoading = true
         #if canImport(FirebaseFirestore)
         do {
-            let snapshot = try await db.collection(collectionName)
+            // Top 10 by wins.
+            let topSnapshot = try await db.collection(collectionName)
                 .order(by: "totalWins", descending: true)
-                .limit(to: 50)
+                .limit(to: 10)
                 .getDocuments()
 
-            entries = snapshot.documents.compactMap { doc -> LeaderboardEntry? in
+            var top: [LeaderboardEntry] = topSnapshot.documents.compactMap { doc in
                 let data = doc.data()
                 guard let name = data["displayName"] as? String,
                       let wins = data["totalWins"] as? Int else { return nil }
@@ -143,6 +144,25 @@ class LeaderboardManager: ObservableObject {
                     lastUpdated: timestamp
                 )
             }
+
+            // If the current player isn't in the top 10, append their own
+            // entry at the bottom so they can always see their standing.
+            let me = playerID
+            if !top.contains(where: { $0.id == me }) {
+                let myDoc = try? await db.collection(collectionName).document(me).getDocument()
+                if let data = myDoc?.data(),
+                   let name = data["displayName"] as? String,
+                   let wins = data["totalWins"] as? Int {
+                    let timestamp = (data["lastUpdated"] as? Timestamp)?.dateValue() ?? Date()
+                    top.append(LeaderboardEntry(
+                        id: me,
+                        displayName: name,
+                        totalWins: wins,
+                        lastUpdated: timestamp
+                    ))
+                }
+            }
+            entries = top
             isLoading = false
         } catch {
             isLoading = false
