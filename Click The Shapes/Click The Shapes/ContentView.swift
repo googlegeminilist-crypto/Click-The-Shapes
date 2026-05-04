@@ -1019,6 +1019,7 @@ class GameViewModel: ObservableObject {
     @Published var useStarSnake = false
     @Published var useBlazeSnake = false
     @Published var useNebulaSnake = false
+    @Published var useCosmosSnake = false
     @Published var snakeSpeedMultiplier: CGFloat = 1.0
     var diamonds: [Diamond] = []
     var diamondTimer: Timer?
@@ -1135,6 +1136,17 @@ class GameViewModel: ObservableObject {
         AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
         // Start diamond spawns
         startDiamondTimer()
+    }
+
+    /// DEBUG-only — equip the Cosmos snake skin and start the game.
+    func debugTestCosmosSnake() {
+        useRainbowSnake = false
+        useWormySnake = false
+        useStarSnake = false
+        useBlazeSnake = false
+        useNebulaSnake = false
+        useCosmosSnake = true
+        startGame()
     }
 
     func startDiamondTimer() {
@@ -2098,6 +2110,7 @@ struct SnakeView: View {
     var useWormy: Bool = false
     var useStar: Bool = false
     var useBlaze: Bool = false
+    var useCosmos: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -2150,6 +2163,143 @@ struct SnakeView: View {
                         Circle().path(in: CGRect(x: head.x + 2, y: head.y - 6, width: 4, height: 4)),
                         with: .color(.white)
                     )
+                }
+                return
+            }
+
+            // --- Cosmos snake — deep-space body with sparkling stars and a
+            // dispersing rainbow dust trail behind it.
+            if useCosmos {
+                let s = snake.segmentSize
+                let phase = Double(snake.animPhase)
+
+                // Dust trail — for each body segment behind the head, scatter
+                // a few dispersing rainbow particles. Particles drift outwards
+                // and fade with distance from the head.
+                let trailMax = min(maxVisible, 28)
+                for i in 1..<trailMax {
+                    let segment = segments[i]
+                    let progress = Double(i) / Double(trailMax)
+                    let fade = 1.0 - progress
+                    for j in 0..<3 {
+                        let seed = Double(i * 7 + j * 31)
+                        let t = phase * 0.4 + seed
+                        let drift = (Double(i) * 1.4 + Double(j) * 1.5)
+                        let ox = sin(t) * drift
+                        let oy = cos(t * 1.3 + seed * 0.1) * drift
+                        let hue = (Double(i) * 0.07 + Double(j) * 0.31 + phase * 0.02)
+                            .truncatingRemainder(dividingBy: 1.0)
+                        let dustColor = Color(hue: hue, saturation: 0.95, brightness: 1.0)
+                        let dustSize = 2.0 + fade * 4.0
+                        let cx = segment.x + CGFloat(ox)
+                        let cy = segment.y + CGFloat(oy)
+                        // Outer halo for the dust mote.
+                        let halo = dustSize * 2.4
+                        context.fill(
+                            Circle().path(in: CGRect(x: cx - halo / 2, y: cy - halo / 2,
+                                                     width: halo, height: halo)),
+                            with: .color(dustColor.opacity(fade * 0.18))
+                        )
+                        // Bright dust core.
+                        context.fill(
+                            Circle().path(in: CGRect(x: cx - dustSize / 2, y: cy - dustSize / 2,
+                                                     width: dustSize, height: dustSize)),
+                            with: .color(dustColor.opacity(fade * 0.85))
+                        )
+                    }
+                }
+
+                // No solid body or dark halo — the snake's "body" is now
+                // pure orbiting starlight with the rainbow dust trail behind.
+                for i in 0..<maxVisible {
+                    let segment = segments[i]
+
+                    // Swarm of small colourful Pleiades-style stars per segment.
+                    // Each star picks a stable hue from a cosmic palette so the
+                    // body shimmers with pinks, golds, cyans, magentas etc.
+                    let starsPerSegment = 4
+                    // (core RGB, halo RGB) per palette slot
+                    let palette: [(Color, Color)] = [
+                        (Color(red: 0.85, green: 0.95, blue: 1.00), Color(red: 0.45, green: 0.75, blue: 1.00)),  // blue-white
+                        (Color(red: 1.00, green: 0.80, blue: 0.95), Color(red: 1.00, green: 0.40, blue: 0.85)),  // hot pink
+                        (Color(red: 1.00, green: 0.95, blue: 0.65), Color(red: 1.00, green: 0.80, blue: 0.30)),  // gold
+                        (Color(red: 0.75, green: 1.00, blue: 0.95), Color(red: 0.20, green: 1.00, blue: 0.85)),  // cyan
+                        (Color(red: 0.95, green: 0.80, blue: 1.00), Color(red: 0.75, green: 0.40, blue: 1.00)),  // lavender
+                        (Color(red: 1.00, green: 0.85, blue: 0.85), Color(red: 1.00, green: 0.30, blue: 0.55)),  // magenta
+                    ]
+                    for k in 0..<starsPerSegment {
+                        let kd: Double = Double(k)
+                        let orbitPhase: Double = phase * 1.6 + Double(i) * 0.35 + kd * 1.5708
+                        let orbitRadius: CGFloat = s * CGFloat(0.7 + kd * 0.32)
+                        let sx: CGFloat = segment.x + CGFloat(cos(orbitPhase)) * orbitRadius
+                        let sy: CGFloat = segment.y + CGFloat(sin(orbitPhase)) * orbitRadius
+                        let twinkleArg: Double = phase * 5.5 + Double(i * 11 + k * 23)
+                        let twinkle: Double = sin(twinkleArg) * 0.5 + 0.5
+
+                        // Pick palette slot stably from (segment, star) pair.
+                        let pIdx = (i * 3 + k * 7) % palette.count
+                        let core = palette[pIdx].0
+                        let halo = palette[pIdx].1
+
+                        // Soft outer halo — wide, dim, smaller than before.
+                        let haloSize: CGFloat = CGFloat(2.0 + twinkle * 2.5)
+                        context.fill(
+                            Circle().path(in: CGRect(x: sx - haloSize, y: sy - haloSize,
+                                                     width: haloSize * 2, height: haloSize * 2)),
+                            with: .color(halo.opacity(0.10 + twinkle * 0.18))
+                        )
+
+                        // Tighter inner glow.
+                        let innerHaloSize: CGFloat = CGFloat(1.0 + twinkle * 1.0)
+                        context.fill(
+                            Circle().path(in: CGRect(x: sx - innerHaloSize, y: sy - innerHaloSize,
+                                                     width: innerHaloSize * 2, height: innerHaloSize * 2)),
+                            with: .color(halo.opacity(0.30 + twinkle * 0.30))
+                        )
+
+                        // Tiny bright core (smaller).
+                        let coreSize: CGFloat = 1.0
+                        context.fill(
+                            Circle().path(in: CGRect(x: sx - coreSize / 2, y: sy - coreSize / 2,
+                                                     width: coreSize, height: coreSize)),
+                            with: .color(core.opacity(0.75 + twinkle * 0.25))
+                        )
+
+                        // 4-point diffraction spike — shorter, coloured.
+                        let spikeLen: CGFloat = CGFloat(1.0 + twinkle * 3.0)
+                        var spike = Path()
+                        spike.move(to: CGPoint(x: sx - spikeLen, y: sy))
+                        spike.addLine(to: CGPoint(x: sx + spikeLen, y: sy))
+                        spike.move(to: CGPoint(x: sx, y: sy - spikeLen))
+                        spike.addLine(to: CGPoint(x: sx, y: sy + spikeLen))
+                        context.stroke(spike,
+                                       with: .color(core.opacity(0.4 + twinkle * 0.5)),
+                                       lineWidth: 0.35)
+                    }
+                }
+
+                // Head — bigger dark cosmic head with glowing pink/cyan eyes.
+                if let head = segments.first {
+                    let headRadius = s * 1.3
+                    context.fill(
+                        Circle().path(in: CGRect(x: head.x - headRadius, y: head.y - headRadius,
+                                                 width: headRadius * 2, height: headRadius * 2)),
+                        with: .color(Color(red: 0.06, green: 0.02, blue: 0.18))
+                    )
+                    let eyeOuter = Color(red: 1.0, green: 0.4, blue: 0.9)   // hot pink halo
+                    let eyeInner = Color(red: 0.5, green: 1.0, blue: 1.0)   // cyan core
+                    context.fill(Circle().path(in: CGRect(x: head.x - 9, y: head.y - 9, width: 8, height: 8)),
+                                 with: .color(eyeOuter.opacity(0.5)))
+                    context.fill(Circle().path(in: CGRect(x: head.x + 1, y: head.y - 9, width: 8, height: 8)),
+                                 with: .color(eyeOuter.opacity(0.5)))
+                    context.fill(Circle().path(in: CGRect(x: head.x - 8, y: head.y - 8, width: 6, height: 6)),
+                                 with: .color(eyeInner))
+                    context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 8, width: 6, height: 6)),
+                                 with: .color(eyeInner))
+                    context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 2, height: 3)),
+                                 with: .color(.black))
+                    context.fill(Circle().path(in: CGRect(x: head.x + 4, y: head.y - 6, width: 2, height: 3)),
+                                 with: .color(.black))
                 }
                 return
             }
@@ -2881,6 +3031,7 @@ struct IntroOverlay: View {
     let onStart: () -> Void
     let onStartHardcore: () -> Void
     var onStartLevel4: () -> Void = {}
+    var onDebugTestCosmos: () -> Void = {}
     @Binding var useRainbowSnake: Bool
     @Binding var useWormySnake: Bool
     @Binding var useStarSnake: Bool
@@ -3286,6 +3437,18 @@ struct IntroOverlay: View {
                         .cornerRadius(12)
                         .shadow(color: GameColors.neonPink, radius: 8)
                     }
+
+                #if DEBUG
+                Button(action: onDebugTestCosmos) {
+                    Text("DEBUG: Test Cosmos Snake")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(red: 0.25, green: 0.05, blue: 0.45))
+                        .cornerRadius(8)
+                }
+                #endif
             }
             .padding(30)
             }
@@ -3622,13 +3785,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake)
                         .id(game.updateTrigger)
                 }
 
@@ -3956,6 +4119,8 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
+                    }, onDebugTestCosmos: {
+                        game.debugTestCosmosSnake()
                     }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
                     .onAppear {
                         // Wait one extra runloop so all the snake-icon Canvases have
