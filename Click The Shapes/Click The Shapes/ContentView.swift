@@ -1020,6 +1020,7 @@ class GameViewModel: ObservableObject {
     @Published var useBlazeSnake = false
     @Published var useNebulaSnake = false
     @Published var useCosmosSnake = false
+    @Published var useEmberSnake = false
     @Published var snakeSpeedMultiplier: CGFloat = 1.0
     var diamonds: [Diamond] = []
     var diamondTimer: Timer?
@@ -1031,6 +1032,7 @@ class GameViewModel: ObservableObject {
     @AppStorage("nebulaSnakePurchased") var nebulaSnakePurchased = false
     @AppStorage("dnaSnakePurchased") var dnaSnakePurchased = false
     @AppStorage("rewardedAdsWatched") var rewardedAdsWatched = 0
+    @AppStorage("emberSnakePurchased") var emberSnakePurchased = false
     @Published var winMessage = ""
     @Published var winColor = GameColors.neonGreen
     @Published var updateTrigger = false
@@ -1138,6 +1140,18 @@ class GameViewModel: ObservableObject {
         AnalyticsHelper.log("game_start", parameters: ["hardcore_mode": hardcoreMode ? 1 : 0])
         // Start diamond spawns
         startDiamondTimer()
+    }
+
+    /// DEBUG-only — equip the Ember snake skin and start the game.
+    func debugTestEmberSnake() {
+        useRainbowSnake = false
+        useWormySnake = false
+        useStarSnake = false
+        useBlazeSnake = false
+        useNebulaSnake = false
+        useCosmosSnake = false
+        useEmberSnake = true
+        startGame()
     }
 
     func startDiamondTimer() {
@@ -2102,6 +2116,7 @@ struct SnakeView: View {
     var useStar: Bool = false
     var useBlaze: Bool = false
     var useCosmos: Bool = false
+    var useEmber: Bool = false
 
     var body: some View {
         let segments = snake.segments
@@ -2161,137 +2176,15 @@ struct SnakeView: View {
             // --- Cosmos snake — deep-space body with sparkling stars and a
             // dispersing rainbow dust trail behind it.
             if useCosmos {
-                let s = snake.segmentSize
-                let phase = Double(snake.animPhase)
+                drawCosmosSnake(context: &context, segments: segments,
+                                maxVisible: maxVisible, snake: snake)
+                return
+            }
 
-                // Dust trail — for each body segment behind the head, scatter
-                // a few dispersing rainbow particles. Particles drift outwards
-                // and fade with distance from the head.
-                let trailMax = min(maxVisible, 28)
-                for i in 1..<trailMax {
-                    let segment = segments[i]
-                    let progress = Double(i) / Double(trailMax)
-                    let fade = 1.0 - progress
-                    for j in 0..<3 {
-                        let seed = Double(i * 7 + j * 31)
-                        let t = phase * 0.4 + seed
-                        let drift = (Double(i) * 1.4 + Double(j) * 1.5)
-                        let ox = sin(t) * drift
-                        let oy = cos(t * 1.3 + seed * 0.1) * drift
-                        let hue = (Double(i) * 0.07 + Double(j) * 0.31 + phase * 0.02)
-                            .truncatingRemainder(dividingBy: 1.0)
-                        let dustColor = Color(hue: hue, saturation: 0.95, brightness: 1.0)
-                        let dustSize = 2.0 + fade * 4.0
-                        let cx = segment.x + CGFloat(ox)
-                        let cy = segment.y + CGFloat(oy)
-                        // Outer halo for the dust mote.
-                        let halo = dustSize * 2.4
-                        context.fill(
-                            Circle().path(in: CGRect(x: cx - halo / 2, y: cy - halo / 2,
-                                                     width: halo, height: halo)),
-                            with: .color(dustColor.opacity(fade * 0.18))
-                        )
-                        // Bright dust core.
-                        context.fill(
-                            Circle().path(in: CGRect(x: cx - dustSize / 2, y: cy - dustSize / 2,
-                                                     width: dustSize, height: dustSize)),
-                            with: .color(dustColor.opacity(fade * 0.85))
-                        )
-                    }
-                }
-
-                // No solid body or dark halo — the snake's "body" is now
-                // pure orbiting starlight with the rainbow dust trail behind.
-                for i in 0..<maxVisible {
-                    let segment = segments[i]
-
-                    // Swarm of small colourful Pleiades-style stars per segment.
-                    // Each star picks a stable hue from a cosmic palette so the
-                    // body shimmers with pinks, golds, cyans, magentas etc.
-                    let starsPerSegment = 4
-                    // (core RGB, halo RGB) per palette slot
-                    let palette: [(Color, Color)] = [
-                        (Color(red: 0.85, green: 0.95, blue: 1.00), Color(red: 0.45, green: 0.75, blue: 1.00)),  // blue-white
-                        (Color(red: 1.00, green: 0.80, blue: 0.95), Color(red: 1.00, green: 0.40, blue: 0.85)),  // hot pink
-                        (Color(red: 1.00, green: 0.95, blue: 0.65), Color(red: 1.00, green: 0.80, blue: 0.30)),  // gold
-                        (Color(red: 0.75, green: 1.00, blue: 0.95), Color(red: 0.20, green: 1.00, blue: 0.85)),  // cyan
-                        (Color(red: 0.95, green: 0.80, blue: 1.00), Color(red: 0.75, green: 0.40, blue: 1.00)),  // lavender
-                        (Color(red: 1.00, green: 0.85, blue: 0.85), Color(red: 1.00, green: 0.30, blue: 0.55)),  // magenta
-                    ]
-                    for k in 0..<starsPerSegment {
-                        let kd: Double = Double(k)
-                        let orbitPhase: Double = phase * 1.6 + Double(i) * 0.35 + kd * 1.5708
-                        let orbitRadius: CGFloat = s * CGFloat(0.7 + kd * 0.32)
-                        let sx: CGFloat = segment.x + CGFloat(cos(orbitPhase)) * orbitRadius
-                        let sy: CGFloat = segment.y + CGFloat(sin(orbitPhase)) * orbitRadius
-                        let twinkleArg: Double = phase * 5.5 + Double(i * 11 + k * 23)
-                        let twinkle: Double = sin(twinkleArg) * 0.5 + 0.5
-
-                        // Pick palette slot stably from (segment, star) pair.
-                        let pIdx = (i * 3 + k * 7) % palette.count
-                        let core = palette[pIdx].0
-                        let halo = palette[pIdx].1
-
-                        // Soft outer halo — wide, dim, smaller than before.
-                        let haloSize: CGFloat = CGFloat(2.0 + twinkle * 2.5)
-                        context.fill(
-                            Circle().path(in: CGRect(x: sx - haloSize, y: sy - haloSize,
-                                                     width: haloSize * 2, height: haloSize * 2)),
-                            with: .color(halo.opacity(0.10 + twinkle * 0.18))
-                        )
-
-                        // Tighter inner glow.
-                        let innerHaloSize: CGFloat = CGFloat(1.0 + twinkle * 1.0)
-                        context.fill(
-                            Circle().path(in: CGRect(x: sx - innerHaloSize, y: sy - innerHaloSize,
-                                                     width: innerHaloSize * 2, height: innerHaloSize * 2)),
-                            with: .color(halo.opacity(0.30 + twinkle * 0.30))
-                        )
-
-                        // Tiny bright core (smaller).
-                        let coreSize: CGFloat = 1.0
-                        context.fill(
-                            Circle().path(in: CGRect(x: sx - coreSize / 2, y: sy - coreSize / 2,
-                                                     width: coreSize, height: coreSize)),
-                            with: .color(core.opacity(0.75 + twinkle * 0.25))
-                        )
-
-                        // 4-point diffraction spike — shorter, coloured.
-                        let spikeLen: CGFloat = CGFloat(1.0 + twinkle * 3.0)
-                        var spike = Path()
-                        spike.move(to: CGPoint(x: sx - spikeLen, y: sy))
-                        spike.addLine(to: CGPoint(x: sx + spikeLen, y: sy))
-                        spike.move(to: CGPoint(x: sx, y: sy - spikeLen))
-                        spike.addLine(to: CGPoint(x: sx, y: sy + spikeLen))
-                        context.stroke(spike,
-                                       with: .color(core.opacity(0.4 + twinkle * 0.5)),
-                                       lineWidth: 0.35)
-                    }
-                }
-
-                // Head — bigger dark cosmic head with glowing pink/cyan eyes.
-                if let head = segments.first {
-                    let headRadius = s * 1.3
-                    context.fill(
-                        Circle().path(in: CGRect(x: head.x - headRadius, y: head.y - headRadius,
-                                                 width: headRadius * 2, height: headRadius * 2)),
-                        with: .color(Color(red: 0.06, green: 0.02, blue: 0.18))
-                    )
-                    let eyeOuter = Color(red: 1.0, green: 0.4, blue: 0.9)   // hot pink halo
-                    let eyeInner = Color(red: 0.5, green: 1.0, blue: 1.0)   // cyan core
-                    context.fill(Circle().path(in: CGRect(x: head.x - 9, y: head.y - 9, width: 8, height: 8)),
-                                 with: .color(eyeOuter.opacity(0.5)))
-                    context.fill(Circle().path(in: CGRect(x: head.x + 1, y: head.y - 9, width: 8, height: 8)),
-                                 with: .color(eyeOuter.opacity(0.5)))
-                    context.fill(Circle().path(in: CGRect(x: head.x - 8, y: head.y - 8, width: 6, height: 6)),
-                                 with: .color(eyeInner))
-                    context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 8, width: 6, height: 6)),
-                                 with: .color(eyeInner))
-                    context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 2, height: 3)),
-                                 with: .color(.black))
-                    context.fill(Circle().path(in: CGRect(x: head.x + 4, y: head.y - 6, width: 2, height: 3)),
-                                 with: .color(.black))
-                }
+            // --- Ember snake — dark scaly skin with flickering fire orbs.
+            if useEmber {
+                drawEmberSnake(context: &context, segments: segments,
+                               maxVisible: maxVisible, snake: snake)
                 return
             }
 
@@ -2945,6 +2838,251 @@ struct SnakeView: View {
             }
         }
     }
+
+    /// Drawing helper for the Cosmos snake — extracted to keep the
+    /// Canvas closure's type-checker load manageable.
+    private func drawCosmosSnake(context: inout GraphicsContext,
+                                 segments: [SnakeSegment],
+                                 maxVisible: Int,
+                                 snake: Snake) {
+        let s: CGFloat = snake.segmentSize
+        let phase: Double = Double(snake.animPhase)
+
+        // Dust trail.
+        let trailMax: Int = min(maxVisible, 28)
+        for i in 1..<trailMax {
+            let segment = segments[i]
+            let progress: Double = Double(i) / Double(trailMax)
+            let fade: Double = 1.0 - progress
+            for j in 0..<3 {
+                let seed: Double = Double(i * 7 + j * 31)
+                let t: Double = phase * 0.4 + seed
+                let drift: Double = Double(i) * 1.4 + Double(j) * 1.5
+                let ox: Double = sin(t) * drift
+                let oy: Double = cos(t * 1.3 + seed * 0.1) * drift
+                let hueRaw: Double = Double(i) * 0.07 + Double(j) * 0.31 + phase * 0.02
+                let hue: Double = hueRaw.truncatingRemainder(dividingBy: 1.0)
+                let dustColor = Color(hue: hue, saturation: 0.95, brightness: 1.0)
+                let dustSize: CGFloat = CGFloat(2.0 + fade * 4.0)
+                let cx: CGFloat = segment.x + CGFloat(ox)
+                let cy: CGFloat = segment.y + CGFloat(oy)
+                let halo: CGFloat = dustSize * 2.4
+                context.fill(
+                    Circle().path(in: CGRect(x: cx - halo / 2, y: cy - halo / 2,
+                                             width: halo, height: halo)),
+                    with: .color(dustColor.opacity(fade * 0.18))
+                )
+                context.fill(
+                    Circle().path(in: CGRect(x: cx - dustSize / 2, y: cy - dustSize / 2,
+                                             width: dustSize, height: dustSize)),
+                    with: .color(dustColor.opacity(fade * 0.85))
+                )
+            }
+        }
+
+        // Per-segment swarm of orbiting twinkling stars.
+        let palette: [(Color, Color)] = [
+            (Color(red: 0.85, green: 0.95, blue: 1.00), Color(red: 0.45, green: 0.75, blue: 1.00)),
+            (Color(red: 1.00, green: 0.80, blue: 0.95), Color(red: 1.00, green: 0.40, blue: 0.85)),
+            (Color(red: 1.00, green: 0.95, blue: 0.65), Color(red: 1.00, green: 0.80, blue: 0.30)),
+            (Color(red: 0.75, green: 1.00, blue: 0.95), Color(red: 0.20, green: 1.00, blue: 0.85)),
+            (Color(red: 0.95, green: 0.80, blue: 1.00), Color(red: 0.75, green: 0.40, blue: 1.00)),
+            (Color(red: 1.00, green: 0.85, blue: 0.85), Color(red: 1.00, green: 0.30, blue: 0.55)),
+        ]
+        let starsPerSegment: Int = 4
+        for i in 0..<maxVisible {
+            let segment = segments[i]
+            for k in 0..<starsPerSegment {
+                let kd: Double = Double(k)
+                let orbitPhase: Double = phase * 1.6 + Double(i) * 0.35 + kd * 1.5708
+                let orbitRadius: CGFloat = s * CGFloat(0.7 + kd * 0.32)
+                let sx: CGFloat = segment.x + CGFloat(cos(orbitPhase)) * orbitRadius
+                let sy: CGFloat = segment.y + CGFloat(sin(orbitPhase)) * orbitRadius
+                let twinkleArg: Double = phase * 5.5 + Double(i * 11 + k * 23)
+                let twinkle: Double = sin(twinkleArg) * 0.5 + 0.5
+
+                let pIdx: Int = (i * 3 + k * 7) % palette.count
+                let core: Color = palette[pIdx].0
+                let halo: Color = palette[pIdx].1
+
+                let haloSize: CGFloat = CGFloat(2.0 + twinkle * 2.5)
+                context.fill(
+                    Circle().path(in: CGRect(x: sx - haloSize, y: sy - haloSize,
+                                             width: haloSize * 2, height: haloSize * 2)),
+                    with: .color(halo.opacity(0.10 + twinkle * 0.18))
+                )
+                let innerHaloSize: CGFloat = CGFloat(1.0 + twinkle * 1.0)
+                context.fill(
+                    Circle().path(in: CGRect(x: sx - innerHaloSize, y: sy - innerHaloSize,
+                                             width: innerHaloSize * 2, height: innerHaloSize * 2)),
+                    with: .color(halo.opacity(0.30 + twinkle * 0.30))
+                )
+                let coreSize: CGFloat = 1.0
+                context.fill(
+                    Circle().path(in: CGRect(x: sx - coreSize / 2, y: sy - coreSize / 2,
+                                             width: coreSize, height: coreSize)),
+                    with: .color(core.opacity(0.75 + twinkle * 0.25))
+                )
+                let spikeLen: CGFloat = CGFloat(1.0 + twinkle * 3.0)
+                var spike = Path()
+                spike.move(to: CGPoint(x: sx - spikeLen, y: sy))
+                spike.addLine(to: CGPoint(x: sx + spikeLen, y: sy))
+                spike.move(to: CGPoint(x: sx, y: sy - spikeLen))
+                spike.addLine(to: CGPoint(x: sx, y: sy + spikeLen))
+                context.stroke(spike,
+                               with: .color(core.opacity(0.4 + twinkle * 0.5)),
+                               lineWidth: 0.35)
+            }
+        }
+
+        // Cosmic head.
+        if let head = segments.first {
+            let headRadius: CGFloat = s * 1.3
+            context.fill(
+                Circle().path(in: CGRect(x: head.x - headRadius, y: head.y - headRadius,
+                                         width: headRadius * 2, height: headRadius * 2)),
+                with: .color(Color(red: 0.06, green: 0.02, blue: 0.18))
+            )
+            let eyeOuter = Color(red: 1.0, green: 0.4, blue: 0.9)
+            let eyeInner = Color(red: 0.5, green: 1.0, blue: 1.0)
+            context.fill(Circle().path(in: CGRect(x: head.x - 9, y: head.y - 9, width: 8, height: 8)),
+                         with: .color(eyeOuter.opacity(0.5)))
+            context.fill(Circle().path(in: CGRect(x: head.x + 1, y: head.y - 9, width: 8, height: 8)),
+                         with: .color(eyeOuter.opacity(0.5)))
+            context.fill(Circle().path(in: CGRect(x: head.x - 8, y: head.y - 8, width: 6, height: 6)),
+                         with: .color(eyeInner))
+            context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 8, width: 6, height: 6)),
+                         with: .color(eyeInner))
+            context.fill(Circle().path(in: CGRect(x: head.x - 6, y: head.y - 6, width: 2, height: 3)),
+                         with: .color(.black))
+            context.fill(Circle().path(in: CGRect(x: head.x + 4, y: head.y - 6, width: 2, height: 3)),
+                         with: .color(.black))
+        }
+    }
+
+    /// Drawing helper for the Ember snake — extracted from `body` to keep
+    /// the Canvas closure's type-checker load manageable.
+    private func drawEmberSnake(context: inout GraphicsContext,
+                                segments: [SnakeSegment],
+                                maxVisible: Int,
+                                snake: Snake) {
+        let s: CGFloat = snake.segmentSize
+        let phase: Double = Double(snake.animPhase)
+
+        for i in 0..<maxVisible {
+            let segment = segments[i]
+            let progress: Double = Double(i) / Double(max(maxVisible, 1))
+            let darken: Double = 1.0 - progress * 0.4
+
+            let bodyR: Double = 0.18 * darken
+            let bodyG: Double = 0.05 * darken
+            let bodyB: Double = 0.04 * darken
+            let bodyColor = Color(red: bodyR, green: bodyG, blue: bodyB)
+
+            let halo: CGFloat = s * 2.2
+            let heatColor = Color(red: 1.0, green: 0.4, blue: 0.05)
+            context.fill(
+                Circle().path(in: CGRect(x: segment.x - halo, y: segment.y - halo,
+                                         width: halo * 2, height: halo * 2)),
+                with: .color(heatColor.opacity(0.10))
+            )
+            context.fill(
+                Circle().path(in: CGRect(x: segment.x - s, y: segment.y - s,
+                                         width: s * 2, height: s * 2)),
+                with: .color(bodyColor)
+            )
+
+            // Diamond scale pattern.
+            let scaleSize: CGFloat = s * 0.55
+            let h: CGFloat = scaleSize * 0.5
+            let scR: Double = 0.55 * darken
+            let scG: Double = 0.10 * darken
+            let scB: Double = 0.05 * darken
+            let scaleColor = Color(red: scR, green: scG, blue: scB)
+            let offsets: [(CGFloat, CGFloat)] = [
+                (-0.4, -0.3), (0.4, -0.3),
+                (-0.4, 0.3),  (0.4, 0.3)
+            ]
+            for (idx, offset) in offsets.enumerated() {
+                let cx: CGFloat = segment.x + offset.0 * s
+                let cy: CGFloat = segment.y + offset.1 * s
+                var diamond = Path()
+                diamond.move(to: CGPoint(x: cx, y: cy - h))
+                diamond.addLine(to: CGPoint(x: cx + h, y: cy))
+                diamond.addLine(to: CGPoint(x: cx, y: cy + h))
+                diamond.addLine(to: CGPoint(x: cx - h, y: cy))
+                diamond.closeSubpath()
+                let alpha: Double = idx % 2 == 0 ? 0.85 : 0.55
+                context.fill(diamond, with: .color(scaleColor.opacity(alpha)))
+            }
+
+            // Connecting band.
+            if i < maxVisible - 1 && i < 30 {
+                let next = segments[i + 1]
+                var path = Path()
+                path.move(to: CGPoint(x: segment.x, y: segment.y))
+                path.addLine(to: CGPoint(x: next.x, y: next.y))
+                context.stroke(path, with: .color(bodyColor), lineWidth: s * 1.5)
+            }
+
+            // Two flickering fire orbs orbiting each segment.
+            for k in 0..<2 {
+                let kd: Double = Double(k)
+                let orbitPhase: Double = phase * 1.4 + Double(i) * 0.3 + kd * 3.1416
+                let orbitRadius: CGFloat = s * 1.05
+                let fx: CGFloat = segment.x + CGFloat(cos(orbitPhase)) * orbitRadius
+                let fy: CGFloat = segment.y + CGFloat(sin(orbitPhase)) * orbitRadius
+                let flickerArg: Double = phase * 6.0 + Double(i * 7 + k * 19)
+                let flicker: Double = sin(flickerArg) * 0.35 + 0.65
+                let orbSize: CGFloat = CGFloat(2.0 + flicker * 2.5)
+
+                let outerColor = Color(red: 1.0, green: 0.3, blue: 0.0)
+                let outerSize: CGFloat = orbSize * 2.6
+                context.fill(
+                    Circle().path(in: CGRect(x: fx - outerSize / 2, y: fy - outerSize / 2,
+                                             width: outerSize, height: outerSize)),
+                    with: .color(outerColor.opacity(flicker * 0.4))
+                )
+                let midColor = Color(red: 1.0, green: 0.55, blue: 0.05)
+                context.fill(
+                    Circle().path(in: CGRect(x: fx - orbSize / 2, y: fy - orbSize / 2,
+                                             width: orbSize, height: orbSize)),
+                    with: .color(midColor.opacity(flicker))
+                )
+                let coreSize: CGFloat = orbSize * 0.45
+                let coreColor = Color(red: 1.0, green: 0.95, blue: 0.55)
+                context.fill(
+                    Circle().path(in: CGRect(x: fx - coreSize / 2, y: fy - coreSize / 2,
+                                             width: coreSize, height: coreSize)),
+                    with: .color(coreColor.opacity(flicker * 0.95))
+                )
+            }
+        }
+
+        // Head — dark scaly with bright orange-red eyes.
+        if let head = segments.first {
+            let headRadius: CGFloat = s * 1.25
+            context.fill(
+                Circle().path(in: CGRect(x: head.x - headRadius, y: head.y - headRadius,
+                                         width: headRadius * 2, height: headRadius * 2)),
+                with: .color(Color(red: 0.10, green: 0.03, blue: 0.02))
+            )
+            let eyeOuter = Color(red: 1.0, green: 0.4, blue: 0.0)
+            let eyeInner = Color(red: 1.0, green: 0.95, blue: 0.4)
+            context.fill(Circle().path(in: CGRect(x: head.x - 8, y: head.y - 7, width: 6, height: 6)),
+                         with: .color(eyeOuter))
+            context.fill(Circle().path(in: CGRect(x: head.x + 2, y: head.y - 7, width: 6, height: 6)),
+                         with: .color(eyeOuter))
+            context.fill(Circle().path(in: CGRect(x: head.x - 7, y: head.y - 6, width: 4, height: 4)),
+                         with: .color(eyeInner))
+            context.fill(Circle().path(in: CGRect(x: head.x + 3, y: head.y - 6, width: 4, height: 4)),
+                         with: .color(eyeInner))
+            context.fill(Circle().path(in: CGRect(x: head.x - 5, y: head.y - 5, width: 1.5, height: 3)),
+                         with: .color(.black))
+            context.fill(Circle().path(in: CGRect(x: head.x + 4, y: head.y - 5, width: 1.5, height: 3)),
+                         with: .color(.black))
+        }
+    }
 }
 
 // MARK: - Power Up View
@@ -3022,11 +3160,13 @@ struct IntroOverlay: View {
     let onStart: () -> Void
     let onStartHardcore: () -> Void
     var onStartLevel4: () -> Void = {}
+    var onDebugTestEmber: () -> Void = {}
     @Binding var useRainbowSnake: Bool
     @Binding var useWormySnake: Bool
     @Binding var useStarSnake: Bool
     @Binding var useBlazeSnake: Bool
     @Binding var useCosmosSnake: Bool
+    @Binding var useEmberSnake: Bool
     @Binding var snakeSpeedMultiplier: CGFloat
     @ObservedObject var store = StoreManager.shared
     @ObservedObject var leaderboard = LeaderboardManager.shared
@@ -3117,12 +3257,12 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
                             if purchased {
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 // Spend 1000 diamonds to unlock
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "candySnakePurchased")
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
+                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "candySnakePurchased")
@@ -3173,7 +3313,7 @@ struct IntroOverlay: View {
                             )
                         }
                         // Rainbow snake
-                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false } label: {
+                        Button { useRainbowSnake = true; useWormySnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false } label: {
                             VStack(spacing: 4) {
                                 Canvas { ctx, sz in
                                     let w = sz.width
@@ -3212,11 +3352,11 @@ struct IntroOverlay: View {
                         // Wormy snake — actual painting as icon
                         Button {
                             let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
-                            if p { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false }
+                            if p { useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false }
                             else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "wormySnakePurchased")
-                                useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
+                                useWormySnake = true; useRainbowSnake = false; useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false
                             }
                         } label: {
                             let p = UserDefaults.standard.bool(forKey: "wormySnakePurchased")
@@ -3258,11 +3398,11 @@ struct IntroOverlay: View {
                         Button {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
                             if purchased {
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false
                             } else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "starSnakePurchased")
-                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false
+                                useStarSnake = true; useRainbowSnake = false; useWormySnake = false; useBlazeSnake = false; useCosmosSnake = false; useEmberSnake = false
                             }
                         } label: {
                             let purchased = UserDefaults.standard.bool(forKey: "starSnakePurchased")
@@ -3313,11 +3453,11 @@ struct IntroOverlay: View {
                         // Blaze snake
                         Button {
                             let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
-                            if p { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false }
+                            if p { useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false; useEmberSnake = false }
                             else if UserDefaults.standard.integer(forKey: "diamondsCollected") >= 1000 {
                                 UserDefaults.standard.set(UserDefaults.standard.integer(forKey: "diamondsCollected") - 1000, forKey: "diamondsCollected")
                                 UserDefaults.standard.set(true, forKey: "blazeSnakePurchased")
-                                useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false
+                                useBlazeSnake = true; useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useCosmosSnake = false; useEmberSnake = false
                             }
                         } label: {
                             let p = UserDefaults.standard.bool(forKey: "blazeSnakePurchased")
@@ -3363,86 +3503,8 @@ struct IntroOverlay: View {
                             )
                         }
 
-                        // DNA snake — cosmic skin. Unlock requires 5,000 diamonds
-                        // AND 10 rewarded ads watched.
-                        Button {
-                            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
-                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
-                            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
-                            if p {
-                                useCosmosSnake = true
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
-                            } else if d >= 5000 && a >= 10 {
-                                UserDefaults.standard.set(d - 5000, forKey: "diamondsCollected")
-                                UserDefaults.standard.set(true, forKey: "dnaSnakePurchased")
-                                useCosmosSnake = true
-                                useRainbowSnake = false; useWormySnake = false; useStarSnake = false; useBlazeSnake = false
-                            }
-                        } label: {
-                            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
-                            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
-                            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
-                            let ready = d >= 5000 && a >= 10
-                            VStack(spacing: 4) {
-                                ZStack {
-                                    // Mini cosmic-cluster icon — coloured points + cross spikes.
-                                    Canvas { ctx, sz in
-                                        let palette: [Color] = [
-                                            Color(red: 0.85, green: 0.95, blue: 1.0),
-                                            Color(red: 1.0, green: 0.45, blue: 0.85),
-                                            Color(red: 1.0, green: 0.85, blue: 0.30),
-                                            Color(red: 0.30, green: 1.0, blue: 0.85),
-                                            Color(red: 0.85, green: 0.50, blue: 1.0),
-                                        ]
-                                        let positions: [(CGFloat, CGFloat)] = [
-                                            (8, 11), (16, 7), (22, 13), (30, 8),
-                                            (35, 14), (12, 16), (26, 17)
-                                        ]
-                                        for (idx, pos) in positions.enumerated() {
-                                            let c = palette[idx % palette.count]
-                                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 2.5, y: pos.1 - 2.5, width: 5, height: 5)),
-                                                     with: .color(c.opacity(0.35)))
-                                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 1, y: pos.1 - 1, width: 2, height: 2)),
-                                                     with: .color(c))
-                                            var spike = Path()
-                                            spike.move(to: CGPoint(x: pos.0 - 4, y: pos.1))
-                                            spike.addLine(to: CGPoint(x: pos.0 + 4, y: pos.1))
-                                            spike.move(to: CGPoint(x: pos.0, y: pos.1 - 4))
-                                            spike.addLine(to: CGPoint(x: pos.0, y: pos.1 + 4))
-                                            ctx.stroke(spike, with: .color(c.opacity(0.7)), lineWidth: 0.4)
-                                        }
-                                    }.frame(width: 42, height: 22).opacity(p ? 1 : 0.3)
-                                    if !p {
-                                        Image(systemName: ready ? "lock.open.fill" : "lock.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(ready ? GameColors.neonYellow : .gray)
-                                    }
-                                }
-                                if p {
-                                    Text("DNA")
-                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.white)
-                                } else if ready {
-                                    Text("Unlock 5K💎")
-                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
-                                        .foregroundColor(GameColors.neonYellow)
-                                } else {
-                                    Text("\(d)/5K💎")
-                                        .font(.system(size: 7, design: .monospaced))
-                                        .foregroundColor(.gray)
-                                    Text("\(a)/10📺")
-                                        .font(.system(size: 7, design: .monospaced))
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            .padding(8)
-                            .background(useCosmosSnake ? Color.white.opacity(0.1) : Color.clear)
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(useCosmosSnake ? GameColors.neonGreen : Color.gray.opacity(0.3), lineWidth: useCosmosSnake ? 2 : 1)
-                            )
-                        }
+                        dnaChooserButton
+                        emberChooserButton
                     }
                     } // ScrollView
                 }
@@ -3510,6 +3572,17 @@ struct IntroOverlay: View {
                         .shadow(color: GameColors.neonPink, radius: 8)
                     }
 
+                #if DEBUG
+                Button(action: onDebugTestEmber) {
+                    Text("DEBUG: Test Ember Snake")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(red: 0.6, green: 0.15, blue: 0.05))
+                        .cornerRadius(8)
+                }
+                #endif
             }
             .padding(30)
             }
@@ -3543,6 +3616,171 @@ struct IntroOverlay: View {
         }
         .fullScreenCover(isPresented: $showLeaderboard) {
             LeaderboardView()
+        }
+    }
+
+    // MARK: - Snake chooser sub-views (extracted to keep the body type-checker happy)
+
+    @ViewBuilder
+    private var dnaChooserButton: some View {
+        Button {
+            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
+            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+            if p {
+                useCosmosSnake = true
+                useRainbowSnake = false; useWormySnake = false
+                useStarSnake = false; useBlazeSnake = false; useEmberSnake = false
+            } else if d >= 5000 && a >= 10 {
+                UserDefaults.standard.set(d - 5000, forKey: "diamondsCollected")
+                UserDefaults.standard.set(true, forKey: "dnaSnakePurchased")
+                useCosmosSnake = true
+                useRainbowSnake = false; useWormySnake = false
+                useStarSnake = false; useBlazeSnake = false; useEmberSnake = false
+            }
+        } label: {
+            let p = UserDefaults.standard.bool(forKey: "dnaSnakePurchased")
+            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+            let ready: Bool = d >= 5000 && a >= 10
+            VStack(spacing: 4) {
+                ZStack {
+                    Canvas { ctx, _ in
+                        let palette: [Color] = [
+                            Color(red: 0.85, green: 0.95, blue: 1.0),
+                            Color(red: 1.0, green: 0.45, blue: 0.85),
+                            Color(red: 1.0, green: 0.85, blue: 0.30),
+                            Color(red: 0.30, green: 1.0, blue: 0.85),
+                            Color(red: 0.85, green: 0.50, blue: 1.0),
+                        ]
+                        let positions: [(CGFloat, CGFloat)] = [
+                            (8, 11), (16, 7), (22, 13), (30, 8),
+                            (35, 14), (12, 16), (26, 17)
+                        ]
+                        for (idx, pos) in positions.enumerated() {
+                            let c = palette[idx % palette.count]
+                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 2.5, y: pos.1 - 2.5, width: 5, height: 5)),
+                                     with: .color(c.opacity(0.35)))
+                            ctx.fill(Circle().path(in: CGRect(x: pos.0 - 1, y: pos.1 - 1, width: 2, height: 2)),
+                                     with: .color(c))
+                            var spike = Path()
+                            spike.move(to: CGPoint(x: pos.0 - 4, y: pos.1))
+                            spike.addLine(to: CGPoint(x: pos.0 + 4, y: pos.1))
+                            spike.move(to: CGPoint(x: pos.0, y: pos.1 - 4))
+                            spike.addLine(to: CGPoint(x: pos.0, y: pos.1 + 4))
+                            ctx.stroke(spike, with: .color(c.opacity(0.7)), lineWidth: 0.4)
+                        }
+                    }
+                    .frame(width: 42, height: 22)
+                    .opacity(p ? 1 : 0.3)
+                    if !p {
+                        Image(systemName: ready ? "lock.open.fill" : "lock.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(ready ? GameColors.neonYellow : .gray)
+                    }
+                }
+                if p {
+                    Text("DNA")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                } else if ready {
+                    Text("Unlock 5K💎")
+                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                        .foregroundColor(GameColors.neonYellow)
+                } else {
+                    Text("\(d)/5K💎")
+                        .font(.system(size: 7, design: .monospaced))
+                        .foregroundColor(.gray)
+                    Text("\(a)/10📺")
+                        .font(.system(size: 7, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(8)
+            .background(useCosmosSnake ? Color.white.opacity(0.1) : Color.clear)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(useCosmosSnake ? GameColors.neonGreen : Color.gray.opacity(0.3),
+                            lineWidth: useCosmosSnake ? 2 : 1)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var emberChooserButton: some View {
+        Button {
+            let p = UserDefaults.standard.bool(forKey: "emberSnakePurchased")
+            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            if p {
+                useEmberSnake = true
+                useRainbowSnake = false; useWormySnake = false
+                useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
+            } else if d >= 1000 {
+                UserDefaults.standard.set(d - 1000, forKey: "diamondsCollected")
+                UserDefaults.standard.set(true, forKey: "emberSnakePurchased")
+                useEmberSnake = true
+                useRainbowSnake = false; useWormySnake = false
+                useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
+            }
+        } label: {
+            let p = UserDefaults.standard.bool(forKey: "emberSnakePurchased")
+            let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            VStack(spacing: 4) {
+                ZStack {
+                    Canvas { ctx, _ in
+                        for i in 0..<7 {
+                            let x = CGFloat(i) * 7 + 4
+                            let y = 11 + sin(CGFloat(i) * 0.7) * 3
+                            let s: CGFloat = i == 6 ? 5 : 3.5
+                            ctx.fill(Circle().path(in: CGRect(x: x - s, y: y - s, width: s * 2, height: s * 2)),
+                                     with: .color(Color(red: 0.18, green: 0.05, blue: 0.04)))
+                            ctx.fill(Circle().path(in: CGRect(x: x - 1.5, y: y - 1.5, width: 3, height: 3)),
+                                     with: .color(Color(red: 0.55, green: 0.10, blue: 0.05).opacity(0.8)))
+                            if i < 6 {
+                                let nx = CGFloat(i + 1) * 7 + 4
+                                let ny = 11 + sin(CGFloat(i + 1) * 0.7) * 3
+                                var pth = Path()
+                                pth.move(to: CGPoint(x: x, y: y))
+                                pth.addLine(to: CGPoint(x: nx, y: ny))
+                                ctx.stroke(pth, with: .color(Color(red: 0.18, green: 0.05, blue: 0.04)), lineWidth: 3)
+                            }
+                        }
+                        // Two fire orbs above body
+                        let orbXs: [CGFloat] = [10, 28]
+                        for (idx, cx) in orbXs.enumerated() {
+                            let cy: CGFloat = idx == 0 ? 6 : 16
+                            ctx.fill(Circle().path(in: CGRect(x: cx - 5, y: cy - 5, width: 10, height: 10)),
+                                     with: .color(Color(red: 1.0, green: 0.3, blue: 0.0).opacity(0.4)))
+                            ctx.fill(Circle().path(in: CGRect(x: cx - 3, y: cy - 3, width: 6, height: 6)),
+                                     with: .color(Color(red: 1.0, green: 0.55, blue: 0.05)))
+                            ctx.fill(Circle().path(in: CGRect(x: cx - 1.5, y: cy - 1.5, width: 3, height: 3)),
+                                     with: .color(Color(red: 1.0, green: 0.95, blue: 0.55)))
+                        }
+                        // Eyes
+                        ctx.fill(Circle().path(in: CGRect(x: 46, y: 8, width: 2, height: 2)), with: .color(.white))
+                        ctx.fill(Circle().path(in: CGRect(x: 48, y: 12, width: 2, height: 2)), with: .color(.white))
+                    }
+                    .frame(width: 42, height: 22)
+                    .opacity(p ? 1 : 0.3)
+                    if !p {
+                        Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray)
+                    }
+                }
+                Text(p ? "Ember" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
+                    .font(.system(size: p ? 8 : 7, weight: .bold, design: .monospaced))
+                    .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
+            }
+            .padding(8)
+            .background(useEmberSnake ? Color.white.opacity(0.1) : Color.clear)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(useEmberSnake ? GameColors.neonGreen : Color.gray.opacity(0.3),
+                            lineWidth: useEmberSnake ? 2 : 1)
+            )
         }
     }
 }
@@ -3846,13 +4084,13 @@ struct ContentView: View {
 
                 // Snake
                 if let snake = game.snake {
-                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake)
+                    SnakeView(snake: snake, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake, useEmber: game.useEmberSnake)
                         .id(game.updateTrigger)
                 }
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake)
+                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake, useEmber: game.useEmberSnake)
                         .id(game.updateTrigger)
                 }
 
@@ -4180,7 +4418,9 @@ struct ContentView: View {
                         game.startGame()
                         game.score = GameConstants.level3WinScore
                         game.transitionToLevel4()
-                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, useCosmosSnake: $game.useCosmosSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
+                    }, onDebugTestEmber: {
+                        game.debugTestEmberSnake()
+                    }, useRainbowSnake: $game.useRainbowSnake, useWormySnake: $game.useWormySnake, useStarSnake: $game.useStarSnake, useBlazeSnake: $game.useBlazeSnake, useCosmosSnake: $game.useCosmosSnake, useEmberSnake: $game.useEmberSnake, snakeSpeedMultiplier: $game.snakeSpeedMultiplier)
                     .onAppear {
                         // Wait one extra runloop so all the snake-icon Canvases have
                         // finished their first render before dismissing the splash.
