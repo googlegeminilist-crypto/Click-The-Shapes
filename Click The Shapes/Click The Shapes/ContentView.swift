@@ -3712,12 +3712,13 @@ struct IntroOverlay: View {
         Button {
             let p = UserDefaults.standard.bool(forKey: "emberSnakePurchased")
             let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
             if p {
                 useEmberSnake = true
                 useRainbowSnake = false; useWormySnake = false
                 useStarSnake = false; useBlazeSnake = false; useCosmosSnake = false
-            } else if d >= 1000 {
-                UserDefaults.standard.set(d - 1000, forKey: "diamondsCollected")
+            } else if d >= 10000 && a >= 20 {
+                UserDefaults.standard.set(d - 10000, forKey: "diamondsCollected")
                 UserDefaults.standard.set(true, forKey: "emberSnakePurchased")
                 useEmberSnake = true
                 useRainbowSnake = false; useWormySnake = false
@@ -3726,6 +3727,8 @@ struct IntroOverlay: View {
         } label: {
             let p = UserDefaults.standard.bool(forKey: "emberSnakePurchased")
             let d = UserDefaults.standard.integer(forKey: "diamondsCollected")
+            let a = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
+            let ready: Bool = d >= 10000 && a >= 20
             VStack(spacing: 4) {
                 ZStack {
                     Canvas { ctx, _ in
@@ -3764,14 +3767,27 @@ struct IntroOverlay: View {
                     .frame(width: 42, height: 22)
                     .opacity(p ? 1 : 0.3)
                     if !p {
-                        Image(systemName: d >= 1000 ? "lock.open.fill" : "lock.fill")
+                        Image(systemName: ready ? "lock.open.fill" : "lock.fill")
                             .font(.system(size: 12))
-                            .foregroundColor(d >= 1000 ? GameColors.neonYellow : .gray)
+                            .foregroundColor(ready ? GameColors.neonYellow : .gray)
                     }
                 }
-                Text(p ? "Ember" : (d >= 1000 ? "Unlock 1K💎" : "\(d)/1K💎"))
-                    .font(.system(size: p ? 8 : 7, weight: .bold, design: .monospaced))
-                    .foregroundColor(p ? .white : (d >= 1000 ? GameColors.neonYellow : .gray))
+                if p {
+                    Text("Ember")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                } else if ready {
+                    Text("Unlock 10K💎")
+                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                        .foregroundColor(GameColors.neonYellow)
+                } else {
+                    Text("\(d)/10K💎")
+                        .font(.system(size: 7, design: .monospaced))
+                        .foregroundColor(.gray)
+                    Text("\(a)/20📺")
+                        .font(.system(size: 7, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
             }
             .padding(8)
             .background(useEmberSnake ? Color.white.opacity(0.1) : Color.clear)
