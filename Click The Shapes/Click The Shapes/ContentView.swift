@@ -3582,6 +3582,15 @@ struct IntroOverlay: View {
                         .background(Color(red: 0.6, green: 0.15, blue: 0.05))
                         .cornerRadius(8)
                 }
+                Button(action: onStartLevel4) {
+                    Text("DEBUG: Skip to Level 4")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(red: 0.4, green: 0.05, blue: 0.5))
+                        .cornerRadius(8)
+                }
                 #endif
             }
             .padding(30)
@@ -3995,14 +4004,7 @@ struct ContentView: View {
                 // Background gradient - evolves per level
                 Group {
                     if game.currentLevel >= 4 {
-                        // Level 4: nebula photo at native size, centered, with black fill
-                        ZStack {
-                            Color.black
-                            if let uiImage = Level4Background.image {
-                                Image(uiImage: uiImage)
-                                    .interpolation(.high)
-                            }
-                        }
+                        Level4SpaceScene(size: geometry.size)
                     } else if game.currentLevel >= 3 {
                         // Level 3: deep 3D warp space with galaxy center
                         ZStack {
@@ -4116,7 +4118,7 @@ struct ContentView: View {
 
                 // Second snake (Level 4) — with glow
                 if let snake2 = game.snake2 {
-                    SnakeView(snake: snake2, glowing: true, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake, useEmber: game.useEmberSnake)
+                    SnakeView(snake: snake2, useRainbow: game.useRainbowSnake, useWormy: game.useWormySnake, useStar: game.useStarSnake, useBlaze: game.useBlazeSnake, useCosmos: game.useCosmosSnake, useEmber: game.useEmberSnake)
                         .id(game.updateTrigger)
                 }
 
@@ -4550,6 +4552,167 @@ struct ContentView: View {
 }
 
 // MARK: - Game Canvas View
+/// Procedural 3D space scene for Level 4+. Hundreds of small twinkling
+/// stars drift radially outward from the centre at speeds proportional
+/// to their "depth", giving a parallax / flying-through-space feel.
+/// Stars are coloured from a cosmic palette and the brightest get
+/// classic 4-point cross spikes. Two pulsing nebula clouds add depth.
+struct Level4SpaceScene: View {
+    let size: CGSize
+
+    @State private var t: Double = 0
+    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+
+    /// 240 deterministic seeds — angle, depth, palette index, twinkle phase.
+    /// Generated once at first render so the scene is stable.
+    private static let stars: [SpaceStar] = (0..<240).map { _ in SpaceStar.random() }
+
+    private static let palette: [(Color, Color)] = [
+        (Color(red: 0.92, green: 0.96, blue: 1.00), Color(red: 0.50, green: 0.80, blue: 1.00)),  // blue-white
+        (Color(red: 1.00, green: 0.85, blue: 0.97), Color(red: 1.00, green: 0.45, blue: 0.85)),  // hot pink
+        (Color(red: 1.00, green: 0.95, blue: 0.65), Color(red: 1.00, green: 0.80, blue: 0.30)),  // gold
+        (Color(red: 0.75, green: 1.00, blue: 0.95), Color(red: 0.20, green: 1.00, blue: 0.85)),  // cyan
+        (Color(red: 0.95, green: 0.80, blue: 1.00), Color(red: 0.75, green: 0.40, blue: 1.00)),  // lavender
+        (Color(red: 1.00, green: 0.85, blue: 0.85), Color(red: 1.00, green: 0.30, blue: 0.55)),  // magenta
+        (Color.white, Color(red: 0.7, green: 0.85, blue: 1.0)),                                   // pure white
+    ]
+
+    var body: some View {
+        Canvas { ctx, sz in
+            // Deep navy gradient background.
+            ctx.fill(
+                Path(CGRect(origin: .zero, size: sz)),
+                with: .linearGradient(
+                    Gradient(colors: [
+                        Color(red: 0.02, green: 0.01, blue: 0.10),
+                        Color(red: 0.05, green: 0.02, blue: 0.18),
+                        Color(red: 0.02, green: 0.01, blue: 0.08),
+                    ]),
+                    startPoint: .zero,
+                    endPoint: CGPoint(x: 0, y: sz.height)
+                )
+            )
+
+            // Pulsing magenta nebula cloud (top-left).
+            let magentaAlpha: Double = 0.18 + 0.08 * sin(t * 0.20)
+            ctx.fill(
+                Path(CGRect(origin: .zero, size: sz)),
+                with: .radialGradient(
+                    Gradient(colors: [
+                        Color(red: 0.55, green: 0.15, blue: 0.55).opacity(magentaAlpha),
+                        .clear
+                    ]),
+                    center: CGPoint(x: sz.width * 0.20, y: sz.height * 0.22),
+                    startRadius: 0,
+                    endRadius: sz.width * 0.55
+                )
+            )
+
+            // Pulsing cyan nebula cloud (bottom-right).
+            let cyanAlpha: Double = 0.14 + 0.08 * cos(t * 0.17)
+            ctx.fill(
+                Path(CGRect(origin: .zero, size: sz)),
+                with: .radialGradient(
+                    Gradient(colors: [
+                        Color(red: 0.10, green: 0.50, blue: 0.85).opacity(cyanAlpha),
+                        .clear
+                    ]),
+                    center: CGPoint(x: sz.width * 0.80, y: sz.height * 0.78),
+                    startRadius: 0,
+                    endRadius: sz.width * 0.55
+                )
+            )
+
+            // Stars — radial parallax drift out from screen centre.
+            let centerX: CGFloat = sz.width / 2
+            let centerY: CGFloat = sz.height / 2
+            let maxR: CGFloat = hypot(sz.width, sz.height) * 0.55
+
+            for star in Level4SpaceScene.stars {
+                drawStar(ctx: &ctx, star: star,
+                         centerX: centerX, centerY: centerY, maxR: maxR)
+            }
+        }
+        .onReceive(timer) { _ in
+            t += 0.05
+            if t > 100000 { t -= 100000 }
+        }
+    }
+
+    private func drawStar(ctx: inout GraphicsContext,
+                          star: SpaceStar,
+                          centerX: CGFloat,
+                          centerY: CGFloat,
+                          maxR: CGFloat) {
+        // Phase cycles 0...1 — distance from centre = phase * maxR.
+        let raw: Double = star.startPhase + t * star.speed
+        let phase: Double = raw - floor(raw)
+        let dist: CGFloat = CGFloat(phase) * maxR
+        let cx: CGFloat = centerX + CGFloat(cos(star.angle)) * dist
+        let cy: CGFloat = centerY + CGFloat(sin(star.angle)) * dist
+
+        // Fade in/out at the ends, brightest in the middle.
+        let appear: Double = phase * (1.0 - phase) * 4.0
+        // Twinkle modulation per star.
+        let twinkleArg: Double = t * 4.0 + star.twinkleSeed
+        let twinkle: Double = sin(twinkleArg) * 0.4 + 0.6
+        let alpha: Double = appear * twinkle
+
+        guard alpha > 0.01 else { return }
+
+        let (core, halo) = Level4SpaceScene.palette[star.paletteIdx % Level4SpaceScene.palette.count]
+
+        // Soft halo (size scales with depth so close stars feel bigger).
+        let haloR: CGFloat = CGFloat(1.5 + star.depth * 4.0) * (1.0 + CGFloat(twinkle) * 0.5)
+        ctx.fill(
+            Circle().path(in: CGRect(x: cx - haloR, y: cy - haloR,
+                                     width: haloR * 2, height: haloR * 2)),
+            with: .color(halo.opacity(alpha * 0.30))
+        )
+
+        // Bright core.
+        let coreR: CGFloat = CGFloat(0.5 + star.depth * 1.4)
+        ctx.fill(
+            Circle().path(in: CGRect(x: cx - coreR, y: cy - coreR,
+                                     width: coreR * 2, height: coreR * 2)),
+            with: .color(core.opacity(min(1.0, alpha * 1.3)))
+        )
+
+        // Cross-spike on the brightest stars.
+        if star.depth > 0.78 && twinkle > 0.7 {
+            let spikeLen: CGFloat = CGFloat(1.0 + star.depth * 4.0) * CGFloat(twinkle)
+            var spike = Path()
+            spike.move(to: CGPoint(x: cx - spikeLen, y: cy))
+            spike.addLine(to: CGPoint(x: cx + spikeLen, y: cy))
+            spike.move(to: CGPoint(x: cx, y: cy - spikeLen))
+            spike.addLine(to: CGPoint(x: cx, y: cy + spikeLen))
+            ctx.stroke(spike, with: .color(core.opacity(alpha * 0.8)), lineWidth: 0.4)
+        }
+    }
+}
+
+/// Immutable seed values for a single procedural star.
+struct SpaceStar {
+    let angle: Double          // radians around screen centre
+    let depth: Double          // 0 = far, 1 = close
+    let startPhase: Double     // 0...1, current position along radial path
+    let speed: Double          // how fast it drifts outward (depth-related)
+    let twinkleSeed: Double
+    let paletteIdx: Int
+
+    static func random() -> SpaceStar {
+        let depth: Double = Double.random(in: 0...1)
+        return SpaceStar(
+            angle: Double.random(in: 0...(.pi * 2)),
+            depth: depth,
+            startPhase: Double.random(in: 0...1),
+            speed: 0.012 + depth * 0.030,
+            twinkleSeed: Double.random(in: 0...100),
+            paletteIdx: Int.random(in: 0..<7)
+        )
+    }
+}
+
 struct GameCanvasView: View {
     let game: GameViewModel
 
