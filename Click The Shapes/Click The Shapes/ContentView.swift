@@ -4567,14 +4567,35 @@ struct Level4SpaceScene: View {
     /// Generated once at first render so the scene is stable.
     private static let stars: [SpaceStar] = (0..<240).map { _ in SpaceStar.random() }
 
-    private static let palette: [(Color, Color)] = [
-        (Color(red: 0.92, green: 0.96, blue: 1.00), Color(red: 0.50, green: 0.80, blue: 1.00)),  // blue-white
-        (Color(red: 1.00, green: 0.85, blue: 0.97), Color(red: 1.00, green: 0.45, blue: 0.85)),  // hot pink
-        (Color(red: 1.00, green: 0.95, blue: 0.65), Color(red: 1.00, green: 0.80, blue: 0.30)),  // gold
-        (Color(red: 0.75, green: 1.00, blue: 0.95), Color(red: 0.20, green: 1.00, blue: 0.85)),  // cyan
-        (Color(red: 0.95, green: 0.80, blue: 1.00), Color(red: 0.75, green: 0.40, blue: 1.00)),  // lavender
-        (Color(red: 1.00, green: 0.85, blue: 0.85), Color(red: 1.00, green: 0.30, blue: 0.55)),  // magenta
-        (Color.white, Color(red: 0.7, green: 0.85, blue: 1.0)),                                   // pure white
+    /// 600 particles arranged on logarithmic spirals to form a 2-armed
+    /// spiral galaxy. Generated once at first render.
+    static let galaxyParticles: [GalaxyParticle] = GalaxyParticle.makeGalaxy(count: 1100)
+
+    /// Realistic stellar colour palette — used by background stars only.
+    static let palette: [(Color, Color)] = [
+        (Color(red: 1.00, green: 1.00, blue: 1.00), Color(red: 0.85, green: 0.92, blue: 1.00)),  // white
+        (Color(red: 0.85, green: 0.92, blue: 1.00), Color(red: 0.55, green: 0.78, blue: 1.00)),  // blue-white
+        (Color(red: 0.78, green: 0.88, blue: 1.00), Color(red: 0.45, green: 0.65, blue: 1.00)),  // pale blue
+        (Color(red: 1.00, green: 0.96, blue: 0.85), Color(red: 1.00, green: 0.85, blue: 0.55)),  // yellow-white
+        (Color(red: 1.00, green: 0.78, blue: 0.55), Color(red: 0.95, green: 0.55, blue: 0.30)),  // warm orange
+        (Color(red: 1.00, green: 0.55, blue: 0.40), Color(red: 0.85, green: 0.30, blue: 0.20)),  // deep red
+    ]
+
+    /// Maximally vibrant galaxy palette — saturated nebula colours so the
+    /// spiral galaxy is unmistakably a colourful deep-space object.
+    static let galaxyPalette: [Color] = [
+        Color(red: 1.00, green: 1.00, blue: 1.00),                    // bright white
+        Color(red: 0.30, green: 0.70, blue: 1.00),                    // electric blue
+        Color(red: 1.00, green: 0.30, blue: 0.85),                    // hot pink
+        Color(red: 1.00, green: 0.92, blue: 0.30),                    // bright gold
+        Color(red: 1.00, green: 0.50, blue: 0.10),                    // hot orange
+        Color(red: 0.65, green: 0.20, blue: 1.00),                    // electric violet
+        Color(red: 0.10, green: 1.00, blue: 0.95),                    // neon cyan
+        Color(red: 1.00, green: 0.10, blue: 0.40),                    // magenta-red
+        Color(red: 0.30, green: 1.00, blue: 0.50),                    // neon green
+        Color(red: 1.00, green: 0.40, blue: 0.40),                    // vivid red
+        Color(red: 0.95, green: 0.60, blue: 1.00),                    // pink-lavender
+        Color(red: 1.00, green: 0.85, blue: 0.10),                    // pure yellow
     ]
 
     var body: some View {
@@ -4593,35 +4614,40 @@ struct Level4SpaceScene: View {
                 )
             )
 
-            // Pulsing magenta nebula cloud (top-left).
-            let magentaAlpha: Double = 0.18 + 0.08 * sin(t * 0.20)
+            // Soft Milky Way dust lane — diagonal, low alpha, static.
             ctx.fill(
                 Path(CGRect(origin: .zero, size: sz)),
-                with: .radialGradient(
-                    Gradient(colors: [
-                        Color(red: 0.55, green: 0.15, blue: 0.55).opacity(magentaAlpha),
-                        .clear
+                with: .linearGradient(
+                    Gradient(stops: [
+                        .init(color: .clear, location: 0.00),
+                        .init(color: Color(red: 0.18, green: 0.12, blue: 0.22).opacity(0.55), location: 0.45),
+                        .init(color: Color(red: 0.22, green: 0.16, blue: 0.18).opacity(0.45), location: 0.55),
+                        .init(color: .clear, location: 1.00),
                     ]),
-                    center: CGPoint(x: sz.width * 0.20, y: sz.height * 0.22),
-                    startRadius: 0,
-                    endRadius: sz.width * 0.55
+                    startPoint: CGPoint(x: 0, y: 0),
+                    endPoint: CGPoint(x: sz.width, y: sz.height)
                 )
             )
 
-            // Pulsing cyan nebula cloud (bottom-right).
-            let cyanAlpha: Double = 0.14 + 0.08 * cos(t * 0.17)
+            // Cool blue/violet ionised-gas region (lower-left).
             ctx.fill(
                 Path(CGRect(origin: .zero, size: sz)),
                 with: .radialGradient(
                     Gradient(colors: [
-                        Color(red: 0.10, green: 0.50, blue: 0.85).opacity(cyanAlpha),
+                        Color(red: 0.20, green: 0.30, blue: 0.55).opacity(0.16),
+                        Color(red: 0.10, green: 0.18, blue: 0.40).opacity(0.05),
                         .clear
                     ]),
-                    center: CGPoint(x: sz.width * 0.80, y: sz.height * 0.78),
+                    center: CGPoint(x: sz.width * 0.18, y: sz.height * 0.78),
                     startRadius: 0,
-                    endRadius: sz.width * 0.55
+                    endRadius: sz.width * 0.6
                 )
             )
+
+            // Spiral galaxy in the upper-right (3D feel via tilted disk + slow rotation).
+            drawSpiralGalaxy(ctx: &ctx,
+                             centre: CGPoint(x: sz.width * 0.78, y: sz.height * 0.30),
+                             radius: sz.width * 0.22)
 
             // Stars — radial parallax drift out from screen centre.
             let centerX: CGFloat = sz.width / 2
@@ -4644,50 +4670,214 @@ struct Level4SpaceScene: View {
                           centerX: CGFloat,
                           centerY: CGFloat,
                           maxR: CGFloat) {
-        // Phase cycles 0...1 — distance from centre = phase * maxR.
         let raw: Double = star.startPhase + t * star.speed
         let phase: Double = raw - floor(raw)
         let dist: CGFloat = CGFloat(phase) * maxR
-        let cx: CGFloat = centerX + CGFloat(cos(star.angle)) * dist
-        let cy: CGFloat = centerY + CGFloat(sin(star.angle)) * dist
+        // Counter-clockwise scene rotation — background stars sweep around
+        // screen centre opposite to the galaxy's clockwise spin.
+        let starAngle: Double = star.angle - t * 0.10
+        let cx: CGFloat = centerX + CGFloat(cos(starAngle)) * dist
+        let cy: CGFloat = centerY + CGFloat(sin(starAngle)) * dist
 
-        // Fade in/out at the ends, brightest in the middle.
         let appear: Double = phase * (1.0 - phase) * 4.0
-        // Twinkle modulation per star.
-        let twinkleArg: Double = t * 4.0 + star.twinkleSeed
-        let twinkle: Double = sin(twinkleArg) * 0.4 + 0.6
+        // Subtle twinkle (real-photo range, 0.85–1.0).
+        let twinkleArg: Double = t * 1.4 + star.twinkleSeed
+        let twinkle: Double = sin(twinkleArg) * 0.075 + 0.925
         let alpha: Double = appear * twinkle
 
-        guard alpha > 0.01 else { return }
+        guard alpha > 0.02 else { return }
 
         let (core, halo) = Level4SpaceScene.palette[star.paletteIdx % Level4SpaceScene.palette.count]
 
-        // Soft halo (size scales with depth so close stars feel bigger).
-        let haloR: CGFloat = CGFloat(1.5 + star.depth * 4.0) * (1.0 + CGFloat(twinkle) * 0.5)
-        ctx.fill(
-            Circle().path(in: CGRect(x: cx - haloR, y: cy - haloR,
-                                     width: haloR * 2, height: haloR * 2)),
-            with: .color(halo.opacity(alpha * 0.30))
-        )
+        // Halo only on closer (brighter) stars — keeps the dim ones as
+        // pinpoints, like a real long-exposure photo.
+        if star.depth > 0.55 {
+            let haloR: CGFloat = CGFloat(1.2 + star.depth * 2.6)
+            ctx.fill(
+                Circle().path(in: CGRect(x: cx - haloR, y: cy - haloR,
+                                         width: haloR * 2, height: haloR * 2)),
+                with: .color(halo.opacity(alpha * 0.22))
+            )
+        }
 
-        // Bright core.
-        let coreR: CGFloat = CGFloat(0.5 + star.depth * 1.4)
+        let coreR: CGFloat = CGFloat(0.5 + star.depth * 1.3)
         ctx.fill(
             Circle().path(in: CGRect(x: cx - coreR, y: cy - coreR,
                                      width: coreR * 2, height: coreR * 2)),
             with: .color(core.opacity(min(1.0, alpha * 1.3)))
         )
 
-        // Cross-spike on the brightest stars.
-        if star.depth > 0.78 && twinkle > 0.7 {
-            let spikeLen: CGFloat = CGFloat(1.0 + star.depth * 4.0) * CGFloat(twinkle)
+        // Diffraction spike — brightest 12% only, small and thin.
+        if star.depth > 0.88 {
+            let spikeLen: CGFloat = CGFloat(1.5 + star.depth * 2.5)
             var spike = Path()
             spike.move(to: CGPoint(x: cx - spikeLen, y: cy))
             spike.addLine(to: CGPoint(x: cx + spikeLen, y: cy))
             spike.move(to: CGPoint(x: cx, y: cy - spikeLen))
             spike.addLine(to: CGPoint(x: cx, y: cy + spikeLen))
-            ctx.stroke(spike, with: .color(core.opacity(alpha * 0.8)), lineWidth: 0.4)
+            ctx.stroke(spike, with: .color(core.opacity(alpha * 0.5)), lineWidth: 0.35)
         }
+    }
+
+    /// Draw a 3D-feeling spiral galaxy at `centre` with given disk `radius`.
+    /// The disk is squashed vertically (tilt) to suggest depth, and rotates
+    /// slowly. Particle positions are pre-baked; rotation is applied here.
+    private func drawSpiralGalaxy(ctx: inout GraphicsContext,
+                                  centre: CGPoint,
+                                  radius: CGFloat) {
+        // Galaxy spins clockwise — full revolution roughly every 20 sec.
+        let rotation: Double = t * 0.22
+        let tiltY: CGFloat = 0.45  // 0 = face-on, 1 = edge-on; 0.45 looks 3D.
+
+        var c = ctx
+        c.translateBy(x: centre.x, y: centre.y)
+
+        // Outer dim halo.
+        let haloR: CGFloat = radius * 1.05
+        c.fill(
+            Ellipse().path(in: CGRect(x: -haloR, y: -haloR * tiltY,
+                                      width: haloR * 2, height: haloR * 2 * tiltY)),
+            with: .color(Color(red: 0.85, green: 0.75, blue: 0.55).opacity(0.10))
+        )
+
+        // Bright core glow (centre bulge).
+        let coreGlowR: CGFloat = radius * 0.40
+        c.fill(
+            Ellipse().path(in: CGRect(x: -coreGlowR, y: -coreGlowR * tiltY,
+                                      width: coreGlowR * 2, height: coreGlowR * 2 * tiltY)),
+            with: .color(Color(red: 1.0, green: 0.92, blue: 0.7).opacity(0.30))
+        )
+        let coreR: CGFloat = radius * 0.12
+        c.fill(
+            Ellipse().path(in: CGRect(x: -coreR, y: -coreR * tiltY,
+                                      width: coreR * 2, height: coreR * 2 * tiltY)),
+            with: .color(Color(red: 1.0, green: 0.97, blue: 0.85).opacity(0.85))
+        )
+
+        // Particles along spiral arms — half spin clockwise, half counter-
+        // clockwise. They weave through each other producing a shimmering,
+        // multidirectional motion within the galaxy itself.
+        for p in Level4SpaceScene.galaxyParticles {
+            let theta: Double = p.angle + rotation * p.spinDir
+            let r: Double = p.radius
+            let baseX: Double = cos(theta) * r
+            let baseY: Double = sin(theta) * r
+            let x: CGFloat = (CGFloat(baseX) + CGFloat(p.jitterX)) * radius
+            let y: CGFloat = (CGFloat(baseY) + CGFloat(p.jitterY)) * radius * tiltY
+
+            let twinkle: Double = sin(t * 2.0 + p.twinkleSeed) * 0.18 + 0.82
+            // Brighter near centre, gentler fade toward edge so colour pops.
+            let alpha: Double = (1.0 - r * 0.30) * twinkle * p.brightness
+            guard alpha > 0.02 else { continue }
+
+            let col: Color = Level4SpaceScene.galaxyPalette[p.paletteIdx % Level4SpaceScene.galaxyPalette.count]
+            // Small glowing particles — tight bright core + wider soft halo.
+            let psize: CGFloat = CGFloat(p.size)
+            let haloS: CGFloat = psize * 4.0
+            // Wide outer halo (very dim, just colour).
+            c.fill(
+                Circle().path(in: CGRect(x: x - haloS / 2, y: y - haloS / 2,
+                                         width: haloS, height: haloS)),
+                with: .color(col.opacity(min(1.0, alpha * 0.30)))
+            )
+            // Mid halo.
+            let midS: CGFloat = psize * 2.0
+            c.fill(
+                Circle().path(in: CGRect(x: x - midS / 2, y: y - midS / 2,
+                                         width: midS, height: midS)),
+                with: .color(col.opacity(min(1.0, alpha * 0.6)))
+            )
+            // Tight bright core.
+            c.fill(
+                Circle().path(in: CGRect(x: x - psize / 2, y: y - psize / 2,
+                                         width: psize, height: psize)),
+                with: .color(col.opacity(min(1.0, alpha * 1.6)))
+            )
+        }
+    }
+}
+
+/// One particle in the spiral-galaxy distribution.
+struct GalaxyParticle {
+    let angle: Double          // baked angle around centre (rotation added at draw time)
+    let radius: Double         // 0 (centre) ... 1 (edge)
+    let jitterX: Double        // small per-particle offset
+    let jitterY: Double
+    let size: Double           // pixel size
+    let brightness: Double     // 0.4 ... 1.0 — varies particle-to-particle
+    let paletteIdx: Int        // colour from Level4SpaceScene.galaxyPalette
+    let twinkleSeed: Double
+    /// +1 = clockwise, -1 = counter-clockwise. Each particle picks one,
+    /// roughly half each, so the galaxy has two interleaved counter-
+    /// rotating systems woven through it.
+    let spinDir: Double
+
+    /// Build a galaxy: bulge of yellow stars in the centre + 2 spiral arms
+    /// of mostly white/blue stars trailing outward.
+    static func makeGalaxy(count: Int) -> [GalaxyParticle] {
+        var out: [GalaxyParticle] = []
+        let arms: Int = 2
+        let twist: Double = 4.5  // radians per radius unit — tighter = more wound
+
+        // Bulge: ~30% of particles, concentrated near centre, yellow palette
+        let bulgeCount: Int = count * 30 / 100
+        for _ in 0..<bulgeCount {
+            let r0: Double = Double.random(in: 0...1)
+            let r: Double = r0 * r0 * 0.30  // squared bias toward centre
+            let a: Double = Double.random(in: 0...(.pi * 2))
+            // Bulge palette: bias toward yellow-white (idx 3) and orange (4)
+            // Bulge palette → gold/orange/white-bright dominates.
+            // Indices map to galaxyPalette: 0=white, 3=gold, 4=orange.
+            let pIdx: Int = [3, 3, 3, 3, 4, 4, 0].randomElement()!
+            out.append(GalaxyParticle(
+                angle: a,
+                radius: r,
+                jitterX: Double.random(in: -0.01...0.01),
+                jitterY: Double.random(in: -0.01...0.01),
+                size: 0.6 + Double.random(in: 0...0.7),
+                brightness: 0.7 + Double.random(in: 0...0.3),
+                paletteIdx: pIdx,
+                twinkleSeed: Double.random(in: 0...100),
+                spinDir: Bool.random() ? 1.0 : -1.0
+            ))
+        }
+
+        // Arm particles: ~70%, on logarithmic spirals.
+        let armCount: Int = count - bulgeCount
+        for _ in 0..<armCount {
+            let arm: Int = Int.random(in: 0..<arms)
+            let armBase: Double = Double(arm) * (.pi * 2.0 / Double(arms))
+            let t: Double = Double.random(in: 0.10...1.0)
+            // Logarithmic-spiral parametrisation: angle = base + t * twist
+            let theta: Double = armBase + t * twist
+            // Radial position bias toward inner-mid arm (more density)
+            let r: Double = pow(t, 0.85)
+            // Perpendicular jitter (arm thickness)
+            let armWidth: Double = 0.05 + (1.0 - t) * 0.04
+            let jit: Double = Double.random(in: -armWidth...armWidth)
+            // Tangent direction → perpendicular = (-sin, cos)
+            let jx: Double = -sin(theta) * jit
+            let jy: Double = cos(theta) * jit
+
+            // Arm palette: mostly white/blue-white, some yellow, rare red
+            // Arm palette → vibrant mix of every nebula colour.
+            // Indices 0…11 of galaxyPalette. White (0) appears less often
+            // so the colour pops; the vivid hues dominate.
+            let pIdx: Int = [1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 9, 10, 11, 0].randomElement()!
+            out.append(GalaxyParticle(
+                angle: theta,
+                radius: r,
+                jitterX: jx,
+                jitterY: jy,
+                size: 0.4 + Double.random(in: 0...0.7),
+                brightness: 0.5 + Double.random(in: 0...0.5),
+                paletteIdx: pIdx,
+                twinkleSeed: Double.random(in: 0...100),
+                spinDir: Bool.random() ? 1.0 : -1.0
+            ))
+        }
+
+        return out
     }
 }
 
@@ -4701,14 +4891,29 @@ struct SpaceStar {
     let paletteIdx: Int
 
     static func random() -> SpaceStar {
-        let depth: Double = Double.random(in: 0...1)
+        // Weighted palette: 40% white, 24% blue-white, 14% pale-blue,
+        // 13% yellow-white, 7% orange, 2% red — matches real distribution.
+        let weights: [Int] = [40, 24, 14, 13, 7, 2]
+        let total: Int = weights.reduce(0, +)
+        var roll: Int = Int.random(in: 0..<total)
+        var idx: Int = 0
+        for (i, w) in weights.enumerated() {
+            if roll < w { idx = i; break }
+            roll -= w
+        }
+
+        // Cubic depth — most stars far/dim/tiny, few bright.
+        let raw: Double = Double.random(in: 0...1)
+        let depth: Double = raw * raw * raw
+
         return SpaceStar(
             angle: Double.random(in: 0...(.pi * 2)),
             depth: depth,
             startPhase: Double.random(in: 0...1),
-            speed: 0.012 + depth * 0.030,
+            // Very slow drift — real space is essentially still at this scale.
+            speed: 0.002 + depth * 0.006,
             twinkleSeed: Double.random(in: 0...100),
-            paletteIdx: Int.random(in: 0..<7)
+            paletteIdx: idx
         )
     }
 }
