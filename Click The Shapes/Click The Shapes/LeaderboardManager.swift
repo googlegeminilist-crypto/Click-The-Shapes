@@ -15,6 +15,58 @@ struct LeaderboardEntry: Identifiable, Codable {
 /// variants via normalization (leetspeak, repeated chars, diacritics) but is
 /// not exhaustive — determined users will still find ways through. Pair with
 /// a server-side Cloud Function review if you need stronger guarantees.
+/// Best-effort jailbreak heuristics. Not foolproof — determined attackers
+/// can defeat any client-side check — but raises the bar from "trivial"
+/// to "needs real effort". Used to silently skip leaderboard writes from
+/// likely-tampered devices so they can't game the global rankings.
+enum JailbreakDetector {
+    /// `true` if this device appears to be jailbroken.
+    static var isJailbroken: Bool {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return hasSuspiciousFiles() || canEscapeSandbox()
+        #endif
+    }
+
+    /// Common files / directories that exist on jailbroken devices but
+    /// not on stock iOS.
+    private static func hasSuspiciousFiles() -> Bool {
+        let paths = [
+            "/Applications/Cydia.app",
+            "/Applications/Sileo.app",
+            "/Applications/Zebra.app",
+            "/Library/MobileSubstrate/MobileSubstrate.dylib",
+            "/bin/bash",
+            "/usr/sbin/sshd",
+            "/etc/apt",
+            "/private/var/lib/apt/",
+            "/usr/libexec/cydia/firmware.sh",
+            "/var/cache/apt",
+        ]
+        for path in paths {
+            if FileManager.default.fileExists(atPath: path) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// On a stock device this write fails — apps are sandboxed and can't
+    /// touch /private. On a jailbroken device the sandbox is broken so
+    /// the write succeeds.
+    private static func canEscapeSandbox() -> Bool {
+        let path = "/private/jb_check_\(UUID().uuidString).txt"
+        do {
+            try "test".write(toFile: path, atomically: true, encoding: .utf8)
+            try? FileManager.default.removeItem(atPath: path)
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+
 enum DisplayNameFilter {
     /// Substrings that should reject the name if present after normalization.
     /// Kept compact: common English-language slurs, sexual terms, and vulgarities.
@@ -109,6 +161,10 @@ class LeaderboardManager: ObservableObject {
 
     func recordWin(totalWins: Int) {
         guard hasSetName else { return }
+        // Silently skip writes from jailbroken devices so they can't pollute
+        // the global rankings with modified clients. They still play the
+        // game normally — they just don't appear on the leaderboard.
+        if JailbreakDetector.isJailbroken { return }
         #if canImport(FirebaseFirestore)
         let data: [String: Any] = [
             "displayName": playerName,
