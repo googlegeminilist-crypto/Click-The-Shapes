@@ -4732,27 +4732,8 @@ struct Level4SpaceScene: View {
         var c = ctx
         c.translateBy(x: centre.x, y: centre.y)
 
-        // Outer dim halo.
-        let haloR: CGFloat = radius * 1.05
-        c.fill(
-            Ellipse().path(in: CGRect(x: -haloR, y: -haloR * tiltY,
-                                      width: haloR * 2, height: haloR * 2 * tiltY)),
-            with: .color(Color(red: 0.85, green: 0.75, blue: 0.55).opacity(0.10))
-        )
-
-        // Bright core glow (centre bulge).
-        let coreGlowR: CGFloat = radius * 0.40
-        c.fill(
-            Ellipse().path(in: CGRect(x: -coreGlowR, y: -coreGlowR * tiltY,
-                                      width: coreGlowR * 2, height: coreGlowR * 2 * tiltY)),
-            with: .color(Color(red: 1.0, green: 0.92, blue: 0.7).opacity(0.30))
-        )
-        let coreR: CGFloat = radius * 0.12
-        c.fill(
-            Ellipse().path(in: CGRect(x: -coreR, y: -coreR * tiltY,
-                                      width: coreR * 2, height: coreR * 2 * tiltY)),
-            with: .color(Color(red: 1.0, green: 0.97, blue: 0.85).opacity(0.85))
-        )
+        // No background ellipses — the galaxy is made entirely from the
+        // colourful particles, no beige halo or yellow core disk behind them.
 
         // Particles along spiral arms — half spin clockwise, half counter-
         // clockwise. They weave through each other producing a shimmering,
