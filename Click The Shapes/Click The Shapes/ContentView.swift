@@ -4600,47 +4600,23 @@ struct Level4SpaceScene: View {
 
     var body: some View {
         Canvas { ctx, sz in
-            // Deep navy gradient background.
+            // Pure black background — galaxies pop against it.
             ctx.fill(
                 Path(CGRect(origin: .zero, size: sz)),
-                with: .linearGradient(
-                    Gradient(colors: [
-                        Color(red: 0.02, green: 0.01, blue: 0.10),
-                        Color(red: 0.05, green: 0.02, blue: 0.18),
-                        Color(red: 0.02, green: 0.01, blue: 0.08),
-                    ]),
-                    startPoint: .zero,
-                    endPoint: CGPoint(x: 0, y: sz.height)
-                )
+                with: .color(.black)
             )
 
-            // Soft Milky Way dust lane — diagonal, low alpha, static.
-            ctx.fill(
-                Path(CGRect(origin: .zero, size: sz)),
-                with: .linearGradient(
-                    Gradient(stops: [
-                        .init(color: .clear, location: 0.00),
-                        .init(color: Color(red: 0.18, green: 0.12, blue: 0.22).opacity(0.55), location: 0.45),
-                        .init(color: Color(red: 0.22, green: 0.16, blue: 0.18).opacity(0.45), location: 0.55),
-                        .init(color: .clear, location: 1.00),
-                    ]),
-                    startPoint: CGPoint(x: 0, y: 0),
-                    endPoint: CGPoint(x: sz.width, y: sz.height)
-                )
-            )
-
-            // Cool blue/violet ionised-gas region (lower-left).
+            // Faint vignette toward edges for depth.
             ctx.fill(
                 Path(CGRect(origin: .zero, size: sz)),
                 with: .radialGradient(
                     Gradient(colors: [
-                        Color(red: 0.20, green: 0.30, blue: 0.55).opacity(0.16),
-                        Color(red: 0.10, green: 0.18, blue: 0.40).opacity(0.05),
-                        .clear
+                        .clear,
+                        Color.black.opacity(0.45)
                     ]),
-                    center: CGPoint(x: sz.width * 0.18, y: sz.height * 0.78),
-                    startRadius: 0,
-                    endRadius: sz.width * 0.6
+                    center: CGPoint(x: sz.width / 2, y: sz.height / 2),
+                    startRadius: min(sz.width, sz.height) * 0.30,
+                    endRadius: max(sz.width, sz.height) * 0.75
                 )
             )
 
@@ -4694,7 +4670,11 @@ struct Level4SpaceScene: View {
         // Subtle twinkle (real-photo range, 0.85–1.0).
         let twinkleArg: Double = t * 1.4 + star.twinkleSeed
         let twinkle: Double = sin(twinkleArg) * 0.075 + 0.925
-        let alpha: Double = appear * twinkle
+        // Depth-of-field: stars that are "far" (low depth) are heavily dimmed
+        // so they recede into the black. Only nearer stars (depth > 0.55)
+        // retain full brightness — same effect as a long lens with shallow DoF.
+        let depthDim: Double = 0.18 + pow(star.depth, 1.4) * 0.82
+        let alpha: Double = appear * twinkle * depthDim
 
         guard alpha > 0.02 else { return }
 
