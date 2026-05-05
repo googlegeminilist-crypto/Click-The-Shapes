@@ -4644,10 +4644,21 @@ struct Level4SpaceScene: View {
                 )
             )
 
-            // Spiral galaxy in the upper-right (3D feel via tilted disk + slow rotation).
+            // Three spiral galaxies spread across the scene, each with its
+            // own colour family (palette offset) so they read as distinct
+            // distant galaxies — pinks/blues, greens/cyans, golds/violets.
             drawSpiralGalaxy(ctx: &ctx,
-                             centre: CGPoint(x: sz.width * 0.78, y: sz.height * 0.30),
-                             radius: sz.width * 0.22)
+                             centre: CGPoint(x: sz.width * 0.78, y: sz.height * 0.25),
+                             radius: sz.width * 0.22,
+                             colorOffset: 0)
+            drawSpiralGalaxy(ctx: &ctx,
+                             centre: CGPoint(x: sz.width * 0.18, y: sz.height * 0.62),
+                             radius: sz.width * 0.16,
+                             colorOffset: 4)
+            drawSpiralGalaxy(ctx: &ctx,
+                             centre: CGPoint(x: sz.width * 0.62, y: sz.height * 0.85),
+                             radius: sz.width * 0.13,
+                             colorOffset: 8)
 
             // Stars — radial parallax drift out from screen centre.
             let centerX: CGFloat = sz.width / 2
@@ -4724,7 +4735,8 @@ struct Level4SpaceScene: View {
     /// slowly. Particle positions are pre-baked; rotation is applied here.
     private func drawSpiralGalaxy(ctx: inout GraphicsContext,
                                   centre: CGPoint,
-                                  radius: CGFloat) {
+                                  radius: CGFloat,
+                                  colorOffset: Int = 0) {
         // Galaxy spins clockwise — full revolution roughly every 7 seconds.
         let rotation: Double = t * 0.60
         let tiltY: CGFloat = 0.45  // 0 = face-on, 1 = edge-on; 0.45 looks 3D.
@@ -4751,7 +4763,10 @@ struct Level4SpaceScene: View {
             let alpha: Double = (1.0 - r * 0.30) * twinkle * p.brightness
             guard alpha > 0.02 else { continue }
 
-            let col: Color = Level4SpaceScene.galaxyPalette[p.paletteIdx % Level4SpaceScene.galaxyPalette.count]
+            // Shift palette by `colorOffset` so each galaxy reads in its
+            // own colour family.
+            let palCount: Int = Level4SpaceScene.galaxyPalette.count
+            let col: Color = Level4SpaceScene.galaxyPalette[(p.paletteIdx + colorOffset) % palCount]
             // Small glowing particles — tight bright core + wider soft halo.
             let psize: CGFloat = CGFloat(p.size)
             let haloS: CGFloat = psize * 4.0
