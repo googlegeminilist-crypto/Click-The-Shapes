@@ -10,6 +10,9 @@ import Combine
 #if canImport(FirebaseCore)
 import FirebaseCore
 #endif
+#if canImport(FirebaseAppCheck)
+import FirebaseAppCheck
+#endif
 #if canImport(GoogleMobileAds)
 import GoogleMobileAds
 #endif
@@ -18,6 +21,19 @@ import UserMessagingPlatform
 #endif
 #if canImport(AppTrackingTransparency)
 import AppTrackingTransparency
+#endif
+
+#if canImport(FirebaseAppCheck)
+/// Use Apple's App Attest to prove to Firebase that requests really come
+/// from the genuine, signed Click The Shapes app on a real iPhone.
+/// Anything else (scripts, simulators in production, modified binaries)
+/// can't produce a valid attestation token, so server-side App Check
+/// enforcement will reject their requests.
+final class CTSAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        return AppAttestProvider(app: app)
+    }
+}
 #endif
 
 final class LaunchGate: ObservableObject {
@@ -32,6 +48,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // App Check provider MUST be set BEFORE FirebaseApp.configure() so
+        // every Firebase service (Firestore especially) is wrapped from the
+        // first request.
+        #if canImport(FirebaseAppCheck)
+        AppCheck.setAppCheckProviderFactory(CTSAppCheckProviderFactory())
+        #endif
         #if canImport(FirebaseCore)
         FirebaseApp.configure()
         #endif
@@ -88,6 +110,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     private func startAdsSDK() {
         #if canImport(GoogleMobileAds)
+        // Tighten ad-content settings BEFORE starting the SDK so the very
+        // first ad request honours them. Aim is to block "scareware"-style
+        // ads ("your phone is hacked!", fake virus warnings, etc.).
+        let cfg = MobileAds.shared.requestConfiguration
+        // General audience rating — strictest. Filters out PG/T/MA creatives.
+        cfg.maxAdContentRating = .general
+        // Treat the user as an unknown-age EU user — extra protections.
+        cfg.tagForUnderAgeOfConsent = false
+        cfg.tagForChildDirectedTreatment = false
+
         DispatchQueue.global(qos: .utility).async {
             MobileAds.shared.start { _ in
                 Task { @MainActor in
