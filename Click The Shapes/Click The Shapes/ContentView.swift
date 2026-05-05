@@ -4561,7 +4561,7 @@ struct Level4SpaceScene: View {
     let size: CGSize
 
     @State private var t: Double = 0
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
 
     /// 240 deterministic seeds — angle, depth, palette index, twinkle phase.
     /// Generated once at first render so the scene is stable.
@@ -4660,7 +4660,7 @@ struct Level4SpaceScene: View {
             }
         }
         .onReceive(timer) { _ in
-            t += 0.05
+            t += 0.025
             if t > 100000 { t -= 100000 }
         }
     }
@@ -4675,7 +4675,7 @@ struct Level4SpaceScene: View {
         let dist: CGFloat = CGFloat(phase) * maxR
         // Counter-clockwise scene rotation — background stars sweep around
         // screen centre opposite to the galaxy's clockwise spin.
-        let starAngle: Double = star.angle - t * 0.10
+        let starAngle: Double = star.angle - t * 0.30
         let cx: CGFloat = centerX + CGFloat(cos(starAngle)) * dist
         let cy: CGFloat = centerY + CGFloat(sin(starAngle)) * dist
 
@@ -4725,8 +4725,8 @@ struct Level4SpaceScene: View {
     private func drawSpiralGalaxy(ctx: inout GraphicsContext,
                                   centre: CGPoint,
                                   radius: CGFloat) {
-        // Galaxy spins clockwise — full revolution roughly every 20 sec.
-        let rotation: Double = t * 0.22
+        // Galaxy spins clockwise — full revolution roughly every 7 seconds.
+        let rotation: Double = t * 0.60
         let tiltY: CGFloat = 0.45  // 0 = face-on, 1 = edge-on; 0.45 looks 3D.
 
         var c = ctx
