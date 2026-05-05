@@ -4571,6 +4571,10 @@ struct Level4SpaceScene: View {
     /// spiral galaxy. Generated once at first render.
     static let galaxyParticles: [GalaxyParticle] = GalaxyParticle.makeGalaxy(count: 1100)
 
+    /// 6 glowing comets that streak across the page on independent timing
+    /// loops and explode at the end of their journey. Re-used each cycle.
+    static let comets: [Comet] = (0..<6).map { _ in Comet.random() }
+
     /// Realistic stellar colour palette — used by background stars only.
     static let palette: [(Color, Color)] = [
         (Color(red: 1.00, green: 1.00, blue: 1.00), Color(red: 0.85, green: 0.92, blue: 1.00)),  // white
@@ -4644,6 +4648,11 @@ struct Level4SpaceScene: View {
             for star in Level4SpaceScene.stars {
                 drawStar(ctx: &ctx, star: star,
                          centerX: centerX, centerY: centerY, maxR: maxR)
+            }
+
+            // Glowing shooting stars — zoom across the page then explode.
+            for comet in Level4SpaceScene.comets {
+                drawComet(ctx: &ctx, comet: comet, size: sz)
             }
         }
         .onReceive(timer) { _ in
@@ -4770,6 +4779,193 @@ struct Level4SpaceScene: View {
                 with: .color(col.opacity(min(1.0, alpha * 1.6)))
             )
         }
+    }
+
+    /// Draw a single shooting star — travels in a straight line then bursts
+    /// into a 14-particle explosion ring at the end of its journey before
+    /// looping. Each comet has its own staggered timing.
+    private func drawComet(ctx: inout GraphicsContext, comet: Comet, size sz: CGSize) {
+        let raw: Double = comet.startPhase + t * comet.speed
+        let phase: Double = raw - floor(raw)
+        let dx: Double = cos(comet.angle)
+        let dy: Double = sin(comet.angle)
+        let totalLen: Double = Double(hypot(sz.width, sz.height)) * 0.95
+        // Origin offset behind the visible edge so comets enter naturally.
+        let originX: Double = Double(sz.width) * comet.startX - dx * 120
+        let originY: Double = Double(sz.height) * comet.startY - dy * 120
+        let endX: CGFloat = CGFloat(originX + dx * totalLen)
+        let endY: CGFloat = CGFloat(originY + dy * totalLen)
+        let cometColor = Level4SpaceScene.galaxyPalette[comet.paletteIdx % Level4SpaceScene.galaxyPalette.count]
+
+        if phase < 0.65 {
+            // Travel phase — fanning multi-filament tail full of sparkles.
+            let progress: Double = phase / 0.65
+            let headDist: Double = progress * totalLen
+            let hx: CGFloat = CGFloat(originX + dx * headDist)
+            let hy: CGFloat = CGFloat(originY + dy * headDist)
+            // Brightness ramps up early, peaks mid-flight, fades near end.
+            let appear: Double = min(1.0, progress * 4.0) * min(1.0, (1.0 - progress) * 3.0)
+            let tailLen: CGFloat = CGFloat(180.0 * appear)
+
+            // 5 fanning filament tails at slightly different angles.
+            let filamentCount: Int = 5
+            for f in 0..<filamentCount {
+                let fOff: Double = (Double(f) - Double(filamentCount - 1) / 2.0) * 0.05
+                let fdx: Double = cos(comet.angle + fOff)
+                let fdy: Double = sin(comet.angle + fOff)
+                let lenScale: CGFloat = CGFloat(0.65 + Double((f * 7) % 5) * 0.10)
+                let fLen: CGFloat = tailLen * lenScale
+                let ftx: CGFloat = hx - CGFloat(fdx) * fLen
+                let fty: CGFloat = hy - CGFloat(fdy) * fLen
+                var path = Path()
+                path.move(to: CGPoint(x: ftx, y: fty))
+                path.addLine(to: CGPoint(x: hx, y: hy))
+                let fAlpha: Double = appear * (f == filamentCount / 2 ? 0.55 : 0.30)
+                let fLine: CGFloat = f == filamentCount / 2 ? 1.6 : 0.9
+                ctx.stroke(path, with: .color(cometColor.opacity(fAlpha)), lineWidth: fLine)
+            }
+
+            // White-hot inner streak right behind the head.
+            var inner = Path()
+            let innerLen: CGFloat = tailLen * 0.55
+            inner.move(to: CGPoint(x: hx - CGFloat(dx) * innerLen, y: hy - CGFloat(dy) * innerLen))
+            inner.addLine(to: CGPoint(x: hx, y: hy))
+            ctx.stroke(inner, with: .color(.white.opacity(appear * 0.65)), lineWidth: 1.2)
+
+            // Sparkle particles — twinkling dust scattered along + around the
+            // tail. Per-sparkle deterministic offsets (seed-based) + per-frame
+            // twinkle keeps them coherent but lively.
+            let sparkleCount: Int = 28
+            // Perpendicular unit vector (for jitter).
+            let pdx: Double = -dy
+            let pdy: Double = dx
+            for s in 0..<sparkleCount {
+                let sd: Double = Double(s)
+                // Position along tail (0 = at head, 1 = end of tail).
+                let along: Double = (sd / Double(sparkleCount)) * 0.95 + 0.02
+                // Small along-direction jitter that drifts with t.
+                let alongJit: Double = sin(sd * 7.31 + t * 1.5) * 6.0
+                // Perpendicular spread — sparkles fan out wider near end of tail.
+                let perpSpread: Double = 4.0 + along * 18.0
+                let perpJit: Double = sin(sd * 13.7 + comet.startPhase * 100) * perpSpread
+                let alongPx: Double = -dx * Double(tailLen) * along + dx * alongJit
+                let perpPx: Double = pdx * perpJit
+                let alongPy: Double = -dy * Double(tailLen) * along + dy * alongJit
+                let perpPy: Double = pdy * perpJit
+                let sx: CGFloat = hx + CGFloat(alongPx + perpPx)
+                let sy: CGFloat = hy + CGFloat(alongPy + perpPy)
+
+                // Twinkle — independent phase per sparkle.
+                let twk: Double = sin(t * 6.0 + sd * 3.17) * 0.5 + 0.5
+                let lifeFade: Double = 1.0 - along * 0.55
+                let sparkleAlpha: Double = appear * lifeFade * twk
+                guard sparkleAlpha > 0.05 else { continue }
+                let sparkleSize: CGFloat = CGFloat(0.7 + twk * 1.6)
+
+                // Coloured halo glow.
+                let haloS: CGFloat = sparkleSize * 3.5
+                ctx.fill(
+                    Circle().path(in: CGRect(x: sx - haloS / 2, y: sy - haloS / 2,
+                                             width: haloS, height: haloS)),
+                    with: .color(cometColor.opacity(sparkleAlpha * 0.32))
+                )
+                // White-hot core.
+                ctx.fill(
+                    Circle().path(in: CGRect(x: sx - sparkleSize / 2, y: sy - sparkleSize / 2,
+                                             width: sparkleSize, height: sparkleSize)),
+                    with: .color(.white.opacity(min(1.0, sparkleAlpha * 1.4)))
+                )
+            }
+
+            // Glowing head — bigger and more dramatic.
+            let outerR: CGFloat = 18.0
+            ctx.fill(
+                Circle().path(in: CGRect(x: hx - outerR, y: hy - outerR,
+                                         width: outerR * 2, height: outerR * 2)),
+                with: .color(cometColor.opacity(appear * 0.30))
+            )
+            let haloR: CGFloat = 9.0
+            ctx.fill(
+                Circle().path(in: CGRect(x: hx - haloR, y: hy - haloR,
+                                         width: haloR * 2, height: haloR * 2)),
+                with: .color(cometColor.opacity(appear * 0.65))
+            )
+            let midR: CGFloat = 4.5
+            ctx.fill(
+                Circle().path(in: CGRect(x: hx - midR, y: hy - midR,
+                                         width: midR * 2, height: midR * 2)),
+                with: .color(.white.opacity(min(1.0, appear * 1.3)))
+            )
+            let coreR: CGFloat = 2.2
+            ctx.fill(
+                Circle().path(in: CGRect(x: hx - coreR, y: hy - coreR,
+                                         width: coreR * 2, height: coreR * 2)),
+                with: .color(.white.opacity(min(1.0, appear * 1.6)))
+            )
+        } else if phase < 0.92 {
+            // Explosion phase — expanding ring of particles + central flash.
+            let explProgress: Double = (phase - 0.65) / 0.27
+            let fade: Double = 1.0 - explProgress
+            let radius: CGFloat = CGFloat(70.0 * explProgress)
+
+            // Central white flash.
+            let flashR: CGFloat = CGFloat(30.0 * fade)
+            ctx.fill(
+                Circle().path(in: CGRect(x: endX - flashR, y: endY - flashR,
+                                         width: flashR * 2, height: flashR * 2)),
+                with: .color(cometColor.opacity(fade * 0.45))
+            )
+            let coreR: CGFloat = CGFloat(12.0 * fade)
+            ctx.fill(
+                Circle().path(in: CGRect(x: endX - coreR, y: endY - coreR,
+                                         width: coreR * 2, height: coreR * 2)),
+                with: .color(.white.opacity(fade * 0.85))
+            )
+
+            // 14 expanding particles in a ring.
+            let particleCount: Int = 14
+            for i in 0..<particleCount {
+                let pAngle: Double = Double(i) / Double(particleCount) * .pi * 2
+                let px: CGFloat = endX + CGFloat(cos(pAngle)) * radius
+                let py: CGFloat = endY + CGFloat(sin(pAngle)) * radius
+                let psize: CGFloat = CGFloat(4.0 * fade)
+                // Halo
+                let phaloR: CGFloat = psize * 2.5
+                ctx.fill(
+                    Circle().path(in: CGRect(x: px - phaloR, y: py - phaloR,
+                                             width: phaloR * 2, height: phaloR * 2)),
+                    with: .color(cometColor.opacity(fade * 0.40))
+                )
+                // Core
+                ctx.fill(
+                    Circle().path(in: CGRect(x: px - psize / 2, y: py - psize / 2,
+                                             width: psize, height: psize)),
+                    with: .color(cometColor.opacity(min(1.0, fade * 1.2)))
+                )
+            }
+        }
+        // Phase 0.92...1.0 → dormant (waiting to loop).
+    }
+}
+
+/// A single procedural comet — direction, origin, speed, colour.
+struct Comet {
+    let angle: Double          // direction of travel (radians)
+    let startX: Double         // origin X as fraction of screen width
+    let startY: Double         // origin Y as fraction of screen height
+    let speed: Double          // lifecycle speed
+    let startPhase: Double     // 0...1 — staggers when each comet appears
+    let paletteIdx: Int        // colour from galaxyPalette
+
+    static func random() -> Comet {
+        Comet(
+            angle: Double.random(in: 0...(.pi * 2)),
+            startX: Double.random(in: -0.05...1.05),
+            startY: Double.random(in: -0.05...1.05),
+            speed: Double.random(in: 0.030...0.060),
+            startPhase: Double.random(in: 0...1),
+            paletteIdx: Int.random(in: 0..<12)
+        )
     }
 }
 
