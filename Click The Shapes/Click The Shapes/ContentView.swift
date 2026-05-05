@@ -3208,7 +3208,7 @@ struct IntroOverlay: View {
                 VStack(alignment: .leading, spacing: 15) {
                     RuleRow(icon: "target", text: "Tap shapes to earn 10 points", color: .yellow)
                     RuleRow(icon: "flame.fill", text: "Snake gets fireballs for bonus points!", color: .orange)
-                    RuleRow(icon: "tortoise.fill", text: "Snake starts hunting on first tap!", color: GameColors.neonPink)
+                    RuleRow(icon: "🐍", text: "Snake starts hunting on first tap!", color: GameColors.neonPink)
                     RuleRow(icon: "trophy.fill", text: "First to 500 points wins!", color: GameColors.neonGreen)
                 }
                 .padding()
@@ -3806,11 +3806,21 @@ struct RuleRow: View {
     let text: String
     let color: Color
 
+    private var iconIsEmoji: Bool {
+        guard let scalar = icon.unicodeScalars.first else { return false }
+        return !scalar.isASCII
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(color)
-                .font(.system(size: 20))
+            if iconIsEmoji {
+                Text(icon)
+                    .font(.system(size: 20))
+            } else {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .font(.system(size: 20))
+            }
             Text(text)
                 .foregroundColor(.white)
                 .font(.system(size: 16, design: .monospaced))
