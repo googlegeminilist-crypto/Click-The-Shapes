@@ -3541,6 +3541,9 @@ struct IntroOverlay: View {
                         dnaChooserButton
                         emberChooserButton
                     }
+                    .drawingGroup() // rasterize all 7 Canvas snake icons into a
+                                    // single Metal layer — kills first-scroll
+                                    // jank caused by per-frame Canvas redraws.
                     } // ScrollView
                 }
 

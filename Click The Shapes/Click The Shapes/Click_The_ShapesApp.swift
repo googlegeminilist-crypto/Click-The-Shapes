@@ -216,22 +216,31 @@ struct RootView: View {
     @ObservedObject var gate = AppDelegate.launchGate
     var body: some View {
         ZStack {
-            // Always build ContentView in the background so it warms up while the
-            // splash is showing; hidden behind the splash until everything is ready.
+            // ContentView is always present so its heavy SwiftUI tree
+            // (GameViewModel, shape array, animated canvases) warms up
+            // while the splash is showing — that means zero stutter on
+            // the first scroll/tap once the splash dismisses.
+            //
+            // It's hidden behind a fully-opaque splash via `.opacity(0)`,
+            // and has hit-testing disabled, so the player can never see
+            // or interact with it during launch.
             ContentView()
                 .opacity(gate.ready ? 1 : 0)
                 .allowsHitTesting(gate.ready)
                 .onAppear {
-                    // After the first frame commits, flag that the game view is warm.
                     DispatchQueue.main.async {
                         AppDelegate.launchGate.firstFrameReady = true
                     }
                 }
+
+            // Splash sits on top of the (invisible) ContentView. No
+            // cross-fade — when gate.ready flips, both the opacity flip
+            // on ContentView and the splash removal happen on the same
+            // frame, so there's no moment where the game peeks through.
             if !gate.ready {
-                SnakeLoadingView().transition(.opacity)
+                SnakeLoadingView()
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: gate.ready)
     }
 }
 
