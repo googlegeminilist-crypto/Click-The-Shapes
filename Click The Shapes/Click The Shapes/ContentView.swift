@@ -3180,7 +3180,42 @@ struct IntroOverlay: View {
             Color.black.opacity(0.95)
                 .ignoresSafeArea()
 
-            ScrollView {
+            ScrollView { introContent }
+        }
+        .onAppear {
+            if !leaderboard.hasSetName {
+                showNamePrompt = true
+            }
+        }
+        .alert("Enter Your Name", isPresented: $showNamePrompt) {
+            TextField("Display name", text: $nameInput)
+            Button("Save") {
+                let trimmed = nameInput.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty else { return }
+                if DisplayNameFilter.isLikelyProfane(trimmed) {
+                    nameInput = ""
+                    showNameRejected = true
+                } else {
+                    leaderboard.playerName = trimmed
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This name will appear on the global leaderboard.")
+        }
+        .alert("Name Not Allowed", isPresented: $showNameRejected) {
+            Button("Try Again") { showNamePrompt = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please choose a different display name.")
+        }
+        .fullScreenCover(isPresented: $showLeaderboard) {
+            LeaderboardView()
+        }
+    }
+
+    @ViewBuilder
+    private var introContent: some View {
             VStack(spacing: 25) {
                 Text("CLICK THE SHAPES")
                     .font(.system(size: 32, weight: .bold, design: .monospaced))
@@ -3594,38 +3629,6 @@ struct IntroOverlay: View {
                 #endif
             }
             .padding(30)
-            }
-        }
-        .onAppear {
-            if !leaderboard.hasSetName {
-                showNamePrompt = true
-            }
-        }
-        .alert("Enter Your Name", isPresented: $showNamePrompt) {
-            TextField("Display name", text: $nameInput)
-            Button("Save") {
-                let trimmed = nameInput.trimmingCharacters(in: .whitespaces)
-                guard !trimmed.isEmpty else { return }
-                if DisplayNameFilter.isLikelyProfane(trimmed) {
-                    nameInput = ""
-                    showNameRejected = true
-                } else {
-                    leaderboard.playerName = trimmed
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This name will appear on the global leaderboard.")
-        }
-        .alert("Name Not Allowed", isPresented: $showNameRejected) {
-            Button("Try Again") { showNamePrompt = true }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Please choose a different display name.")
-        }
-        .fullScreenCover(isPresented: $showLeaderboard) {
-            LeaderboardView()
-        }
     }
 
     // MARK: - Snake chooser sub-views (extracted to keep the body type-checker happy)
@@ -4656,7 +4659,7 @@ struct Level4SpaceScene: View {
             }
         }
         .onReceive(timer) { _ in
-            t += 0.025
+            t += 0.085
             if t > 100000 { t -= 100000 }
         }
     }
@@ -4677,7 +4680,7 @@ struct Level4SpaceScene: View {
 
         let appear: Double = phase * (1.0 - phase) * 4.0
         // Subtle twinkle (real-photo range, 0.85–1.0).
-        let twinkleArg: Double = t * 1.4 + star.twinkleSeed
+        let twinkleArg: Double = t * 0.55 + star.twinkleSeed
         let twinkle: Double = sin(twinkleArg) * 0.075 + 0.925
         // Depth-of-field: stars that are "far" (low depth) are heavily dimmed
         // so they recede into the black. Only nearer stars (depth > 0.55)
@@ -4747,7 +4750,7 @@ struct Level4SpaceScene: View {
             let x: CGFloat = (CGFloat(baseX) + CGFloat(p.jitterX)) * radius
             let y: CGFloat = (CGFloat(baseY) + CGFloat(p.jitterY)) * radius * tiltY
 
-            let twinkle: Double = sin(t * 2.0 + p.twinkleSeed) * 0.18 + 0.82
+            let twinkle: Double = sin(t * 0.8 + p.twinkleSeed) * 0.18 + 0.82
             // Brighter near centre, gentler fade toward edge so colour pops.
             let alpha: Double = (1.0 - r * 0.30) * twinkle * p.brightness
             guard alpha > 0.02 else { continue }
@@ -4844,7 +4847,7 @@ struct Level4SpaceScene: View {
                 // Position along tail (0 = at head, 1 = end of tail).
                 let along: Double = (sd / Double(sparkleCount)) * 0.95 + 0.02
                 // Small along-direction jitter that drifts with t.
-                let alongJit: Double = sin(sd * 7.31 + t * 1.5) * 6.0
+                let alongJit: Double = sin(sd * 7.31 + t * 0.6) * 6.0
                 // Perpendicular spread — sparkles fan out wider near end of tail.
                 let perpSpread: Double = 4.0 + along * 18.0
                 let perpJit: Double = sin(sd * 13.7 + comet.startPhase * 100) * perpSpread
@@ -4856,7 +4859,7 @@ struct Level4SpaceScene: View {
                 let sy: CGFloat = hy + CGFloat(alongPy + perpPy)
 
                 // Twinkle — independent phase per sparkle.
-                let twk: Double = sin(t * 6.0 + sd * 3.17) * 0.5 + 0.5
+                let twk: Double = sin(t * 2.4 + sd * 3.17) * 0.5 + 0.5
                 let lifeFade: Double = 1.0 - along * 0.55
                 let sparkleAlpha: Double = appear * lifeFade * twk
                 guard sparkleAlpha > 0.05 else { continue }
