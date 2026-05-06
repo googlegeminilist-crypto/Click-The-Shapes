@@ -286,7 +286,7 @@ class ConstellationShape: Identifiable {
 
         if level >= 4 {
             // Level 4: fast movement, shapes teleport instead of shrinking
-            let speed = GameConstants.level3ShapeSpeed * 1.2
+            let speed = GameConstants.level3ShapeSpeed * 3.5
             vx = CGFloat.random(in: -speed...speed)
             vy = CGFloat.random(in: -speed...speed)
             if abs(vx) < 0.5 { vx = vx < 0 ? -0.5 : 0.5 }
@@ -1598,11 +1598,11 @@ class GameViewModel: ObservableObject {
 
         // First snake — fast
         snake = Snake(bounds: bounds)
-        snake?.speed = 8.0 * snakeSpeedMultiplier
+        snake?.speed = 20.0 * snakeSpeedMultiplier
 
         // Second snake — spawns from opposite side, also fast
         snake2 = Snake(bounds: bounds)
-        snake2?.speed = 7.0 * snakeSpeedMultiplier
+        snake2?.speed = 18.0 * snakeSpeedMultiplier
 
         // Reset shapes with Level 3+ properties (fast + shrinking)
         for shape in shapes {
@@ -1882,7 +1882,7 @@ class GameViewModel: ObservableObject {
 
         snake = Snake(bounds: bounds)
         if level >= 4 {
-            snake?.speed = 8.0 * snakeSpeedMultiplier
+            snake?.speed = 20.0 * snakeSpeedMultiplier
         } else if level >= 3 {
             snake?.speed = 6.5 * snakeSpeedMultiplier
         } else if level >= 2 {
@@ -1892,7 +1892,7 @@ class GameViewModel: ObservableObject {
         }
         if level >= 4 {
             snake2 = Snake(bounds: bounds)
-            snake2?.speed = 7.0 * snakeSpeedMultiplier
+            snake2?.speed = 18.0 * snakeSpeedMultiplier
             nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
         } else {
             snake2 = nil
@@ -4563,9 +4563,6 @@ struct ContentView: View {
 struct Level4SpaceScene: View {
     let size: CGSize
 
-    @State private var t: Double = 0
-    private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
-
     /// 240 deterministic seeds — angle, depth, palette index, twinkle phase.
     /// Generated once at first render so the scene is stable.
     private static let stars: [SpaceStar] = (0..<240).map { _ in SpaceStar.random() }
@@ -4606,7 +4603,18 @@ struct Level4SpaceScene: View {
     ]
 
     var body: some View {
-        Canvas { ctx, sz in
+        TimelineView(.animation) { context in
+            let now: Double = context.date.timeIntervalSinceReferenceDate
+            // Display-locked clock. Multiplier sets overall animation speed
+            // (higher = faster). 7.0 gives a brisk, clearly-moving scene.
+            let t: Double = (now * 7.0).truncatingRemainder(dividingBy: 100000)
+            Canvas { ctx, sz in
+                drawScene(ctx: &ctx, sz: sz, t: t)
+            }
+        }
+    }
+
+    private func drawScene(ctx: inout GraphicsContext, sz: CGSize, t: Double) {
             // Pure black background — galaxies pop against it.
             ctx.fill(
                 Path(CGRect(origin: .zero, size: sz)),
@@ -4630,15 +4638,15 @@ struct Level4SpaceScene: View {
             // Three spiral galaxies spread across the scene, each with its
             // own colour family (palette offset) so they read as distinct
             // distant galaxies — pinks/blues, greens/cyans, golds/violets.
-            drawSpiralGalaxy(ctx: &ctx,
+            drawSpiralGalaxy(ctx: &ctx, t: t,
                              centre: CGPoint(x: sz.width * 0.78, y: sz.height * 0.25),
                              radius: sz.width * 0.22,
                              colorOffset: 0)
-            drawSpiralGalaxy(ctx: &ctx,
+            drawSpiralGalaxy(ctx: &ctx, t: t,
                              centre: CGPoint(x: sz.width * 0.18, y: sz.height * 0.62),
                              radius: sz.width * 0.16,
                              colorOffset: 4)
-            drawSpiralGalaxy(ctx: &ctx,
+            drawSpiralGalaxy(ctx: &ctx, t: t,
                              centre: CGPoint(x: sz.width * 0.62, y: sz.height * 0.85),
                              radius: sz.width * 0.13,
                              colorOffset: 8)
@@ -4649,23 +4657,19 @@ struct Level4SpaceScene: View {
             let maxR: CGFloat = hypot(sz.width, sz.height) * 0.55
 
             for star in Level4SpaceScene.stars {
-                drawStar(ctx: &ctx, star: star,
+                drawStar(ctx: &ctx, star: star, t: t,
                          centerX: centerX, centerY: centerY, maxR: maxR)
             }
 
             // Glowing shooting stars — zoom across the page then explode.
             for comet in Level4SpaceScene.comets {
-                drawComet(ctx: &ctx, comet: comet, size: sz)
+                drawComet(ctx: &ctx, comet: comet, t: t, size: sz)
             }
-        }
-        .onReceive(timer) { _ in
-            t += 0.085
-            if t > 100000 { t -= 100000 }
-        }
     }
 
     private func drawStar(ctx: inout GraphicsContext,
                           star: SpaceStar,
+                          t: Double,
                           centerX: CGFloat,
                           centerY: CGFloat,
                           maxR: CGFloat) {
@@ -4726,6 +4730,7 @@ struct Level4SpaceScene: View {
     /// The disk is squashed vertically (tilt) to suggest depth, and rotates
     /// slowly. Particle positions are pre-baked; rotation is applied here.
     private func drawSpiralGalaxy(ctx: inout GraphicsContext,
+                                  t: Double,
                                   centre: CGPoint,
                                   radius: CGFloat,
                                   colorOffset: Int = 0) {
@@ -4787,7 +4792,7 @@ struct Level4SpaceScene: View {
     /// Draw a single shooting star — travels in a straight line then bursts
     /// into a 14-particle explosion ring at the end of its journey before
     /// looping. Each comet has its own staggered timing.
-    private func drawComet(ctx: inout GraphicsContext, comet: Comet, size sz: CGSize) {
+    private func drawComet(ctx: inout GraphicsContext, comet: Comet, t: Double, size sz: CGSize) {
         let raw: Double = comet.startPhase + t * comet.speed
         let phase: Double = raw - floor(raw)
         let dx: Double = cos(comet.angle)
