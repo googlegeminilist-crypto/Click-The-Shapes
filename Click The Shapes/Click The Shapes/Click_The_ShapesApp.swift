@@ -62,12 +62,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Consent (UMP) must run before MobileAds.start. Also required before ATT.
         requestConsentThenStartAds()
 
-        // Hard safety: never keep the splash up longer than 8s no matter what.
-        // (Raised from 6s because the consent form, if shown, takes a few seconds.)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
-            AppDelegate.launchGate.adsReady = true
+        // Don't make the splash wait on ads — let the SDK warm up in the
+        // background while the player sees the intro. The ad managers will
+        // present a brief spinner if a player taps Watch Ad before load
+        // completes. This drops typical splash time from ~5–8s to <500ms.
+        AppDelegate.launchGate.adsReady = true
+        AppDelegate.launchGate.introReady = true
+
+        // Hard safety: ensure the splash never sticks for more than 2s
+        // even if firstFrameReady somehow doesn't fire.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             AppDelegate.launchGate.firstFrameReady = true
-            AppDelegate.launchGate.introReady = true
         }
         return true
     }
