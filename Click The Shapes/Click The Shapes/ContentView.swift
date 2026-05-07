@@ -1076,6 +1076,7 @@ class GameViewModel: ObservableObject {
         case 1: return GameConstants.level1WinScore
         case 2: return GameConstants.level2WinScore
         case 3: return GameConstants.level3WinScore
+        case 4: return 500   // Snake wins quickly in L4 — race against time.
         default: return GameConstants.level4WinScore
         }
     }
@@ -1596,13 +1597,15 @@ class GameViewModel: ObservableObject {
         // Reset snake score
         snakeScore = 0
 
-        // First snake — fast
+        // First snake — slightly faster than Level 3 (6.5). Bumped a bit
+        // to compensate for old-device frame drops where heavy Level 4
+        // rendering can make snakes feel sluggish.
         snake = Snake(bounds: bounds)
-        snake?.speed = 10.0 * snakeSpeedMultiplier
+        snake?.speed = 9.0 * snakeSpeedMultiplier
 
-        // Second snake — spawns from opposite side, also fast
+        // Second snake — spawns from opposite side, slightly behind snake 1.
         snake2 = Snake(bounds: bounds)
-        snake2?.speed = 9.0 * snakeSpeedMultiplier
+        snake2?.speed = 8.5 * snakeSpeedMultiplier
 
         // Reset shapes with Level 3+ properties (fast + shrinking)
         for shape in shapes {
@@ -1882,7 +1885,7 @@ class GameViewModel: ObservableObject {
 
         snake = Snake(bounds: bounds)
         if level >= 4 {
-            snake?.speed = 10.0 * snakeSpeedMultiplier
+            snake?.speed = 9.0 * snakeSpeedMultiplier
         } else if level >= 3 {
             snake?.speed = 6.5 * snakeSpeedMultiplier
         } else if level >= 2 {
@@ -1892,7 +1895,7 @@ class GameViewModel: ObservableObject {
         }
         if level >= 4 {
             snake2 = Snake(bounds: bounds)
-            snake2?.speed = 9.0 * snakeSpeedMultiplier
+            snake2?.speed = 8.5 * snakeSpeedMultiplier
             nebulaDust = (0..<30).map { _ in NebulaDust(bounds: bounds) }
         } else {
             snake2 = nil
