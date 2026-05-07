@@ -4566,17 +4566,19 @@ struct ContentView: View {
 struct Level4SpaceScene: View {
     let size: CGSize
 
-    /// 240 deterministic seeds — angle, depth, palette index, twinkle phase.
-    /// Generated once at first render so the scene is stable.
-    private static let stars: [SpaceStar] = (0..<240).map { _ in SpaceStar.random() }
+    /// Background star count — kept moderate so older iPhones (8/X) stay at
+    /// 60fps. Each star already does halo + core + optional spike, so even
+    /// 140 stars is ~280–420 fills per frame.
+    private static let stars: [SpaceStar] = (0..<140).map { _ in SpaceStar.random() }
 
-    /// 600 particles arranged on logarithmic spirals to form a 2-armed
-    /// spiral galaxy. Generated once at first render.
-    static let galaxyParticles: [GalaxyParticle] = GalaxyParticle.makeGalaxy(count: 1100)
+    /// Galaxy particles. 700 across 3 galaxies = ~2100 draws/frame, which
+    /// is the headline cost of the Level 4 scene; tuned to stay smooth on
+    /// older devices.
+    static let galaxyParticles: [GalaxyParticle] = GalaxyParticle.makeGalaxy(count: 700)
 
-    /// 6 glowing comets that streak across the page on independent timing
-    /// loops and explode at the end of their journey. Re-used each cycle.
-    static let comets: [Comet] = (0..<6).map { _ in Comet.random() }
+    /// Glowing comets — fewer = fewer sparkle particles + tail filaments
+    /// per frame, which were the biggest jitter source on old hardware.
+    static let comets: [Comet] = (0..<4).map { _ in Comet.random() }
 
     /// Realistic stellar colour palette — used by background stars only.
     static let palette: [(Color, Color)] = [
