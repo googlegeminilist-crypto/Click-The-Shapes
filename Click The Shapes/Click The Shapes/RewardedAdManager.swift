@@ -27,7 +27,7 @@ final class RewardedAdManager: NSObject {
     // Max time we'll wait for an ad to load after the user taps the button
     // before falling back to granting the reward. Keeps the UI responsive
     // on slow networks or when AdMob can't fill the request.
-    private let loadTimeout: TimeInterval = 4.0
+    private let loadTimeout: TimeInterval = 10.0
 
     #if canImport(GoogleMobileAds)
     private var rewarded: RewardedAd?
