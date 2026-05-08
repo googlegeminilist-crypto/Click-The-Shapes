@@ -81,21 +81,42 @@ final class RewardedAdManager: NSObject {
             completion = nil
             stale(true)
         }
+
+        // Wrap onComplete in a "fire-once" guard plus a hard 35s ceiling.
+        // If the AdMob SDK hangs and never fires any delegate (load, earn,
+        // dismiss, fail), this guarantees the player's spinner still stops
+        // and gameplay resumes. 35s = 10s load + 25s typical ad duration
+        // + a small buffer.
+        var hasFired = false
+        let safeComplete: (Bool) -> Void = { earned in
+            guard !hasFired else { return }
+            hasFired = true
+            onComplete(earned)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) { [weak self] in
+            guard !hasFired else { return }
+            // Force-clear manager state so a subsequent show() works.
+            self?.completion = nil
+            self?.rewarded = nil
+            self?.loadAd()
+            safeComplete(true)
+        }
+
         guard let root = Self.topViewController() else {
             // No root VC to present on — user already tapped the button, so
             // honor that intent and grant the reward anyway.
-            onComplete(true)
+            safeComplete(true)
             return
         }
         if let ad = rewarded {
-            presentAd(ad, from: root, onComplete: onComplete)
+            presentAd(ad, from: root, onComplete: safeComplete)
             return
         }
         // Ad not ready — kick off a load and poll briefly before falling back.
         loadAd()
         waitForAd(deadline: Date().addingTimeInterval(loadTimeout),
                   root: root,
-                  onComplete: onComplete)
+                  onComplete: safeComplete)
         #else
         onComplete(true)
         #endif
