@@ -21,7 +21,7 @@ final class RewardedAdManager: NSObject {
     // Google test rewarded unit — never serves live ads.
     private let adUnitID = "ca-app-pub-3940256099942544/1712485313"
     #else
-    private let adUnitID = "ca-app-pub-3653784707595102/9872748267"
+    private let adUnitID = "ca-app-pub-3653784707595102/2185464182"
     #endif
 
     // Max time we'll wait for an ad to load after the user taps the button
