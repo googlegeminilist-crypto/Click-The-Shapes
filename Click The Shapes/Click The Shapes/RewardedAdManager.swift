@@ -145,26 +145,16 @@ final class RewardedAdManager: NSObject {
                            onComplete: @escaping (Bool) -> Void) {
         completion = onComplete
         rewardEarned = false
-        ad.present(from: root) { [weak self, weak root] in
-            guard let self = self else { return }
-            self.rewardEarned = true
+        ad.present(from: root) { [weak self] in
+            // Just record that the reward was earned. Don't resume gameplay
+            // here — wait for adDidDismissFullScreenContent so the game
+            // isn't running underneath a still-visible ad. The 35s hard
+            // timeout in show() is the safety net if dismissal never fires.
+            self?.rewardEarned = true
             // Track total rewarded-ads watched. Used for unlock progress on
             // the DNA snake skin (10 ads + 5,000 diamonds).
             let watched = UserDefaults.standard.integer(forKey: "rewardedAdsWatched")
             UserDefaults.standard.set(watched + 1, forKey: "rewardedAdsWatched")
-            // Grant the reward and resume gameplay immediately — don't wait
-            // for the ad to dismiss. Some ads show a post-roll / CTA page
-            // that doesn't auto-close; by firing completion now we unstick
-            // the game. The adDidDismissFullScreenContent delegate can fire
-            // afterwards — finish() guards against double-calling by nil'ing
-            // completion after the first invocation.
-            self.finish(earned: true)
-            // Also try to auto-dismiss the ad view so the user visually
-            // returns to the game. If the SDK has already started its own
-            // dismissal this is a harmless no-op.
-            DispatchQueue.main.async {
-                root?.presentedViewController?.dismiss(animated: true)
-            }
         }
     }
 
