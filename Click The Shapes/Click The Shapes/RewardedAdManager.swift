@@ -36,6 +36,10 @@ final class RewardedAdManager: NSObject {
 
     private var completion: ((Bool) -> Void)?
     private var rewardEarned = false
+    // True while the ad is on screen. Used to suppress any path that
+    // would resume gameplay mid-ad (e.g. a safety timer firing during
+    // a long creative).
+    private var isPresenting = false
 
     private override init() {
         super.init()
@@ -82,24 +86,16 @@ final class RewardedAdManager: NSObject {
             stale(true)
         }
 
-        // Wrap onComplete in a "fire-once" guard plus a hard 35s ceiling.
-        // If the AdMob SDK hangs and never fires any delegate (load, earn,
-        // dismiss, fail), this guarantees the player's spinner still stops
-        // and gameplay resumes. 35s = 10s load + 25s typical ad duration
-        // + a small buffer.
+        // Wrap onComplete in a "fire-once" guard. Once an ad is actually
+        // presenting we trust the SDK's dismiss/fail delegates to resume
+        // gameplay — no hard ceiling here, otherwise a long rewarded
+        // creative (>35s) would cause us to resume the game underneath
+        // a still-visible ad. The load path below has its own 10s timeout.
         var hasFired = false
         let safeComplete: (Bool) -> Void = { earned in
             guard !hasFired else { return }
             hasFired = true
             onComplete(earned)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 35.0) { [weak self] in
-            guard !hasFired else { return }
-            // Force-clear manager state so a subsequent show() works.
-            self?.completion = nil
-            self?.rewarded = nil
-            self?.loadAd()
-            safeComplete(true)
         }
 
         guard let root = Self.topViewController() else {
@@ -145,6 +141,7 @@ final class RewardedAdManager: NSObject {
                            onComplete: @escaping (Bool) -> Void) {
         completion = onComplete
         rewardEarned = false
+        isPresenting = true
         ad.present(from: root) { [weak self] in
             // Just record that the reward was earned. Don't resume gameplay
             // here — wait for adDidDismissFullScreenContent so the game
@@ -159,6 +156,7 @@ final class RewardedAdManager: NSObject {
     }
 
     private func finish(earned: Bool) {
+        isPresenting = false
         let cb = completion
         completion = nil
         rewarded = nil
